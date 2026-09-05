@@ -1,0 +1,7 @@
+# Normaliza los finales de linea para evitar diffs espurios entre sistemas.
+* text=auto eol=lf
+
+# Archivos generados: no contar como codigo en las estadisticas del repo.
+package-lock.json linguist-generated=true
+worker-configuration.d.ts linguist-generated=true
+drizzle/**/*.sql linguist-generated=true

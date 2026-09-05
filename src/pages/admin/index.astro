@@ -1,0 +1,14 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+// El panel de administracion se ejecuta on-demand en el Worker.
+// No hay autenticacion todavia: es solo el marcador de la ruta dinamica.
+export const prerender = false;
+---
+
+<BaseLayout lang="es" title="CodeLoba - Admin">
+  <main>
+    <h1>Admin</h1>
+    <p>Ruta dinamica reservada. Sin funcionalidad en esta fase.</p>
+  </main>
+</BaseLayout>

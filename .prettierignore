@@ -1,0 +1,7 @@
+dist/
+.astro/
+.wrangler/
+node_modules/
+package-lock.json
+drizzle/
+worker-configuration.d.ts

@@ -1,0 +1,32 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+
+  // El adaptador @astrojs/cloudflare inyecta automaticamente `main` y el
+  // binding de assets durante el build, por eso no se declaran aqui.
+  "name": "codeloba",
+  "compatibility_date": "2026-09-03",
+  "compatibility_flags": ["nodejs_compat"],
+
+  "observability": {
+    "enabled": true,
+  },
+
+  // Base de datos D1. El `database_id` real se obtiene al crear la base
+  // con `wrangler d1 create codeloba-db` y NO se versiona en el repositorio.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "codeloba-db",
+      "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+      "migrations_dir": "drizzle",
+    },
+  ],
+
+  // Bucket R2 para multimedia (imagenes, 360, etc.) en fases posteriores.
+  "r2_buckets": [
+    {
+      "binding": "MEDIA",
+      "bucket_name": "codeloba-media",
+    },
+  ],
+}

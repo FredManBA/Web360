@@ -1,0 +1,22 @@
+# CodeLoba - variables locales de desarrollo (plantilla).
+#
+# Copia este archivo como `.dev.vars` y rellena los valores reales.
+# `.dev.vars` esta en .gitignore y NUNCA debe subirse al repositorio.
+#
+# En Cloudflare, los valores de produccion se cargan como secrets:
+#   wrangler secret put NOMBRE_DE_LA_VARIABLE
+#
+# En la Fase 0 el proyecto todavia no lee ninguna variable.
+# Las siguientes quedan documentadas porque haran falta mas adelante:
+
+# Entorno logico de la aplicacion (development | production)
+# APP_ENV="development"
+
+# Clave de envio de emails de contacto (Resend) - fase de formularios
+# RESEND_API_KEY=""
+
+# Token publico de Mapbox - fase de mapa
+# PUBLIC_MAPBOX_TOKEN=""
+
+# Credenciales del panel de administracion - fase de autenticacion
+# ADMIN_SESSION_SECRET=""
