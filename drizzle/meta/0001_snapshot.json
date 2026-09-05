@@ -1,0 +1,914 @@
+{
+  "version": "6",
+  "dialect": "sqlite",
+  "id": "6524547a-9cc0-4e49-8805-a6f08ca684fa",
+  "prevId": "ad31bd8e-53b6-430e-8b6c-3bde181b317a",
+  "tables": {
+    "properties": {
+      "name": "properties",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "property_type_id": {
+          "name": "property_type_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "publication_status": {
+          "name": "publication_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'draft'"
+        },
+        "commercial_status": {
+          "name": "commercial_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'available'"
+        },
+        "is_featured": {
+          "name": "is_featured",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "show_when_sold": {
+          "name": "show_when_sold",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "price_mode": {
+          "name": "price_mode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'contact'"
+        },
+        "price_amount_minor": {
+          "name": "price_amount_minor",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "currency_code": {
+          "name": "currency_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "area_square_meters": {
+          "name": "area_square_meters",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "province": {
+          "name": "province",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "canton": {
+          "name": "canton",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "district": {
+          "name": "district",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "locality": {
+          "name": "locality",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "private_latitude": {
+          "name": "private_latitude",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "private_longitude": {
+          "name": "private_longitude",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "public_latitude": {
+          "name": "public_latitude",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "public_longitude": {
+          "name": "public_longitude",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "location_precision": {
+          "name": "location_precision",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'approximate'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch())"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch())"
+        },
+        "published_at": {
+          "name": "published_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "properties_type_idx": {
+          "name": "properties_type_idx",
+          "columns": [
+            "property_type_id"
+          ],
+          "isUnique": false
+        },
+        "properties_publication_status_published_at_idx": {
+          "name": "properties_publication_status_published_at_idx",
+          "columns": [
+            "publication_status",
+            "published_at"
+          ],
+          "isUnique": false
+        },
+        "properties_commercial_status_idx": {
+          "name": "properties_commercial_status_idx",
+          "columns": [
+            "commercial_status"
+          ],
+          "isUnique": false
+        },
+        "properties_is_featured_idx": {
+          "name": "properties_is_featured_idx",
+          "columns": [
+            "is_featured"
+          ],
+          "isUnique": false
+        },
+        "properties_code_unique": {
+          "name": "properties_code_unique",
+          "columns": [
+            "code"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "properties_property_type_id_property_types_id_fk": {
+          "name": "properties_property_type_id_property_types_id_fk",
+          "tableFrom": "properties",
+          "tableTo": "property_types",
+          "columnsFrom": [
+            "property_type_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "properties_publication_status_check": {
+          "name": "properties_publication_status_check",
+          "value": "\"properties\".\"publication_status\" IN ('draft', 'in_review', 'approved', 'published', 'archived')"
+        },
+        "properties_commercial_status_check": {
+          "name": "properties_commercial_status_check",
+          "value": "\"properties\".\"commercial_status\" IN ('available', 'offer_received', 'reserved', 'sold')"
+        },
+        "properties_price_mode_check": {
+          "name": "properties_price_mode_check",
+          "value": "\"properties\".\"price_mode\" IN ('exact', 'negotiable', 'contact')"
+        },
+        "properties_location_precision_check": {
+          "name": "properties_location_precision_check",
+          "value": "\"properties\".\"location_precision\" IN ('exact', 'approximate')"
+        },
+        "properties_code_not_blank_check": {
+          "name": "properties_code_not_blank_check",
+          "value": "length(trim(\"properties\".\"code\")) > 0"
+        },
+        "properties_currency_code_check": {
+          "name": "properties_currency_code_check",
+          "value": "\"properties\".\"currency_code\" IS NULL OR \"properties\".\"currency_code\" GLOB '[A-Z][A-Z][A-Z]'"
+        },
+        "properties_price_amount_minor_check": {
+          "name": "properties_price_amount_minor_check",
+          "value": "\"properties\".\"price_amount_minor\" IS NULL OR \"properties\".\"price_amount_minor\" >= 0"
+        },
+        "properties_area_square_meters_check": {
+          "name": "properties_area_square_meters_check",
+          "value": "\"properties\".\"area_square_meters\" IS NULL OR \"properties\".\"area_square_meters\" > 0"
+        },
+        "properties_private_latitude_check": {
+          "name": "properties_private_latitude_check",
+          "value": "\"properties\".\"private_latitude\" IS NULL OR \"properties\".\"private_latitude\" BETWEEN -90 AND 90"
+        },
+        "properties_private_longitude_check": {
+          "name": "properties_private_longitude_check",
+          "value": "\"properties\".\"private_longitude\" IS NULL OR \"properties\".\"private_longitude\" BETWEEN -180 AND 180"
+        },
+        "properties_public_latitude_check": {
+          "name": "properties_public_latitude_check",
+          "value": "\"properties\".\"public_latitude\" IS NULL OR \"properties\".\"public_latitude\" BETWEEN -90 AND 90"
+        },
+        "properties_public_longitude_check": {
+          "name": "properties_public_longitude_check",
+          "value": "\"properties\".\"public_longitude\" IS NULL OR \"properties\".\"public_longitude\" BETWEEN -180 AND 180"
+        }
+      }
+    },
+    "property_feature_group_translations": {
+      "name": "property_feature_group_translations",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "property_feature_group_id": {
+          "name": "property_feature_group_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "locale": {
+          "name": "locale",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch())"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch())"
+        }
+      },
+      "indexes": {
+        "property_feature_group_translations_group_idx": {
+          "name": "property_feature_group_translations_group_idx",
+          "columns": [
+            "property_feature_group_id"
+          ],
+          "isUnique": false
+        },
+        "property_feature_group_translations_group_locale_unique": {
+          "name": "property_feature_group_translations_group_locale_unique",
+          "columns": [
+            "property_feature_group_id",
+            "locale"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "property_feature_group_translations_property_feature_group_id_property_feature_groups_id_fk": {
+          "name": "property_feature_group_translations_property_feature_group_id_property_feature_groups_id_fk",
+          "tableFrom": "property_feature_group_translations",
+          "tableTo": "property_feature_groups",
+          "columnsFrom": [
+            "property_feature_group_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "property_feature_group_translations_locale_check": {
+          "name": "property_feature_group_translations_locale_check",
+          "value": "\"property_feature_group_translations\".\"locale\" IN ('es', 'en')"
+        }
+      }
+    },
+    "property_feature_groups": {
+      "name": "property_feature_groups",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "property_id": {
+          "name": "property_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch())"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch())"
+        }
+      },
+      "indexes": {
+        "property_feature_groups_property_sort_idx": {
+          "name": "property_feature_groups_property_sort_idx",
+          "columns": [
+            "property_id",
+            "sort_order"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "property_feature_groups_property_id_properties_id_fk": {
+          "name": "property_feature_groups_property_id_properties_id_fk",
+          "tableFrom": "property_feature_groups",
+          "tableTo": "properties",
+          "columnsFrom": [
+            "property_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "property_feature_translations": {
+      "name": "property_feature_translations",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "property_feature_id": {
+          "name": "property_feature_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "locale": {
+          "name": "locale",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "label": {
+          "name": "label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "value": {
+          "name": "value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch())"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch())"
+        }
+      },
+      "indexes": {
+        "property_feature_translations_feature_idx": {
+          "name": "property_feature_translations_feature_idx",
+          "columns": [
+            "property_feature_id"
+          ],
+          "isUnique": false
+        },
+        "property_feature_translations_feature_locale_unique": {
+          "name": "property_feature_translations_feature_locale_unique",
+          "columns": [
+            "property_feature_id",
+            "locale"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "property_feature_translations_property_feature_id_property_features_id_fk": {
+          "name": "property_feature_translations_property_feature_id_property_features_id_fk",
+          "tableFrom": "property_feature_translations",
+          "tableTo": "property_features",
+          "columnsFrom": [
+            "property_feature_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "property_feature_translations_locale_check": {
+          "name": "property_feature_translations_locale_check",
+          "value": "\"property_feature_translations\".\"locale\" IN ('es', 'en')"
+        }
+      }
+    },
+    "property_features": {
+      "name": "property_features",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "property_id": {
+          "name": "property_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "property_feature_group_id": {
+          "name": "property_feature_group_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch())"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch())"
+        }
+      },
+      "indexes": {
+        "property_features_property_sort_idx": {
+          "name": "property_features_property_sort_idx",
+          "columns": [
+            "property_id",
+            "sort_order"
+          ],
+          "isUnique": false
+        },
+        "property_features_group_idx": {
+          "name": "property_features_group_idx",
+          "columns": [
+            "property_feature_group_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "property_features_property_id_properties_id_fk": {
+          "name": "property_features_property_id_properties_id_fk",
+          "tableFrom": "property_features",
+          "tableTo": "properties",
+          "columnsFrom": [
+            "property_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
+        },
+        "property_features_property_feature_group_id_property_feature_groups_id_fk": {
+          "name": "property_features_property_feature_group_id_property_feature_groups_id_fk",
+          "tableFrom": "property_features",
+          "tableTo": "property_feature_groups",
+          "columnsFrom": [
+            "property_feature_group_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "property_translations": {
+      "name": "property_translations",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "property_id": {
+          "name": "property_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "locale": {
+          "name": "locale",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "slug": {
+          "name": "slug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "marketing_description": {
+          "name": "marketing_description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "technical_description": {
+          "name": "technical_description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch())"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch())"
+        }
+      },
+      "indexes": {
+        "property_translations_property_idx": {
+          "name": "property_translations_property_idx",
+          "columns": [
+            "property_id"
+          ],
+          "isUnique": false
+        },
+        "property_translations_property_locale_unique": {
+          "name": "property_translations_property_locale_unique",
+          "columns": [
+            "property_id",
+            "locale"
+          ],
+          "isUnique": true
+        },
+        "property_translations_locale_slug_unique": {
+          "name": "property_translations_locale_slug_unique",
+          "columns": [
+            "locale",
+            "slug"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "property_translations_property_id_properties_id_fk": {
+          "name": "property_translations_property_id_properties_id_fk",
+          "tableFrom": "property_translations",
+          "tableTo": "properties",
+          "columnsFrom": [
+            "property_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "property_translations_locale_check": {
+          "name": "property_translations_locale_check",
+          "value": "\"property_translations\".\"locale\" IN ('es', 'en')"
+        }
+      }
+    },
+    "property_type_translations": {
+      "name": "property_type_translations",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "property_type_id": {
+          "name": "property_type_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "locale": {
+          "name": "locale",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch())"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch())"
+        }
+      },
+      "indexes": {
+        "property_type_translations_type_idx": {
+          "name": "property_type_translations_type_idx",
+          "columns": [
+            "property_type_id"
+          ],
+          "isUnique": false
+        },
+        "property_type_translations_type_locale_unique": {
+          "name": "property_type_translations_type_locale_unique",
+          "columns": [
+            "property_type_id",
+            "locale"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "property_type_translations_property_type_id_property_types_id_fk": {
+          "name": "property_type_translations_property_type_id_property_types_id_fk",
+          "tableFrom": "property_type_translations",
+          "tableTo": "property_types",
+          "columnsFrom": [
+            "property_type_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "property_type_translations_locale_check": {
+          "name": "property_type_translations_locale_check",
+          "value": "\"property_type_translations\".\"locale\" IN ('es', 'en')"
+        }
+      }
+    },
+    "property_types": {
+      "name": "property_types",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "system_key": {
+          "name": "system_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch())"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch())"
+        }
+      },
+      "indexes": {
+        "property_types_system_key_unique": {
+          "name": "property_types_system_key_unique",
+          "columns": [
+            "system_key"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "indexes": {}
+  }
+}

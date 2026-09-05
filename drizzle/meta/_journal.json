@@ -8,6 +8,13 @@
       "when": 1788627286873,
       "tag": "0000_property_core",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1788628630563,
+      "tag": "0001_property_features",
+      "breakpoints": true
     }
   ]
 }

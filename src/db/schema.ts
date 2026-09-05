@@ -297,6 +297,157 @@ export const propertyTranslations = sqliteTable(
 );
 
 /* -------------------------------------------------------------------------- */
+/* property_feature_groups                                                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Agrupacion opcional de caracteristicas ("Terreno", "Servicios", "Accesos").
+ *
+ * Los grupos pertenecen a UNA propiedad concreta, no son catalogos globales:
+ * cada propiedad organiza sus caracteristicas como le convenga.
+ */
+export const propertyFeatureGroups = sqliteTable(
+  'property_feature_groups',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+
+    propertyId: integer('property_id')
+      .notNull()
+      .references(() => properties.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+
+    /** Orden manual. No es unico: la UI podra normalizar posiciones. */
+    sortOrder: integer('sort_order').notNull().default(0),
+
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    // Cubre tambien las busquedas por property_id sola (prefijo izquierdo).
+    index('property_feature_groups_property_sort_idx').on(table.propertyId, table.sortOrder),
+  ],
+);
+
+/* -------------------------------------------------------------------------- */
+/* property_feature_group_translations                                        */
+/* -------------------------------------------------------------------------- */
+
+export const propertyFeatureGroupTranslations = sqliteTable(
+  'property_feature_group_translations',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+
+    propertyFeatureGroupId: integer('property_feature_group_id')
+      .notNull()
+      .references(() => propertyFeatureGroups.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+
+    locale: text('locale', { enum: LOCALES }).notNull(),
+
+    /** Nullable: un borrador puede tener el grupo creado y aun sin nombrar. */
+    name: text('name'),
+
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    unique('property_feature_group_translations_group_locale_unique').on(
+      table.propertyFeatureGroupId,
+      table.locale,
+    ),
+    index('property_feature_group_translations_group_idx').on(table.propertyFeatureGroupId),
+    check(
+      'property_feature_group_translations_locale_check',
+      sql`${table.locale} IN (${sql.raw(sqlList(LOCALES))})`,
+    ),
+  ],
+);
+
+/* -------------------------------------------------------------------------- */
+/* property_features                                                          */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Caracteristica concreta de una propiedad.
+ *
+ * Regla que la base de datos NO puede garantizar: una caracteristica solo
+ * deberia pertenecer a un grupo de SU MISMA propiedad. Expresarlo en SQLite
+ * exigiria triggers o una FK compuesta artificial, asi que queda como
+ * validacion de aplicacion en una fase posterior.
+ */
+export const propertyFeatures = sqliteTable(
+  'property_features',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+
+    propertyId: integer('property_id')
+      .notNull()
+      .references(() => properties.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+
+    /**
+     * Opcional: una caracteristica puede no estar agrupada. Al borrar el
+     * grupo se pone a NULL, de modo que la caracteristica sobrevive y
+     * simplemente queda sin agrupar.
+     */
+    propertyFeatureGroupId: integer('property_feature_group_id').references(
+      () => propertyFeatureGroups.id,
+      { onDelete: 'set null', onUpdate: 'cascade' },
+    ),
+
+    sortOrder: integer('sort_order').notNull().default(0),
+
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    index('property_features_property_sort_idx').on(table.propertyId, table.sortOrder),
+    index('property_features_group_idx').on(table.propertyFeatureGroupId),
+  ],
+);
+
+/* -------------------------------------------------------------------------- */
+/* property_feature_translations                                              */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Contenido localizado de una caracteristica.
+ *
+ * Para el MVP el valor es texto libre (`label` + `value`), por ejemplo
+ * "Frente de calle" / "80 m". No se tipan valores numericos, booleanos ni
+ * unidades: la presentacion es responsabilidad de la aplicacion.
+ */
+export const propertyFeatureTranslations = sqliteTable(
+  'property_feature_translations',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+
+    propertyFeatureId: integer('property_feature_id')
+      .notNull()
+      .references(() => propertyFeatures.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+
+    locale: text('locale', { enum: LOCALES }).notNull(),
+
+    /** Nullable en borradores. */
+    label: text('label'),
+
+    /** Nullable: hay caracteristicas sin valor ("Vista al mar"). */
+    value: text('value'),
+
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    unique('property_feature_translations_feature_locale_unique').on(
+      table.propertyFeatureId,
+      table.locale,
+    ),
+    index('property_feature_translations_feature_idx').on(table.propertyFeatureId),
+    check(
+      'property_feature_translations_locale_check',
+      sql`${table.locale} IN (${sql.raw(sqlList(LOCALES))})`,
+    ),
+  ],
+);
+
+/* -------------------------------------------------------------------------- */
 /* Relaciones                                                                 */
 /* -------------------------------------------------------------------------- */
 
@@ -318,6 +469,8 @@ export const propertiesRelations = relations(properties, ({ one, many }) => ({
     references: [propertyTypes.id],
   }),
   translations: many(propertyTranslations),
+  featureGroups: many(propertyFeatureGroups),
+  features: many(propertyFeatures),
 }));
 
 export const propertyTranslationsRelations = relations(propertyTranslations, ({ one }) => ({
@@ -326,6 +479,47 @@ export const propertyTranslationsRelations = relations(propertyTranslations, ({ 
     references: [properties.id],
   }),
 }));
+
+export const propertyFeatureGroupsRelations = relations(propertyFeatureGroups, ({ one, many }) => ({
+  property: one(properties, {
+    fields: [propertyFeatureGroups.propertyId],
+    references: [properties.id],
+  }),
+  translations: many(propertyFeatureGroupTranslations),
+  features: many(propertyFeatures),
+}));
+
+export const propertyFeatureGroupTranslationsRelations = relations(
+  propertyFeatureGroupTranslations,
+  ({ one }) => ({
+    featureGroup: one(propertyFeatureGroups, {
+      fields: [propertyFeatureGroupTranslations.propertyFeatureGroupId],
+      references: [propertyFeatureGroups.id],
+    }),
+  }),
+);
+
+export const propertyFeaturesRelations = relations(propertyFeatures, ({ one, many }) => ({
+  property: one(properties, {
+    fields: [propertyFeatures.propertyId],
+    references: [properties.id],
+  }),
+  featureGroup: one(propertyFeatureGroups, {
+    fields: [propertyFeatures.propertyFeatureGroupId],
+    references: [propertyFeatureGroups.id],
+  }),
+  translations: many(propertyFeatureTranslations),
+}));
+
+export const propertyFeatureTranslationsRelations = relations(
+  propertyFeatureTranslations,
+  ({ one }) => ({
+    feature: one(propertyFeatures, {
+      fields: [propertyFeatureTranslations.propertyFeatureId],
+      references: [propertyFeatures.id],
+    }),
+  }),
+);
 
 /* -------------------------------------------------------------------------- */
 /* Tipos inferidos                                                            */
@@ -342,3 +536,16 @@ export type NewProperty = typeof properties.$inferInsert;
 
 export type PropertyTranslation = typeof propertyTranslations.$inferSelect;
 export type NewPropertyTranslation = typeof propertyTranslations.$inferInsert;
+
+export type PropertyFeatureGroup = typeof propertyFeatureGroups.$inferSelect;
+export type NewPropertyFeatureGroup = typeof propertyFeatureGroups.$inferInsert;
+
+export type PropertyFeatureGroupTranslation = typeof propertyFeatureGroupTranslations.$inferSelect;
+export type NewPropertyFeatureGroupTranslation =
+  typeof propertyFeatureGroupTranslations.$inferInsert;
+
+export type PropertyFeature = typeof propertyFeatures.$inferSelect;
+export type NewPropertyFeature = typeof propertyFeatures.$inferInsert;
+
+export type PropertyFeatureTranslation = typeof propertyFeatureTranslations.$inferSelect;
+export type NewPropertyFeatureTranslation = typeof propertyFeatureTranslations.$inferInsert;
