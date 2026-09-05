@@ -98,16 +98,20 @@ Bindings declarados en `wrangler.jsonc`:
 Los bindings solo existen dentro de una peticion on-demand y se acceden asi:
 
 ```ts
+import { env } from 'cloudflare:workers';
 import { getDb } from '@/db/client';
 
 export const prerender = false;
 
-const db = getDb(Astro.locals.runtime.env);
-const media = Astro.locals.runtime.env.MEDIA;
+const db = getDb(env);
+const media = env.MEDIA;
 ```
 
-El esquema se define en `src/db/schema.ts` (vacio en esta fase) y las
-migraciones se generan en `drizzle/`:
+> `Astro.locals.runtime.env` se elimino en Astro v6: el binding se obtiene
+> del modulo `cloudflare:workers`, que solo existe dentro del Worker.
+
+El esquema se define en `src/db/schema.ts` y las migraciones se generan en
+`drizzle/`:
 
 ```bash
 npm run db:generate        # genera el SQL a partir del esquema
@@ -129,7 +133,17 @@ npm run cf:typegen
 - Para desarrollo local: copiar a `.dev.vars` (ignorado por Git) y rellenar.
 - Para produccion: `npx wrangler secret put NOMBRE_VARIABLE`.
 
-En la Fase 0 la aplicacion todavia no lee ninguna variable.
+### API administrativa en local
+
+`/api/admin/*` esta **cerrada por defecto** y responde 403. Todavia no hay
+autenticacion real; para trabajar en local, copia `.dev.vars.example` a
+`.dev.vars` y pon:
+
+```
+ADMIN_DEV_BYPASS=true
+```
+
+> Esta variable NUNCA debe definirse en el despliegue productivo.
 
 ## Estructura
 

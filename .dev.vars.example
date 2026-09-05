@@ -6,8 +6,13 @@
 # En Cloudflare, los valores de produccion se cargan como secrets:
 #   wrangler secret put NOMBRE_DE_LA_VARIABLE
 #
-# En la Fase 0 el proyecto todavia no lee ninguna variable.
-# Las siguientes quedan documentadas porque haran falta mas adelante:
+# La unica variable que el proyecto lee hoy es ADMIN_DEV_BYPASS.
+# Las demas quedan documentadas porque haran falta mas adelante:
+
+# Abre la API administrativa (/api/admin/*) SOLO en desarrollo local.
+# Sin esta variable a "true", la API responde 403.
+# NUNCA debe definirse en el despliegue productivo.
+ADMIN_DEV_BYPASS=false
 
 # Entorno logico de la aplicacion (development | production)
 # APP_ENV="development"

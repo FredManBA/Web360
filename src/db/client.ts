@@ -9,7 +9,8 @@ export type Database = DrizzleD1Database<typeof schema>;
  * El binding solo existe dentro de una peticion on-demand, asi que se llama
  * desde rutas que declaran `export const prerender = false`:
  *
- *   const db = getDb(Astro.locals.runtime.env);
+ *   import { env } from 'cloudflare:workers';
+ *   const db = getDb(env);
  */
 export function getDb(env: Env): Database {
   return drizzle(env.DB, { schema });
