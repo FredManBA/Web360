@@ -15,6 +15,13 @@
       "when": 1788628630563,
       "tag": "0001_property_features",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1788630030160,
+      "tag": "0002_media_and_tours",
+      "breakpoints": true
     }
   ]
 }

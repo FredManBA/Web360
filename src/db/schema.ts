@@ -13,7 +13,16 @@
  */
 
 import { relations, sql } from 'drizzle-orm';
-import { check, index, integer, real, sqliteTable, text, unique } from 'drizzle-orm/sqlite-core';
+import {
+  check,
+  index,
+  integer,
+  real,
+  sqliteTable,
+  text,
+  unique,
+  uniqueIndex,
+} from 'drizzle-orm/sqlite-core';
 
 /* -------------------------------------------------------------------------- */
 /* Vocabularios                                                               */
@@ -39,6 +48,13 @@ export type PriceMode = (typeof PRICE_MODES)[number];
 
 export const LOCATION_PRECISIONS = ['exact', 'approximate'] as const;
 export type LocationPrecision = (typeof LOCATION_PRECISIONS)[number];
+
+export const MEDIA_KINDS = ['image', 'video', 'document', 'panorama'] as const;
+export type MediaKind = (typeof MEDIA_KINDS)[number];
+
+/** `r2` para archivos propios; `youtube` para los videos largos del MVP. */
+export const SOURCE_PROVIDERS = ['r2', 'youtube'] as const;
+export type SourceProvider = (typeof SOURCE_PROVIDERS)[number];
 
 /** Lista SQL de un vocabulario, para usarla dentro de un CHECK ... IN (...). */
 function sqlList(values: readonly string[]): string {
@@ -448,6 +464,361 @@ export const propertyFeatureTranslations = sqliteTable(
 );
 
 /* -------------------------------------------------------------------------- */
+/* property_media_groups                                                      */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Agrupacion personalizable de multimedia ("Fotografias", "Drone", "Interior").
+ * Igual que los grupos de caracteristicas, pertenece a UNA propiedad.
+ */
+export const propertyMediaGroups = sqliteTable(
+  'property_media_groups',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+
+    propertyId: integer('property_id')
+      .notNull()
+      .references(() => properties.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+
+    sortOrder: integer('sort_order').notNull().default(0),
+
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    index('property_media_groups_property_sort_idx').on(table.propertyId, table.sortOrder),
+  ],
+);
+
+/* -------------------------------------------------------------------------- */
+/* property_media_group_translations                                          */
+/* -------------------------------------------------------------------------- */
+
+export const propertyMediaGroupTranslations = sqliteTable(
+  'property_media_group_translations',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+
+    propertyMediaGroupId: integer('property_media_group_id')
+      .notNull()
+      .references(() => propertyMediaGroups.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+
+    locale: text('locale', { enum: LOCALES }).notNull(),
+
+    /** Nullable: el grupo puede existir sin nombre mientras es borrador. */
+    name: text('name'),
+
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    // El UNIQUE ya indexa property_media_group_id por prefijo izquierdo.
+    unique('property_media_group_translations_group_locale_unique').on(
+      table.propertyMediaGroupId,
+      table.locale,
+    ),
+    check(
+      'property_media_group_translations_locale_check',
+      sql`${table.locale} IN (${sql.raw(sqlList(LOCALES))})`,
+    ),
+  ],
+);
+
+/* -------------------------------------------------------------------------- */
+/* property_media                                                             */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Tabla unica para todo el multimedia de una propiedad.
+ *
+ * El archivo vive en R2 (`object_key`) o, para videos largos del MVP, en
+ * YouTube no listado (`youtube_video_id`). Nunca se guarda la URL completa
+ * de YouTube como fuente de verdad: se reconstruye desde el id.
+ *
+ * Los originales archivados fuera (Google One) no se representan aqui.
+ */
+export const propertyMedia = sqliteTable(
+  'property_media',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+
+    propertyId: integer('property_id')
+      .notNull()
+      .references(() => properties.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+
+    /** Al borrar el grupo, el archivo sobrevive y queda sin agrupar. */
+    propertyMediaGroupId: integer('property_media_group_id').references(
+      () => propertyMediaGroups.id,
+      { onDelete: 'set null', onUpdate: 'cascade' },
+    ),
+
+    mediaKind: text('media_kind', { enum: MEDIA_KINDS }).notNull(),
+    sourceProvider: text('source_provider', { enum: SOURCE_PROVIDERS }).notNull(),
+
+    // -- R2 ----------------------------------------------------------------
+    objectKey: text('object_key'),
+    mimeType: text('mime_type'),
+    fileSizeBytes: integer('file_size_bytes'),
+
+    // -- YouTube -----------------------------------------------------------
+    youtubeVideoId: text('youtube_video_id'),
+
+    // -- Metadata visual ---------------------------------------------------
+    width: integer('width'),
+    height: integer('height'),
+    durationSeconds: real('duration_seconds'),
+
+    // -- Presentacion ------------------------------------------------------
+    sortOrder: integer('sort_order').notNull().default(0),
+    isHero: integer('is_hero', { mode: 'boolean' }).notNull().default(false),
+    isCatalogCover: integer('is_catalog_cover', { mode: 'boolean' }).notNull().default(false),
+
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    index('property_media_property_sort_idx').on(table.propertyId, table.sortOrder),
+    index('property_media_group_idx').on(table.propertyMediaGroupId),
+
+    /** Solo aplica a filas con valor: SQLite admite multiples NULL. */
+    unique('property_media_object_key_unique').on(table.objectKey),
+
+    /**
+     * Como maximo un hero y una portada por propiedad. Los indices parciales
+     * de SQLite expresan esto sin triggers ni columnas artificiales.
+     */
+    uniqueIndex('property_media_one_hero_per_property_idx')
+      .on(table.propertyId)
+      .where(sql`${table.isHero} = 1`),
+    uniqueIndex('property_media_one_catalog_cover_per_property_idx')
+      .on(table.propertyId)
+      .where(sql`${table.isCatalogCover} = 1`),
+
+    check(
+      'property_media_kind_check',
+      sql`${table.mediaKind} IN (${sql.raw(sqlList(MEDIA_KINDS))})`,
+    ),
+    check(
+      'property_media_source_provider_check',
+      sql`${table.sourceProvider} IN (${sql.raw(sqlList(SOURCE_PROVIDERS))})`,
+    ),
+
+    /**
+     * Coherencia de la fuente:
+     * - r2      -> hace falta object_key y no puede haber youtube_video_id.
+     * - youtube -> solo video, hace falta el id y no puede haber object_key.
+     */
+    check(
+      'property_media_source_consistency_check',
+      sql`(
+        ${table.sourceProvider} = 'r2'
+        AND ${table.objectKey} IS NOT NULL
+        AND ${table.youtubeVideoId} IS NULL
+      ) OR (
+        ${table.sourceProvider} = 'youtube'
+        AND ${table.mediaKind} = 'video'
+        AND ${table.youtubeVideoId} IS NOT NULL
+        AND ${table.objectKey} IS NULL
+      )`,
+    ),
+
+    /** Un documento o un panorama no pueden ser hero en el MVP. */
+    check(
+      'property_media_hero_kind_check',
+      sql`${table.isHero} = 0 OR ${table.mediaKind} IN ('image', 'video')`,
+    ),
+
+    /** La portada de catalogo solo puede ser una imagen. */
+    check(
+      'property_media_catalog_cover_kind_check',
+      sql`${table.isCatalogCover} = 0 OR ${table.mediaKind} = 'image'`,
+    ),
+
+    check('property_media_width_check', sql`${table.width} IS NULL OR ${table.width} > 0`),
+    check('property_media_height_check', sql`${table.height} IS NULL OR ${table.height} > 0`),
+    check(
+      'property_media_file_size_check',
+      sql`${table.fileSizeBytes} IS NULL OR ${table.fileSizeBytes} > 0`,
+    ),
+    check(
+      'property_media_duration_check',
+      sql`${table.durationSeconds} IS NULL OR ${table.durationSeconds} > 0`,
+    ),
+  ],
+);
+
+/* -------------------------------------------------------------------------- */
+/* property_media_translations                                                */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Textos localizados de cualquier tipo de multimedia, documentos incluidos
+ * (el `title` sirve como nombre publico del documento).
+ */
+export const propertyMediaTranslations = sqliteTable(
+  'property_media_translations',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+
+    propertyMediaId: integer('property_media_id')
+      .notNull()
+      .references(() => propertyMedia.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+
+    locale: text('locale', { enum: LOCALES }).notNull(),
+
+    title: text('title'),
+    altText: text('alt_text'),
+    caption: text('caption'),
+
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    unique('property_media_translations_media_locale_unique').on(
+      table.propertyMediaId,
+      table.locale,
+    ),
+    check(
+      'property_media_translations_locale_check',
+      sql`${table.locale} IN (${sql.raw(sqlList(LOCALES))})`,
+    ),
+  ],
+);
+
+/* -------------------------------------------------------------------------- */
+/* property_tour_nodes                                                        */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Nodo de un recorrido 360.
+ *
+ * El panorama NO se duplica: el nodo apunta a la fila de `property_media`
+ * con `media_kind = 'panorama'`. Por eso el borrado del media es RESTRICT,
+ * para no dejar el tour roto por accidente.
+ */
+export const propertyTourNodes = sqliteTable(
+  'property_tour_nodes',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+
+    propertyId: integer('property_id')
+      .notNull()
+      .references(() => properties.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+
+    propertyMediaId: integer('property_media_id')
+      .notNull()
+      .references(() => propertyMedia.id, { onDelete: 'restrict', onUpdate: 'cascade' }),
+
+    sortOrder: integer('sort_order').notNull().default(0),
+    isStart: integer('is_start', { mode: 'boolean' }).notNull().default(false),
+
+    /**
+     * Camara inicial del nodo. La convencion de unidades (grados o radianes)
+     * se fijara al integrar el visor; por eso solo se valida que el FOV sea
+     * positivo, que es cierto en cualquiera de las dos.
+     */
+    initialYaw: real('initial_yaw'),
+    initialPitch: real('initial_pitch'),
+    initialFov: real('initial_fov'),
+
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    index('property_tour_nodes_property_sort_idx').on(table.propertyId, table.sortOrder),
+
+    /** Un panorama representa un unico nodo dentro del MVP. */
+    unique('property_tour_nodes_media_unique').on(table.propertyMediaId),
+
+    /** Como maximo un nodo inicial por propiedad (indice parcial). */
+    uniqueIndex('property_tour_nodes_one_start_per_property_idx')
+      .on(table.propertyId)
+      .where(sql`${table.isStart} = 1`),
+
+    check(
+      'property_tour_nodes_initial_fov_check',
+      sql`${table.initialFov} IS NULL OR ${table.initialFov} > 0`,
+    ),
+  ],
+);
+
+/* -------------------------------------------------------------------------- */
+/* property_tour_node_translations                                            */
+/* -------------------------------------------------------------------------- */
+
+export const propertyTourNodeTranslations = sqliteTable(
+  'property_tour_node_translations',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+
+    propertyTourNodeId: integer('property_tour_node_id')
+      .notNull()
+      .references(() => propertyTourNodes.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+
+    locale: text('locale', { enum: LOCALES }).notNull(),
+
+    /** "Entrada", "Camino principal", "Mirador". Nullable en borrador. */
+    name: text('name'),
+
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    unique('property_tour_node_translations_node_locale_unique').on(
+      table.propertyTourNodeId,
+      table.locale,
+    ),
+    check(
+      'property_tour_node_translations_locale_check',
+      sql`${table.locale} IN (${sql.raw(sqlList(LOCALES))})`,
+    ),
+  ],
+);
+
+/* -------------------------------------------------------------------------- */
+/* property_tour_links                                                        */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Conexion dirigida entre dos nodos del recorrido, situada en el panorama
+ * de origen mediante `yaw` / `pitch`.
+ *
+ * El enlace no tiene textos propios: la UI mostrara el nombre traducido del
+ * nodo de destino.
+ */
+export const propertyTourLinks = sqliteTable(
+  'property_tour_links',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+
+    fromNodeId: integer('from_node_id')
+      .notNull()
+      .references(() => propertyTourNodes.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+
+    toNodeId: integer('to_node_id')
+      .notNull()
+      .references(() => propertyTourNodes.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+
+    /** Posicion del hotspot dentro del panorama de origen. */
+    yaw: real('yaw').notNull().default(0),
+    pitch: real('pitch').notNull().default(0),
+
+    sortOrder: integer('sort_order').notNull().default(0),
+
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    // El UNIQUE ya indexa from_node_id por prefijo izquierdo.
+    unique('property_tour_links_from_to_unique').on(table.fromNodeId, table.toNodeId),
+    index('property_tour_links_to_node_idx').on(table.toNodeId),
+
+    /** Un nodo no puede enlazar consigo mismo. */
+    check('property_tour_links_no_self_link_check', sql`${table.fromNodeId} <> ${table.toNodeId}`),
+  ],
+);
+
+/* -------------------------------------------------------------------------- */
 /* Relaciones                                                                 */
 /* -------------------------------------------------------------------------- */
 
@@ -471,6 +842,9 @@ export const propertiesRelations = relations(properties, ({ one, many }) => ({
   translations: many(propertyTranslations),
   featureGroups: many(propertyFeatureGroups),
   features: many(propertyFeatures),
+  mediaGroups: many(propertyMediaGroups),
+  media: many(propertyMedia),
+  tourNodes: many(propertyTourNodes),
 }));
 
 export const propertyTranslationsRelations = relations(propertyTranslations, ({ one }) => ({
@@ -521,6 +895,90 @@ export const propertyFeatureTranslationsRelations = relations(
   }),
 );
 
+export const propertyMediaGroupsRelations = relations(propertyMediaGroups, ({ one, many }) => ({
+  property: one(properties, {
+    fields: [propertyMediaGroups.propertyId],
+    references: [properties.id],
+  }),
+  translations: many(propertyMediaGroupTranslations),
+  media: many(propertyMedia),
+}));
+
+export const propertyMediaGroupTranslationsRelations = relations(
+  propertyMediaGroupTranslations,
+  ({ one }) => ({
+    mediaGroup: one(propertyMediaGroups, {
+      fields: [propertyMediaGroupTranslations.propertyMediaGroupId],
+      references: [propertyMediaGroups.id],
+    }),
+  }),
+);
+
+export const propertyMediaRelations = relations(propertyMedia, ({ one, many }) => ({
+  property: one(properties, {
+    fields: [propertyMedia.propertyId],
+    references: [properties.id],
+  }),
+  mediaGroup: one(propertyMediaGroups, {
+    fields: [propertyMedia.propertyMediaGroupId],
+    references: [propertyMediaGroups.id],
+  }),
+  translations: many(propertyMediaTranslations),
+}));
+
+export const propertyMediaTranslationsRelations = relations(
+  propertyMediaTranslations,
+  ({ one }) => ({
+    media: one(propertyMedia, {
+      fields: [propertyMediaTranslations.propertyMediaId],
+      references: [propertyMedia.id],
+    }),
+  }),
+);
+
+export const propertyTourNodesRelations = relations(propertyTourNodes, ({ one, many }) => ({
+  property: one(properties, {
+    fields: [propertyTourNodes.propertyId],
+    references: [properties.id],
+  }),
+  /** El panorama reutilizado, no una copia. */
+  media: one(propertyMedia, {
+    fields: [propertyTourNodes.propertyMediaId],
+    references: [propertyMedia.id],
+  }),
+  translations: many(propertyTourNodeTranslations),
+
+  /**
+   * `property_tour_links` apunta dos veces a esta misma tabla, asi que ambas
+   * direcciones necesitan `relationName` para que Drizzle no las confunda.
+   */
+  outgoingLinks: many(propertyTourLinks, { relationName: 'tourLinkFromNode' }),
+  incomingLinks: many(propertyTourLinks, { relationName: 'tourLinkToNode' }),
+}));
+
+export const propertyTourNodeTranslationsRelations = relations(
+  propertyTourNodeTranslations,
+  ({ one }) => ({
+    tourNode: one(propertyTourNodes, {
+      fields: [propertyTourNodeTranslations.propertyTourNodeId],
+      references: [propertyTourNodes.id],
+    }),
+  }),
+);
+
+export const propertyTourLinksRelations = relations(propertyTourLinks, ({ one }) => ({
+  fromNode: one(propertyTourNodes, {
+    fields: [propertyTourLinks.fromNodeId],
+    references: [propertyTourNodes.id],
+    relationName: 'tourLinkFromNode',
+  }),
+  toNode: one(propertyTourNodes, {
+    fields: [propertyTourLinks.toNodeId],
+    references: [propertyTourNodes.id],
+    relationName: 'tourLinkToNode',
+  }),
+}));
+
 /* -------------------------------------------------------------------------- */
 /* Tipos inferidos                                                            */
 /* -------------------------------------------------------------------------- */
@@ -549,3 +1007,24 @@ export type NewPropertyFeature = typeof propertyFeatures.$inferInsert;
 
 export type PropertyFeatureTranslation = typeof propertyFeatureTranslations.$inferSelect;
 export type NewPropertyFeatureTranslation = typeof propertyFeatureTranslations.$inferInsert;
+
+export type PropertyMediaGroup = typeof propertyMediaGroups.$inferSelect;
+export type NewPropertyMediaGroup = typeof propertyMediaGroups.$inferInsert;
+
+export type PropertyMediaGroupTranslation = typeof propertyMediaGroupTranslations.$inferSelect;
+export type NewPropertyMediaGroupTranslation = typeof propertyMediaGroupTranslations.$inferInsert;
+
+export type PropertyMedia = typeof propertyMedia.$inferSelect;
+export type NewPropertyMedia = typeof propertyMedia.$inferInsert;
+
+export type PropertyMediaTranslation = typeof propertyMediaTranslations.$inferSelect;
+export type NewPropertyMediaTranslation = typeof propertyMediaTranslations.$inferInsert;
+
+export type PropertyTourNode = typeof propertyTourNodes.$inferSelect;
+export type NewPropertyTourNode = typeof propertyTourNodes.$inferInsert;
+
+export type PropertyTourNodeTranslation = typeof propertyTourNodeTranslations.$inferSelect;
+export type NewPropertyTourNodeTranslation = typeof propertyTourNodeTranslations.$inferInsert;
+
+export type PropertyTourLink = typeof propertyTourLinks.$inferSelect;
+export type NewPropertyTourLink = typeof propertyTourLinks.$inferInsert;
