@@ -1,0 +1,120 @@
+---
+import '../styles/global.css';
+import '../styles/admin.css';
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description } = Astro.props;
+const currentPath = Astro.url.pathname;
+
+/** Solo se listan las secciones que existen de verdad. */
+const sections = [{ href: '/admin/propiedades', label: 'Propiedades' }];
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- El panel no debe indexarse ni cachearse. -->
+    <meta name="robots" content="noindex, nofollow" />
+    <title>{title} · CodeLoba</title>
+  </head>
+
+  <body class="admin">
+    <div class="admin-shell">
+      <!-- Cabecera compacta, solo visible en movil. -->
+      <div class="admin-topbar">
+        <button
+          type="button"
+          class="admin-nav-toggle"
+          id="admin-nav-toggle"
+          aria-expanded="false"
+          aria-controls="admin-nav"
+        >
+          <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+            <path
+              d="M3 5h14M3 10h14M3 15h14"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"></path>
+          </svg>
+          <span id="admin-nav-toggle-text">Menú</span>
+        </button>
+        <span class="admin-brand">CodeLoba</span>
+      </div>
+
+      <aside class="admin-sidebar" id="admin-nav" data-open="false">
+        <p class="admin-brand">
+          CodeLoba
+          <span>Loba</span>
+        </p>
+
+        <nav aria-label="Secciones del panel" class="admin-nav">
+          <ul>
+            {
+              sections.map((section) => (
+                <li>
+                  <a
+                    href={section.href}
+                    aria-current={currentPath.startsWith(section.href) ? 'page' : undefined}
+                  >
+                    {section.label}
+                  </a>
+                </li>
+              ))
+            }
+          </ul>
+        </nav>
+
+        <p class="admin-sidebar-footer">Panel administrativo</p>
+      </aside>
+
+      <div class="admin-main">
+        <header class="admin-header">
+          <h1>{title}</h1>
+          {description && <p>{description}</p>}
+        </header>
+
+        <main class="admin-content" id="admin-main">
+          <slot />
+        </main>
+      </div>
+    </div>
+
+    <script>
+      /*
+       * Navegacion movil. Sin libreria: un boton que alterna `data-open` y
+       * mantiene `aria-expanded` sincronizado.
+       */
+      // Asercion en vez del generico: el tipo `Element` del runtime de Workers
+      // choca con el del DOM.
+      const toggle = document.querySelector('#admin-nav-toggle') as HTMLButtonElement | null;
+      const nav = document.querySelector('#admin-nav') as HTMLElement | null;
+      const toggleText = document.querySelector('#admin-nav-toggle-text') as HTMLElement | null;
+
+      if (toggle !== null && nav !== null) {
+        const setOpen = (open: boolean): void => {
+          nav.dataset.open = String(open);
+          toggle.setAttribute('aria-expanded', String(open));
+          if (toggleText !== null) toggleText.textContent = open ? 'Cerrar' : 'Menú';
+        };
+
+        toggle.addEventListener('click', () => {
+          setOpen(nav.dataset.open !== 'true');
+        });
+
+        document.addEventListener('keydown', (event) => {
+          if (event.key === 'Escape' && nav.dataset.open === 'true') {
+            setOpen(false);
+            toggle.focus();
+          }
+        });
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,61 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { COMMERCIAL_STATUSES, PUBLICATION_STATUSES } from '../../lib/domain/vocabularies';
+import { COMMERCIAL_STATUS_LABELS, PUBLICATION_STATUS_LABELS } from '../../lib/admin/ui/labels';
+
+export const prerender = false;
+
+/*
+ * El shell se renderiza en el servidor; los datos los carga el navegador
+ * contra `/api/admin/properties`, para no saltarse la capa HTTP.
+ */
+---
+
+<AdminLayout title="Propiedades" description="Gestiona el catálogo publicado y los borradores.">
+  <form class="admin-filters" id="admin-filters">
+    <div class="admin-field">
+      <label for="filter-publication">Estado editorial</label>
+      <select id="filter-publication" name="publicationStatus">
+        <option value="">Todos</option>
+        {
+          PUBLICATION_STATUSES.map((status) => (
+            <option value={status}>{PUBLICATION_STATUS_LABELS[status]}</option>
+          ))
+        }
+      </select>
+    </div>
+
+    <div class="admin-field">
+      <label for="filter-commercial">Estado comercial</label>
+      <select id="filter-commercial" name="commercialStatus">
+        <option value="">Todos</option>
+        {
+          COMMERCIAL_STATUSES.map((status) => (
+            <option value={status}>{COMMERCIAL_STATUS_LABELS[status]}</option>
+          ))
+        }
+      </select>
+    </div>
+
+    <div class="admin-field">
+      <label for="filter-type">Tipo</label>
+      <select id="filter-type" name="propertyTypeId">
+        <option value="">Todos</option>
+      </select>
+    </div>
+  </form>
+
+  <p class="admin-count" id="admin-count" aria-live="polite"></p>
+
+  <div class="admin-panel">
+    <div id="admin-results" aria-busy="false">
+      <div class="admin-state"><p>Cargando propiedades…</p></div>
+    </div>
+  </div>
+</AdminLayout>
+
+<script>
+  import { initPropertiesPage } from '../../lib/admin/ui/properties-page';
+
+  initPropertiesPage();
+</script>

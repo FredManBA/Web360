@@ -1,0 +1,508 @@
+/*
+ * CodeLoba - base visual del panel administrativo.
+ *
+ * Sobria y funcional, no un dashboard de widgets: fondo ivory, verde profundo
+ * como color estructural y dorado arena muy contenido como acento. Clases
+ * semanticas, sin utilidades ni sistema de diseno extenso.
+ */
+
+.admin {
+  /* El panel es claro a proposito; sin esto el navegador podria pintar los
+     controles nativos en oscuro sobre esta paleta. */
+  color-scheme: light;
+
+  --admin-bg: #faf8f3;
+  --admin-surface: #ffffff;
+  --admin-surface-muted: #f4f1e9;
+
+  --admin-text: #1b2a23;
+  --admin-text-soft: #5b6b62;
+
+  --admin-border: #e4ded1;
+  --admin-border-strong: #d3cbb9;
+
+  --admin-green: #1f4034;
+  --admin-green-hover: #2b5544;
+  --admin-green-tint: #eaefea;
+
+  --admin-accent: #9a7b46;
+  --admin-accent-tint: #f5efe2;
+
+  --admin-danger: #8a2f24;
+  --admin-danger-tint: #fbeeec;
+
+  --admin-radius: 10px;
+  --admin-radius-sm: 6px;
+  --admin-shadow: 0 1px 2px rgb(27 42 35 / 6%);
+
+  --admin-sidebar-width: 15rem;
+
+  min-height: 100vh;
+  background: var(--admin-bg);
+  color: var(--admin-text);
+  font-family: var(--font-base);
+  line-height: 1.5;
+}
+
+.admin *:focus-visible {
+  outline: 2px solid var(--admin-green);
+  outline-offset: 2px;
+  border-radius: var(--admin-radius-sm);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Estructura                                                                 */
+/* -------------------------------------------------------------------------- */
+
+.admin-shell {
+  display: grid;
+  grid-template-columns: var(--admin-sidebar-width) 1fr;
+  min-height: 100vh;
+}
+
+.admin-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  padding: var(--space-lg) var(--space-md);
+  background: var(--admin-green);
+  color: #f3f1ea;
+}
+
+.admin-brand {
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #ffffff;
+}
+
+.admin-brand span {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #b9cbc0;
+}
+
+.admin-nav ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.admin-nav a {
+  display: block;
+  padding: 0.55rem 0.7rem;
+  border-radius: var(--admin-radius-sm);
+  color: #dce6df;
+  text-decoration: none;
+}
+
+.admin-nav a:hover {
+  background: var(--admin-green-hover);
+  color: #ffffff;
+}
+
+.admin-nav a[aria-current='page'] {
+  background: var(--admin-green-hover);
+  color: #ffffff;
+  /* El estado activo no depende solo del color. */
+  box-shadow: inset 3px 0 0 var(--admin-accent);
+  font-weight: 600;
+}
+
+.admin-sidebar-footer {
+  margin-top: auto;
+  font-size: 0.78rem;
+  color: #a9bdb1;
+}
+
+.admin-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.admin-header {
+  padding: var(--space-lg);
+  border-bottom: 1px solid var(--admin-border);
+  background: var(--admin-surface);
+}
+
+.admin-header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  letter-spacing: -0.01em;
+}
+
+.admin-header p {
+  margin: 0.35rem 0 0;
+  color: var(--admin-text-soft);
+  max-width: 60ch;
+}
+
+.admin-content {
+  padding: var(--space-lg);
+  min-width: 0;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Cabecera movil y navegacion colapsable                                     */
+/* -------------------------------------------------------------------------- */
+
+.admin-topbar {
+  display: none;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--admin-green);
+  color: #ffffff;
+}
+
+.admin-nav-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid rgb(255 255 255 / 35%);
+  border-radius: var(--admin-radius-sm);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+.admin-nav-toggle:hover {
+  background: var(--admin-green-hover);
+}
+
+.admin-nav-toggle svg {
+  width: 1.1em;
+  height: 1.1em;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Filtros                                                                    */
+/* -------------------------------------------------------------------------- */
+
+.admin-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  margin-bottom: var(--space-md);
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius);
+  box-shadow: var(--admin-shadow);
+}
+
+.admin-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 11rem;
+  flex: 1 1 11rem;
+}
+
+.admin-field label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--admin-text-soft);
+}
+
+.admin-field select {
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--admin-border-strong);
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-surface);
+  color: var(--admin-text);
+}
+
+.admin-button {
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--admin-border-strong);
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  cursor: pointer;
+  font: inherit;
+}
+
+.admin-button:hover {
+  background: var(--admin-surface-muted);
+}
+
+.admin-button-primary {
+  border-color: var(--admin-green);
+  background: var(--admin-green);
+  color: #ffffff;
+}
+
+.admin-button-primary:hover {
+  background: var(--admin-green-hover);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Listado                                                                    */
+/* -------------------------------------------------------------------------- */
+
+.admin-count {
+  margin: 0 0 var(--space-sm);
+  color: var(--admin-text-soft);
+  font-size: 0.9rem;
+}
+
+.admin-panel {
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius);
+  box-shadow: var(--admin-shadow);
+  overflow: hidden;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.admin-table caption {
+  text-align: left;
+  padding: var(--space-sm) var(--space-md);
+  color: var(--admin-text-soft);
+  font-size: 0.85rem;
+}
+
+.admin-table th,
+.admin-table td {
+  padding: 0.7rem var(--space-md);
+  text-align: left;
+  border-bottom: 1px solid var(--admin-border);
+  vertical-align: top;
+}
+
+.admin-table thead th {
+  background: var(--admin-surface-muted);
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--admin-text-soft);
+}
+
+.admin-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.admin-code {
+  font-family: ui-monospace, 'SFMono-Regular', 'Cascadia Mono', Menlo, monospace;
+  font-size: 0.85rem;
+  color: var(--admin-text-soft);
+}
+
+.admin-title {
+  font-weight: 600;
+}
+
+.admin-title-missing {
+  color: var(--admin-text-soft);
+  font-weight: 400;
+  font-style: italic;
+}
+
+/* Aviso de que falta el titulo en espanol. */
+.admin-lang-note {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.35rem;
+  border: 1px solid var(--admin-accent);
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-accent-tint);
+  color: var(--admin-accent);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+.admin-muted {
+  color: var(--admin-text-soft);
+}
+
+.admin-price-note {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--admin-text-soft);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Badges de estado                                                           */
+/* -------------------------------------------------------------------------- */
+
+/*
+ * El texto es el portador principal del significado; el color solo acompana,
+ * y cada estado ademas cambia el grosor del borde o el punto que lo precede.
+ */
+.admin-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0.5rem;
+  border: 1px solid var(--admin-border-strong);
+  border-radius: 999px;
+  background: var(--admin-surface-muted);
+  color: var(--admin-text);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.admin-badge::before {
+  content: '';
+  width: 0.45em;
+  height: 0.45em;
+  border-radius: 50%;
+  background: currentcolor;
+  flex: none;
+}
+
+.admin-badge-published,
+.admin-badge-available {
+  border-color: #1f4034;
+  background: var(--admin-green-tint);
+  color: var(--admin-green);
+}
+
+.admin-badge-approved,
+.admin-badge-offer_received,
+.admin-badge-reserved {
+  border-color: var(--admin-accent);
+  background: var(--admin-accent-tint);
+  color: #6f5729;
+}
+
+.admin-badge-archived,
+.admin-badge-sold {
+  border-color: var(--admin-border-strong);
+  background: var(--admin-surface-muted);
+  color: var(--admin-text-soft);
+  text-decoration: line-through;
+}
+
+.admin-badge-in_review {
+  border-style: dashed;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Estados de la vista                                                        */
+/* -------------------------------------------------------------------------- */
+
+.admin-state {
+  padding: var(--space-lg);
+  text-align: center;
+  color: var(--admin-text-soft);
+}
+
+.admin-state p {
+  margin: 0 0 var(--space-sm);
+}
+
+.admin-state-error {
+  color: var(--admin-danger);
+  background: var(--admin-danger-tint);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Responsive                                                                 */
+/* -------------------------------------------------------------------------- */
+
+@media (max-width: 60rem) {
+  .admin-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-topbar {
+    display: flex;
+  }
+
+  .admin-sidebar {
+    display: none;
+  }
+
+  /* El menu desplegado ocupa el flujo, sin superponerse al contenido. */
+  .admin-sidebar[data-open='true'] {
+    display: flex;
+    gap: var(--space-md);
+  }
+
+  .admin-header,
+  .admin-content {
+    padding: var(--space-md);
+  }
+
+  /*
+   * En movil la tabla se reorganiza en tarjetas verticales: la informacion
+   * critica sigue visible sin scroll horizontal.
+   */
+  .admin-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .admin-table,
+  .admin-table tbody,
+  .admin-table tr,
+  .admin-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .admin-table tr {
+    padding: var(--space-sm) 0;
+    border-bottom: 1px solid var(--admin-border);
+  }
+
+  .admin-table td {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-sm);
+    padding: 0.3rem var(--space-md);
+    border-bottom: none;
+    text-align: right;
+  }
+
+  .admin-table td::before {
+    content: attr(data-label);
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--admin-text-soft);
+    text-align: left;
+    flex: none;
+  }
+}
+
+@media (min-width: 100rem) {
+  .admin-content,
+  .admin-header {
+    max-width: 90rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin *,
+  .admin *::before,
+  .admin *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
