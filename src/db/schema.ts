@@ -56,6 +56,17 @@ export type MediaKind = (typeof MEDIA_KINDS)[number];
 export const SOURCE_PROVIDERS = ['r2', 'youtube'] as const;
 export type SourceProvider = (typeof SOURCE_PROVIDERS)[number];
 
+/** Como prefiere que le contacten. El dato en si va en `contact_value`. */
+export const CONTACT_METHODS = ['email', 'whatsapp', 'phone', 'social', 'other'] as const;
+export type ContactMethod = (typeof CONTACT_METHODS)[number];
+
+/** Bandeja de entrada, no un pipeline de CRM. */
+export const CONTACT_STATUSES = ['new', 'reviewed'] as const;
+export type ContactStatus = (typeof CONTACT_STATUSES)[number];
+
+export const REVIEW_STATUSES = ['pending', 'approved', 'changes_requested', 'cancelled'] as const;
+export type ReviewStatus = (typeof REVIEW_STATUSES)[number];
+
 /** Lista SQL de un vocabulario, para usarla dentro de un CHECK ... IN (...). */
 function sqlList(values: readonly string[]): string {
   return values.map((value) => `'${value}'`).join(', ');
@@ -819,6 +830,382 @@ export const propertyTourLinks = sqliteTable(
 );
 
 /* -------------------------------------------------------------------------- */
+/* map_points_of_interest                                                     */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Puntos de interes del mapa (playa, aeropuerto, hospital...). Son globales,
+ * no pertenecen a una propiedad.
+ *
+ * `category` es texto corto a proposito: anadir una categoria nueva no debe
+ * exigir una migracion. `icon` y `color` se guardan como configuracion.
+ */
+export const mapPointsOfInterest = sqliteTable(
+  'map_points_of_interest',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+
+    category: text('category').notNull(),
+
+    latitude: real('latitude').notNull(),
+    longitude: real('longitude').notNull(),
+
+    icon: text('icon'),
+    color: text('color'),
+
+    isVisible: integer('is_visible', { mode: 'boolean' }).notNull().default(true),
+    sortOrder: integer('sort_order').notNull().default(0),
+
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    /** Consulta del mapa publico: los visibles, en orden. */
+    index('map_points_of_interest_visible_sort_idx').on(table.isVisible, table.sortOrder),
+
+    check(
+      'map_points_of_interest_category_not_blank_check',
+      sql`length(trim(${table.category})) > 0`,
+    ),
+    check('map_points_of_interest_latitude_check', sql`${table.latitude} BETWEEN -90 AND 90`),
+    check('map_points_of_interest_longitude_check', sql`${table.longitude} BETWEEN -180 AND 180`),
+  ],
+);
+
+/* -------------------------------------------------------------------------- */
+/* map_point_of_interest_translations                                         */
+/* -------------------------------------------------------------------------- */
+
+export const mapPointOfInterestTranslations = sqliteTable(
+  'map_point_of_interest_translations',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+
+    pointOfInterestId: integer('point_of_interest_id')
+      .notNull()
+      .references(() => mapPointsOfInterest.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+
+    locale: text('locale', { enum: LOCALES }).notNull(),
+
+    name: text('name'),
+    description: text('description'),
+
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    unique('map_point_of_interest_translations_poi_locale_unique').on(
+      table.pointOfInterestId,
+      table.locale,
+    ),
+    check(
+      'map_point_of_interest_translations_locale_check',
+      sql`${table.locale} IN (${sql.raw(sqlList(LOCALES))})`,
+    ),
+  ],
+);
+
+/* -------------------------------------------------------------------------- */
+/* contacts                                                                   */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Consultas recibidas. Esto NO es un CRM: solo conserva el mensaje y si ya
+ * fue atendido.
+ *
+ * La consulta sobrevive a la propiedad que la origino (`ON DELETE SET NULL`),
+ * porque un historico de contactos no debe perderse al borrar una ficha.
+ * No hay soft delete: borrar un contacto lo elimina de verdad.
+ */
+export const contacts = sqliteTable(
+  'contacts',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+
+    /** NULL cuando la consulta llega del formulario de contacto general. */
+    propertyId: integer('property_id').references(() => properties.id, {
+      onDelete: 'set null',
+      onUpdate: 'cascade',
+    }),
+
+    name: text('name').notNull(),
+
+    preferredContactMethod: text('preferred_contact_method', { enum: CONTACT_METHODS }).notNull(),
+
+    /** El dato tal cual lo escribio la persona (email, telefono, usuario...). */
+    contactValue: text('contact_value').notNull(),
+
+    message: text('message'),
+
+    /** La web siempre sabe desde que idioma se envio el formulario. */
+    locale: text('locale', { enum: LOCALES }).notNull(),
+
+    status: text('status', { enum: CONTACT_STATUSES }).notNull().default('new'),
+
+    /**
+     * Momento en que se acepto el consentimiento. Nullable en base de datos
+     * para no bloquear importaciones; el formulario publico lo exigira.
+     */
+    consentAcceptedAt: integer('consent_accepted_at', { mode: 'timestamp' }),
+
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    /** Bandeja de entrada: pendientes primero, mas recientes arriba. */
+    index('contacts_status_created_at_idx').on(table.status, table.createdAt),
+    index('contacts_property_idx').on(table.propertyId),
+
+    check(
+      'contacts_preferred_contact_method_check',
+      sql`${table.preferredContactMethod} IN (${sql.raw(sqlList(CONTACT_METHODS))})`,
+    ),
+    check('contacts_status_check', sql`${table.status} IN (${sql.raw(sqlList(CONTACT_STATUSES))})`),
+    check('contacts_locale_check', sql`${table.locale} IN (${sql.raw(sqlList(LOCALES))})`),
+    check('contacts_name_not_blank_check', sql`length(trim(${table.name})) > 0`),
+    check('contacts_contact_value_not_blank_check', sql`length(trim(${table.contactValue})) > 0`),
+  ],
+);
+
+/* -------------------------------------------------------------------------- */
+/* site_settings                                                              */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Configuracion global. Singleton *logico*: la aplicacion garantizara que
+ * solo haya un registro activo, sin constraints artificiales ni triggers.
+ *
+ * Todos los campos son nullable porque el sitio se configura de forma
+ * progresiva y no hay seed inicial.
+ *
+ * Branding: por ahora solo claves de objeto en R2. No hay `homeHeroMediaId`;
+ * ver la nota de la fase sobre media global.
+ */
+export const siteSettings = sqliteTable(
+  'site_settings',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+
+    businessName: text('business_name'),
+    phone: text('phone'),
+    whatsapp: text('whatsapp'),
+    email: text('email'),
+    address: text('address'),
+
+    /** Destinatario del enlace privado de revision. */
+    reviewerEmail: text('reviewer_email'),
+    /** Destinatario de los avisos de contactos nuevos. */
+    notificationsEmail: text('notifications_email'),
+
+    defaultCurrencyCode: text('default_currency_code'),
+
+    logoObjectKey: text('logo_object_key'),
+    faviconObjectKey: text('favicon_object_key'),
+    defaultSocialImageObjectKey: text('default_social_image_object_key'),
+
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    /** Mismo formato ISO 4217 que `properties.currency_code`. */
+    check(
+      'site_settings_default_currency_code_check',
+      sql`${table.defaultCurrencyCode} IS NULL OR ${table.defaultCurrencyCode} GLOB '[A-Z][A-Z][A-Z]'`,
+    ),
+  ],
+);
+
+/* -------------------------------------------------------------------------- */
+/* site_setting_translations                                                  */
+/* -------------------------------------------------------------------------- */
+
+export const siteSettingTranslations = sqliteTable(
+  'site_setting_translations',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+
+    siteSettingsId: integer('site_settings_id')
+      .notNull()
+      .references(() => siteSettings.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+
+    locale: text('locale', { enum: LOCALES }).notNull(),
+
+    brandTagline: text('brand_tagline'),
+    homeHeroTitle: text('home_hero_title'),
+    homeHeroSubtitle: text('home_hero_subtitle'),
+    globalSeoTitle: text('global_seo_title'),
+    globalSeoDescription: text('global_seo_description'),
+
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    unique('site_setting_translations_settings_locale_unique').on(
+      table.siteSettingsId,
+      table.locale,
+    ),
+    check(
+      'site_setting_translations_locale_check',
+      sql`${table.locale} IN (${sql.raw(sqlList(LOCALES))})`,
+    ),
+  ],
+);
+
+/* -------------------------------------------------------------------------- */
+/* site_social_links                                                          */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * `platform` es texto libre a proposito: anadir una red nueva no debe exigir
+ * una migracion. El formato de la URL se valida en aplicacion.
+ */
+export const siteSocialLinks = sqliteTable(
+  'site_social_links',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+
+    platform: text('platform').notNull(),
+    url: text('url').notNull(),
+
+    sortOrder: integer('sort_order').notNull().default(0),
+    isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
+
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    check('site_social_links_platform_not_blank_check', sql`length(trim(${table.platform})) > 0`),
+    check('site_social_links_url_not_blank_check', sql`length(trim(${table.url})) > 0`),
+  ],
+);
+
+/* -------------------------------------------------------------------------- */
+/* site_locales                                                               */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Idiomas del sitio. El nombre visible de cada idioma se resuelve en
+ * aplicacion, por eso aqui no hay traducciones.
+ */
+export const siteLocales = sqliteTable(
+  'site_locales',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+
+    locale: text('locale', { enum: LOCALES }).notNull(),
+
+    isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
+    isDefault: integer('is_default', { mode: 'boolean' }).notNull().default(false),
+    sortOrder: integer('sort_order').notNull().default(0),
+
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    unique('site_locales_locale_unique').on(table.locale),
+
+    /**
+     * Como maximo un idioma por defecto. El indice parcial solo cubre las
+     * filas con `is_default = 1`, donde la columna vale siempre 1, de modo
+     * que el UNIQUE deja pasar una sola.
+     */
+    uniqueIndex('site_locales_one_default_idx')
+      .on(table.isDefault)
+      .where(sql`${table.isDefault} = 1`),
+
+    check('site_locales_locale_check', sql`${table.locale} IN (${sql.raw(sqlList(LOCALES))})`),
+  ],
+);
+
+/* -------------------------------------------------------------------------- */
+/* property_reviews                                                           */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Una solicitud concreta de revision. Cada envio a revision crea una fila
+ * nueva; no es un historial editorial completo.
+ *
+ * Aprobar NO publica: la publicacion sigue siendo un acto manual del admin.
+ */
+export const propertyReviews = sqliteTable(
+  'property_reviews',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+
+    propertyId: integer('property_id')
+      .notNull()
+      .references(() => properties.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+
+    status: text('status', { enum: REVIEW_STATUSES }).notNull().default('pending'),
+
+    /** A quien se envio el enlace privado. */
+    reviewerEmail: text('reviewer_email'),
+    reviewerComment: text('reviewer_comment'),
+
+    requestedAt: integer('requested_at', { mode: 'timestamp' })
+      .notNull()
+      .default(sql`(unixepoch())`),
+    reviewedAt: integer('reviewed_at', { mode: 'timestamp' }),
+
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    index('property_reviews_property_created_at_idx').on(table.propertyId, table.createdAt),
+    index('property_reviews_status_idx').on(table.status),
+
+    check(
+      'property_reviews_status_check',
+      sql`${table.status} IN (${sql.raw(sqlList(REVIEW_STATUSES))})`,
+    ),
+  ],
+);
+
+/* -------------------------------------------------------------------------- */
+/* property_review_tokens                                                     */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Enlace privado de revision.
+ *
+ * Solo se guarda el HASH del token, nunca el token en claro. El algoritmo de
+ * hashing y la duracion concreta son decisiones de aplicacion/seguridad.
+ *
+ * `used_at` marca el consumo y `revoked_at` permite invalidarlo antes de que
+ * expire. La fila no se actualiza mas alla de eso, por lo que no lleva
+ * `updated_at`.
+ */
+export const propertyReviewTokens = sqliteTable(
+  'property_review_tokens',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+
+    propertyReviewId: integer('property_review_id')
+      .notNull()
+      .references(() => propertyReviews.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+
+    tokenHash: text('token_hash').notNull(),
+
+    expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
+    usedAt: integer('used_at', { mode: 'timestamp' }),
+    revokedAt: integer('revoked_at', { mode: 'timestamp' }),
+
+    createdAt,
+  },
+  (table) => [
+    unique('property_review_tokens_token_hash_unique').on(table.tokenHash),
+    index('property_review_tokens_review_idx').on(table.propertyReviewId),
+
+    /** Un token debe nacer con vigencia positiva (aunque luego caduque). */
+    check('property_review_tokens_expiry_check', sql`${table.expiresAt} > ${table.createdAt}`),
+    check(
+      'property_review_tokens_token_hash_not_blank_check',
+      sql`length(trim(${table.tokenHash})) > 0`,
+    ),
+  ],
+);
+
+/* -------------------------------------------------------------------------- */
 /* Relaciones                                                                 */
 /* -------------------------------------------------------------------------- */
 
@@ -845,6 +1232,8 @@ export const propertiesRelations = relations(properties, ({ one, many }) => ({
   mediaGroups: many(propertyMediaGroups),
   media: many(propertyMedia),
   tourNodes: many(propertyTourNodes),
+  contacts: many(contacts),
+  reviews: many(propertyReviews),
 }));
 
 export const propertyTranslationsRelations = relations(propertyTranslations, ({ one }) => ({
@@ -979,6 +1368,54 @@ export const propertyTourLinksRelations = relations(propertyTourLinks, ({ one })
   }),
 }));
 
+export const mapPointsOfInterestRelations = relations(mapPointsOfInterest, ({ many }) => ({
+  translations: many(mapPointOfInterestTranslations),
+}));
+
+export const mapPointOfInterestTranslationsRelations = relations(
+  mapPointOfInterestTranslations,
+  ({ one }) => ({
+    pointOfInterest: one(mapPointsOfInterest, {
+      fields: [mapPointOfInterestTranslations.pointOfInterestId],
+      references: [mapPointsOfInterest.id],
+    }),
+  }),
+);
+
+export const contactsRelations = relations(contacts, ({ one }) => ({
+  /** Opcional: las consultas generales no cuelgan de ninguna propiedad. */
+  property: one(properties, {
+    fields: [contacts.propertyId],
+    references: [properties.id],
+  }),
+}));
+
+export const siteSettingsRelations = relations(siteSettings, ({ many }) => ({
+  translations: many(siteSettingTranslations),
+}));
+
+export const siteSettingTranslationsRelations = relations(siteSettingTranslations, ({ one }) => ({
+  siteSettings: one(siteSettings, {
+    fields: [siteSettingTranslations.siteSettingsId],
+    references: [siteSettings.id],
+  }),
+}));
+
+export const propertyReviewsRelations = relations(propertyReviews, ({ one, many }) => ({
+  property: one(properties, {
+    fields: [propertyReviews.propertyId],
+    references: [properties.id],
+  }),
+  tokens: many(propertyReviewTokens),
+}));
+
+export const propertyReviewTokensRelations = relations(propertyReviewTokens, ({ one }) => ({
+  review: one(propertyReviews, {
+    fields: [propertyReviewTokens.propertyReviewId],
+    references: [propertyReviews.id],
+  }),
+}));
+
 /* -------------------------------------------------------------------------- */
 /* Tipos inferidos                                                            */
 /* -------------------------------------------------------------------------- */
@@ -1028,3 +1465,30 @@ export type NewPropertyTourNodeTranslation = typeof propertyTourNodeTranslations
 
 export type PropertyTourLink = typeof propertyTourLinks.$inferSelect;
 export type NewPropertyTourLink = typeof propertyTourLinks.$inferInsert;
+
+export type MapPointOfInterest = typeof mapPointsOfInterest.$inferSelect;
+export type NewMapPointOfInterest = typeof mapPointsOfInterest.$inferInsert;
+
+export type MapPointOfInterestTranslation = typeof mapPointOfInterestTranslations.$inferSelect;
+export type NewMapPointOfInterestTranslation = typeof mapPointOfInterestTranslations.$inferInsert;
+
+export type Contact = typeof contacts.$inferSelect;
+export type NewContact = typeof contacts.$inferInsert;
+
+export type SiteSettings = typeof siteSettings.$inferSelect;
+export type NewSiteSettings = typeof siteSettings.$inferInsert;
+
+export type SiteSettingTranslation = typeof siteSettingTranslations.$inferSelect;
+export type NewSiteSettingTranslation = typeof siteSettingTranslations.$inferInsert;
+
+export type SiteSocialLink = typeof siteSocialLinks.$inferSelect;
+export type NewSiteSocialLink = typeof siteSocialLinks.$inferInsert;
+
+export type SiteLocale = typeof siteLocales.$inferSelect;
+export type NewSiteLocale = typeof siteLocales.$inferInsert;
+
+export type PropertyReview = typeof propertyReviews.$inferSelect;
+export type NewPropertyReview = typeof propertyReviews.$inferInsert;
+
+export type PropertyReviewToken = typeof propertyReviewTokens.$inferSelect;
+export type NewPropertyReviewToken = typeof propertyReviewTokens.$inferInsert;
