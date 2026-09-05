@@ -96,3 +96,79 @@ export const propertyDraftWithCoordinatePairs = propertyDraftSchema
     message: 'La coordenada privada necesita latitud y longitud, o ninguna de las dos.',
     path: ['privateLatitude'],
   });
+
+/* -------------------------------------------------------------------------- */
+/* Actualizacion parcial del nucleo                                           */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Campo de texto actualizable.
+ *
+ * Distingue tres situaciones que un `PATCH` necesita separar:
+ *
+ * - ausente    -> `undefined`, no se toca la columna;
+ * - `null`/""  -> `null`, se limpia la columna;
+ * - con valor  -> se recorta y se guarda.
+ */
+function updatableText(max: number) {
+  return z
+    .string()
+    .max(max)
+    .nullish()
+    .optional()
+    .transform((value) => {
+      if (value === undefined) return undefined;
+      if (value === null) return null;
+      const trimmed = value.trim();
+      return trimmed.length === 0 ? null : trimmed;
+    });
+}
+
+/**
+ * Datos del nucleo que el admin puede editar.
+ *
+ * Es un `strictObject` a proposito: cualquier clave no listada (`id`,
+ * `createdAt`, `publishedAt` y sobre todo `publicationStatus`) se rechaza en
+ * lugar de ignorarse en silencio. El estado editorial se cambia unicamente
+ * con `updatePropertyStatus`.
+ */
+export const propertyCoreUpdateSchema = z.strictObject({
+  code: z.string().max(64).optional(),
+  propertyTypeId: z.number().int().positive().nullable().optional(),
+
+  commercialStatus: commercialStatusSchema.optional(),
+  isFeatured: z.boolean().optional(),
+  showWhenSold: z.boolean().optional(),
+
+  priceMode: priceModeSchema.optional(),
+  priceAmountMinor: z.number().int().nonnegative().nullable().optional(),
+  currencyCode: supportedCurrencyCodeSchema.nullable().optional(),
+
+  areaSquareMeters: z.number().positive().nullable().optional(),
+
+  province: updatableText(120),
+  canton: updatableText(120),
+  district: updatableText(120),
+  locality: updatableText(120),
+
+  privateLatitude: latitudeSchema.nullable().optional(),
+  privateLongitude: longitudeSchema.nullable().optional(),
+  publicLatitude: latitudeSchema.nullable().optional(),
+  publicLongitude: longitudeSchema.nullable().optional(),
+  locationPrecision: locationPrecisionSchema.optional(),
+});
+
+export type PropertyCoreUpdateInput = z.input<typeof propertyCoreUpdateSchema>;
+export type PropertyCoreUpdate = z.output<typeof propertyCoreUpdateSchema>;
+
+/** Entrada del upsert de traducciones. Los cuatro textos son opcionales. */
+export const propertyTranslationUpsertSchema = z.strictObject({
+  locale: localeSchema,
+  slug: z.string().nullish().optional(),
+  title: updatableText(200),
+  marketingDescription: updatableText(20_000),
+  technicalDescription: updatableText(20_000),
+});
+
+export type PropertyTranslationUpsertInput = z.input<typeof propertyTranslationUpsertSchema>;
+export type PropertyTranslationUpsert = z.output<typeof propertyTranslationUpsertSchema>;
