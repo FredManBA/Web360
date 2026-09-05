@@ -82,9 +82,9 @@ npm run build
 npx wrangler deploy --dry-run --config dist/server/wrangler.json
 ```
 
-> Nota: el adaptador anade automaticamente un binding KV llamado `SESSION`
-> para las sesiones de Astro. Cloudflare lo aprovisiona solo en el momento del
-> despliegue; en local no crea nada.
+> Nota: las sesiones de Astro estan desactivadas (`session: false` en
+> `astro.config.mjs`), asi que el Worker solo declara los bindings `DB`,
+> `MEDIA` y `ASSETS`. No se aprovisiona ningun namespace KV.
 
 ## D1 y R2
 
@@ -141,14 +141,13 @@ src/
     es/        sitio publico en espanol
     en/        sitio publico en ingles
     admin/     panel de administracion (on-demand)
-    api/       endpoints (on-demand)
   styles/      CSS global
 drizzle/       migraciones SQL generadas
 public/        archivos servidos tal cual
 ```
 
-`src/components/`, `src/lib/` y `src/types/` se crearan cuando exista el
-primer archivo que los necesite.
+`src/components/`, `src/lib/`, `src/types/` y `src/pages/api/` se crearan
+cuando exista el primer archivo que los necesite.
 
 ## Idiomas
 

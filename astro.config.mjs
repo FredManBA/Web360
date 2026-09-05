@@ -17,9 +17,18 @@ export default defineConfig({
     imageService: 'compile',
   }),
 
+  // Sesiones desactivadas: el proyecto no las usa y asi el adaptador no
+  // declara el binding KV `SESSION`, que Cloudflare aprovisionaria en el
+  // primer despliegue. Tambien excluye el runtime de sesiones del bundle.
+  session: false,
+
   // ES y EN son arboles de rutas independientes (mejor para SEO).
-  // La raiz solo redirige al idioma por defecto.
+  // La raiz solo redirige al idioma por defecto, de forma temporal (302),
+  // para no fijar el idioma en cache mientras no exista deteccion.
   redirects: {
-    '/': '/es/',
+    '/': {
+      status: 302,
+      destination: '/es/',
+    },
   },
 });
