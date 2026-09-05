@@ -24,48 +24,53 @@ import {
   uniqueIndex,
 } from 'drizzle-orm/sqlite-core';
 
+import {
+  COMMERCIAL_STATUSES,
+  CONTACT_METHODS,
+  CONTACT_STATUSES,
+  LOCALES,
+  LOCATION_PRECISIONS,
+  MEDIA_KINDS,
+  PRICE_MODES,
+  PUBLICATION_STATUSES,
+  REVIEW_STATUSES,
+  SOURCE_PROVIDERS,
+} from '../lib/domain/vocabularies';
+
 /* -------------------------------------------------------------------------- */
 /* Vocabularios                                                               */
 /* -------------------------------------------------------------------------- */
 
-export const LOCALES = ['es', 'en'] as const;
-export type Locale = (typeof LOCALES)[number];
+/**
+ * Los vocabularios viven en `src/lib/domain/vocabularies.ts` para que Drizzle,
+ * Zod y la logica de dominio compartan una sola fuente de verdad. Se
+ * reexportan aqui por comodidad de quien ya importa desde el esquema.
+ */
+export {
+  LOCALES,
+  PUBLICATION_STATUSES,
+  COMMERCIAL_STATUSES,
+  PRICE_MODES,
+  LOCATION_PRECISIONS,
+  MEDIA_KINDS,
+  SOURCE_PROVIDERS,
+  CONTACT_METHODS,
+  CONTACT_STATUSES,
+  REVIEW_STATUSES,
+} from '../lib/domain/vocabularies';
 
-export const PUBLICATION_STATUSES = [
-  'draft',
-  'in_review',
-  'approved',
-  'published',
-  'archived',
-] as const;
-export type PublicationStatus = (typeof PUBLICATION_STATUSES)[number];
-
-export const COMMERCIAL_STATUSES = ['available', 'offer_received', 'reserved', 'sold'] as const;
-export type CommercialStatus = (typeof COMMERCIAL_STATUSES)[number];
-
-export const PRICE_MODES = ['exact', 'negotiable', 'contact'] as const;
-export type PriceMode = (typeof PRICE_MODES)[number];
-
-export const LOCATION_PRECISIONS = ['exact', 'approximate'] as const;
-export type LocationPrecision = (typeof LOCATION_PRECISIONS)[number];
-
-export const MEDIA_KINDS = ['image', 'video', 'document', 'panorama'] as const;
-export type MediaKind = (typeof MEDIA_KINDS)[number];
-
-/** `r2` para archivos propios; `youtube` para los videos largos del MVP. */
-export const SOURCE_PROVIDERS = ['r2', 'youtube'] as const;
-export type SourceProvider = (typeof SOURCE_PROVIDERS)[number];
-
-/** Como prefiere que le contacten. El dato en si va en `contact_value`. */
-export const CONTACT_METHODS = ['email', 'whatsapp', 'phone', 'social', 'other'] as const;
-export type ContactMethod = (typeof CONTACT_METHODS)[number];
-
-/** Bandeja de entrada, no un pipeline de CRM. */
-export const CONTACT_STATUSES = ['new', 'reviewed'] as const;
-export type ContactStatus = (typeof CONTACT_STATUSES)[number];
-
-export const REVIEW_STATUSES = ['pending', 'approved', 'changes_requested', 'cancelled'] as const;
-export type ReviewStatus = (typeof REVIEW_STATUSES)[number];
+export type {
+  Locale,
+  PublicationStatus,
+  CommercialStatus,
+  PriceMode,
+  LocationPrecision,
+  MediaKind,
+  SourceProvider,
+  ContactMethod,
+  ContactStatus,
+  ReviewStatus,
+} from '../lib/domain/vocabularies';
 
 /** Lista SQL de un vocabulario, para usarla dentro de un CHECK ... IN (...). */
 function sqlList(values: readonly string[]): string {
