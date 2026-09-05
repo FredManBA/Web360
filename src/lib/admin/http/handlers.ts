@@ -10,6 +10,7 @@
  * de tres lineas.
  */
 
+import type { JWTVerifyGetKey } from 'jose';
 import { z } from 'zod';
 
 import {
@@ -43,17 +44,34 @@ export interface AdminHttpContext {
   params: Record<string, string | undefined>;
   db: AdminDatabase;
   env: AdminHttpEnv;
+
+  /**
+   * Punto de inyeccion para pruebas: permite verificar los JWT contra un JWKS
+   * local en vez de descargarlo de Cloudflare. El puente de Astro nunca lo
+   * define, asi que en produccion siempre se usa el JWKS remoto real.
+   */
+  accessKeyResolver?: JWTVerifyGetKey;
 }
 
 /**
- * Envoltura comun: guardia de acceso, comprobacion de origen y captura de
- * errores inesperados, para que ningun handler filtre un fallo de SQL.
+ * Envoltura comun: autorizacion, comprobacion de origen y captura de errores
+ * inesperados, para que ningun handler filtre un fallo de SQL.
+ *
+ * La autorizacion se resuelve UNA sola vez por peticion y aqui, de modo que
+ * ninguno de los nueve endpoints repite la validacion del JWT.
  */
 async function handle(ctx: AdminHttpContext, run: () => Promise<Response>): Promise<Response> {
-  const denied = requireAdminAccess(ctx.env) ?? requireSameOrigin(ctx.request);
-  if (denied !== null) return denied;
-
   try {
+    const auth = await requireAdminAccess(
+      ctx.request,
+      ctx.env,
+      ctx.accessKeyResolver === undefined ? {} : { keyResolver: ctx.accessKeyResolver },
+    );
+    if (auth.denied !== null) return auth.denied;
+
+    const crossOrigin = requireSameOrigin(ctx.request);
+    if (crossOrigin !== null) return crossOrigin;
+
     return await run();
   } catch (error) {
     return jsonInternalError(error);

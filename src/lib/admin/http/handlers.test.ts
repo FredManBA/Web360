@@ -47,7 +47,9 @@ function ctx(
     request,
     params,
     db,
-    env: bypass ? { ADMIN_DEV_BYPASS: 'true' } : {},
+    // `isDev` siempre true: lo que se prueba aqui es que la variable por si
+    // sola no abre nada. El caso "produccion + bypass" vive en auth.test.ts.
+    env: bypass ? { isDev: true, ADMIN_DEV_BYPASS: 'true' } : { isDev: true },
   };
 }
 
@@ -101,7 +103,7 @@ describe('guardia de acceso', () => {
         request: new Request(`${BASE}/api/admin/properties`),
         params: {},
         db,
-        env: { ADMIN_DEV_BYPASS: value },
+        env: { isDev: true, ADMIN_DEV_BYPASS: value },
       });
       expect(response.status).toBe(403);
     }
@@ -668,7 +670,7 @@ describe('errores inesperados', () => {
       request: new Request(`${BASE}/api/admin/properties`),
       params: {},
       db: brokenDb,
-      env: { ADMIN_DEV_BYPASS: 'true' },
+      env: { isDev: true, ADMIN_DEV_BYPASS: 'true' },
     });
 
     expect(response.status).toBe(500);
@@ -703,7 +705,7 @@ describe('errores inesperados', () => {
       request: new Request(`${BASE}/api/admin/properties`),
       params: {},
       db: brokenDb,
-      env: { ADMIN_DEV_BYPASS: 'true' },
+      env: { isDev: true, ADMIN_DEV_BYPASS: 'true' },
     });
 
     expect(response.headers.get('cache-control')).toBe('no-store');

@@ -133,17 +133,42 @@ npm run cf:typegen
 - Para desarrollo local: copiar a `.dev.vars` (ignorado por Git) y rellenar.
 - Para produccion: `npx wrangler secret put NOMBRE_VARIABLE`.
 
-### API administrativa en local
+### Acceso al panel
 
-`/api/admin/*` esta **cerrada por defecto** y responde 403. Todavia no hay
-autenticacion real; para trabajar en local, copia `.dev.vars.example` a
-`.dev.vars` y pon:
+El panel (`/admin/*`) y su API (`/api/admin/*`) estan **cerrados por
+defecto** y responden 403. Hay exactamente dos formas de entrar.
+
+**Desarrollo local.** Copia `.dev.vars.example` a `.dev.vars` y pon:
 
 ```
 ADMIN_DEV_BYPASS=true
 ```
 
-> Esta variable NUNCA debe definirse en el despliegue productivo.
+Esto solo funciona con el servidor de desarrollo (`npm run dev`): el bypass
+exige a la vez modo DEV y la variable, asi que **una build productiva lo
+ignora** aunque alguien la configure por error.
+
+**Produccion.** Requiere una Cloudflare Access Application configurada y estas
+dos variables:
+
+```
+CF_ACCESS_TEAM_DOMAIN=https://<equipo>.cloudflareaccess.com
+CF_ACCESS_AUD=<audience tag>
+```
+
+El Worker verifica criptograficamente el JWT que Access envia en la cabecera
+`Cf-Access-Jwt-Assertion`: firma contra el JWKS del equipo, emisor, audiencia
+y caducidad. Si falta cualquiera de las dos variables, **falla cerrado**: toda
+peticion administrativa se rechaza.
+
+Conviene tener claro que:
+
+- CodeLoba **no tiene login propio**. El de Cloudflare Access lo presenta el
+  borde antes de que la peticion llegue al Worker.
+- El **MFA se configura en Cloudflare Access**, no en la aplicacion.
+- El Worker valida el JWT aunque Access proteja la ruta en el borde: el
+  perimetro no sustituye a la comprobacion.
+- La Access Application remota **todavia no esta creada**.
 
 ## Estructura
 

@@ -6,13 +6,26 @@
 # En Cloudflare, los valores de produccion se cargan como secrets:
 #   wrangler secret put NOMBRE_DE_LA_VARIABLE
 #
-# La unica variable que el proyecto lee hoy es ADMIN_DEV_BYPASS.
-# Las demas quedan documentadas porque haran falta mas adelante:
+# Hoy el proyecto lee ADMIN_DEV_BYPASS y las dos variables de Cloudflare
+# Access. Las demas quedan documentadas porque haran falta mas adelante:
 
-# Abre la API administrativa (/api/admin/*) SOLO en desarrollo local.
-# Sin esta variable a "true", la API responde 403.
-# NUNCA debe definirse en el despliegue productivo.
+# Abre el panel (/admin/*) y su API (/api/admin/*) SOLO en desarrollo local.
+# NO basta con ponerla a "true": ademas hace falta una build en modo DEV.
+# Una build productiva la ignora, asi que no puede abrir nada por error.
+# Aun asi, NUNCA debe definirse en el despliegue productivo.
 ADMIN_DEV_BYPASS=false
+
+# Cloudflare Access. Fuera del bypass local, el admin exige AMBAS: si falta
+# cualquiera de las dos, toda peticion administrativa se rechaza con 403.
+# Se rellenan cuando exista la Access Application; todavia no esta creada,
+# asi que aqui van vacias a proposito y no hay valores de ejemplo que
+# parezcan funcionales.
+#
+#   CF_ACCESS_TEAM_DOMAIN: origin HTTPS del equipo Zero Trust,
+#                          https://<equipo>.cloudflareaccess.com
+#   CF_ACCESS_AUD:         audience tag de la Access Application
+CF_ACCESS_TEAM_DOMAIN=
+CF_ACCESS_AUD=
 
 # Entorno logico de la aplicacion (development | production)
 # APP_ENV="development"

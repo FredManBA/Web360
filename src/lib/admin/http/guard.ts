@@ -1,50 +1,60 @@
 /**
- * Guardia temporal de la API administrativa.
+ * Guardia de la API administrativa.
  *
- * ATENCION: todavia NO hay autenticacion real. Cloudflare Access llegara en
- * una fase posterior. Hasta entonces la API esta CERRADA por defecto y solo
- * se abre con una variable explicita de desarrollo.
+ * La decision de acceso vive en `src/lib/admin/auth/authorize.ts`; aqui solo
+ * se traduce a HTTP. Pasan unicamente el bypass de desarrollo (que exige a la
+ * vez build DEV y la variable) y un JWT de Cloudflare Access verificado.
  *
  * `/api/admin/*` no es seguro por el hecho de no estar enlazado desde ninguna
  * parte: sin esta guardia, cualquiera que adivine la URL podria editar el
  * catalogo.
  *
- * EL DESPLIEGUE PRODUCTIVO NO DEBE DEFINIR `ADMIN_DEV_BYPASS`.
+ * EL DESPLIEGUE PRODUCTIVO NO DEBE DEFINIR `ADMIN_DEV_BYPASS`. Aunque se
+ * definiera, una build productiva lo ignora.
  */
 
+import type { JWTVerifyGetKey } from 'jose';
+
+import { authorizeAdminRequest, type AdminAuthEnv, type AdminAuthResult } from '../auth/authorize';
 import { jsonError } from './responses';
 
-export interface AdminHttpEnv {
-  /** Solo para desarrollo local y tests. Cualquier valor distinto de la
-   *  cadena "true" mantiene la API cerrada. */
-  ADMIN_DEV_BYPASS?: string | undefined;
-}
+export type AdminHttpEnv = AdminAuthEnv;
 
 /** Metodos que modifican datos y por tanto exigen comprobacion de origen. */
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
-export function isDevBypassEnabled(env: AdminHttpEnv): boolean {
-  return env.ADMIN_DEV_BYPASS === 'true';
+/**
+ * Respuesta unica de rechazo.
+ *
+ * No distingue publicamente entre "falta configuracion", "falta token",
+ * "firma invalida" o "token caducado": decirlo ayudaria a sondear el
+ * despliegue. El detalle se queda en el servidor.
+ */
+export function adminForbiddenResponse(): Response {
+  return jsonError('forbidden', 'Acceso administrativo denegado.', 403);
+}
+
+export interface AdminAuthCheck {
+  /** Respuesta de rechazo, o `null` si la peticion puede continuar. */
+  denied: Response | null;
+  result: AdminAuthResult;
 }
 
 /**
  * Comprueba el acceso administrativo.
  *
- * Devuelve `null` si la peticion puede continuar, o la respuesta de rechazo.
- *
  * Se responde 403 y no 401 a proposito: 401 significa "autenticate y vuelve a
- * intentarlo", lo que implica anunciar un metodo de autenticacion en
- * `WWW-Authenticate`. Aqui no existe ninguno todavia, asi que el acceso esta
- * simplemente prohibido.
+ * intentarlo", lo que implica anunciar un metodo en `WWW-Authenticate`. Aqui
+ * no hay ninguno que anunciar, porque el login lo presenta Cloudflare Access
+ * en el borde, antes de llegar al Worker.
  */
-export function requireAdminAccess(env: AdminHttpEnv): Response | null {
-  if (isDevBypassEnabled(env)) return null;
-
-  return jsonError(
-    'forbidden',
-    'Acceso administrativo no disponible: falta configurar la autenticacion.',
-    403,
-  );
+export async function requireAdminAccess(
+  request: Request,
+  env: AdminHttpEnv,
+  options: { keyResolver?: JWTVerifyGetKey } = {},
+): Promise<AdminAuthCheck> {
+  const result = await authorizeAdminRequest(request, env, options);
+  return { denied: result.ok ? null : adminForbiddenResponse(), result };
 }
 
 /**
