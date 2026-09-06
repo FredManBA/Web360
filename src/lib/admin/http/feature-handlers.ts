@@ -17,6 +17,7 @@ import {
   updateFeatureGroup,
 } from '../features/feature-groups';
 import { getPropertyFeatures } from '../features/get-features';
+import { reorderFeatureGroups, reorderFeatures } from '../features/reorder';
 import { parseRouteId, readJsonBody, requireAdminAccess, requireSameOrigin } from './guard';
 import { jsonError, jsonFromResult, jsonInternalError } from './responses';
 import type { AdminHttpContext } from './handlers';
@@ -62,6 +63,23 @@ const featureBodySchema = z.strictObject({
   labelEn: optionalText,
   valueEn: optionalText,
   sortOrder: z.number().int().optional(),
+});
+
+/*
+ * Reordenacion: la lista completa del ambito, en el orden deseado.
+ *
+ * `strictObject` de nuevo, y sin `propertyId`: la propiedad la fija la URL.
+ * Los ids se validan aqui como enteros positivos; que pertenezcan al ambito
+ * lo comprueba la capa de dominio, que es la que conoce el estado.
+ */
+const orderedIds = z.array(z.number().int().positive()).max(500);
+
+const groupOrderBodySchema = z.strictObject({ groupIds: orderedIds });
+
+const featureOrderBodySchema = z.strictObject({
+  // Obligatorio y explicito: `null` significa "Sin grupo", no "sin indicar".
+  groupId: z.number().int().positive().nullable(),
+  featureIds: orderedIds,
 });
 
 function invalidBody(issue: string | undefined): Response {
@@ -179,5 +197,43 @@ export function handleDeleteFeature(ctx: AdminHttpContext): Promise<Response> {
     if (featureId === null) return invalidId('featureId');
 
     return jsonFromResult(await deleteFeature(ctx.db, propertyId, featureId));
+  });
+}
+
+/* -------------------------------------------------------------------------- */
+/* Reordenacion                                                               */
+/* -------------------------------------------------------------------------- */
+
+/** PUT /api/admin/properties/:id/feature-groups/order */
+export function handleReorderFeatureGroups(ctx: AdminHttpContext): Promise<Response> {
+  return handle(ctx, async () => {
+    const propertyId = parseRouteId(ctx.params.id);
+    if (propertyId === null) return invalidId('id');
+
+    const body = await readJsonBody(ctx.request);
+    if (!body.ok) return body.response;
+
+    const parsed = groupOrderBodySchema.safeParse(body.value);
+    if (!parsed.success) return invalidBody(parsed.error.issues[0]?.path.join('.'));
+
+    return jsonFromResult(await reorderFeatureGroups(ctx.db, propertyId, parsed.data.groupIds));
+  });
+}
+
+/** PUT /api/admin/properties/:id/features/order */
+export function handleReorderFeatures(ctx: AdminHttpContext): Promise<Response> {
+  return handle(ctx, async () => {
+    const propertyId = parseRouteId(ctx.params.id);
+    if (propertyId === null) return invalidId('id');
+
+    const body = await readJsonBody(ctx.request);
+    if (!body.ok) return body.response;
+
+    const parsed = featureOrderBodySchema.safeParse(body.value);
+    if (!parsed.success) return invalidBody(parsed.error.issues[0]?.path.join('.'));
+
+    return jsonFromResult(
+      await reorderFeatures(ctx.db, propertyId, parsed.data.groupId, parsed.data.featureIds),
+    );
   });
 }

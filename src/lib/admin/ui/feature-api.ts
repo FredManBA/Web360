@@ -21,6 +21,9 @@ const MESSAGES = {
   saveFeature: 'No pudimos guardar la característica.',
   saveGroup: 'No pudimos guardar el grupo.',
   load: 'No pudimos cargar las características.',
+  reorder: 'No pudimos cambiar el orden.',
+  // El estado cambio por debajo: recargar es lo unico honesto que ofrecer.
+  orderConflict: 'El orden ha cambiado. Vuelve a cargar la página para continuar.',
 } as const;
 
 interface ApiErrorBody {
@@ -45,11 +48,19 @@ async function messageFor(response: Response, fallback: string): Promise<string>
   if (code === 'feature_not_found') return MESSAGES.featureMissing;
   if (code === 'feature_group_not_found') return MESSAGES.groupMissing;
   if (code === 'feature_group_property_mismatch') return MESSAGES.mismatch;
+  if (code === 'feature_order_conflict') return MESSAGES.orderConflict;
 
   return fallback;
 }
 
 const JSON_HEADERS = { 'content-type': 'application/json', accept: 'application/json' };
+
+/** Lo que devuelve la API tras escribir una caracteristica. */
+export interface FeatureRecordView {
+  id: number;
+  groupId: number | null;
+  sortOrder: number;
+}
 
 export interface FeatureApi {
   load: () => Promise<ApiOutcome<ApiFeaturesView>>;
@@ -59,8 +70,15 @@ export interface FeatureApi {
   createFeature: (
     groupId: number | null,
   ) => Promise<GuardedOutcome<{ id: number; sortOrder: number; groupId: number | null }>>;
-  updateFeature: (featureId: number, patch: unknown) => Promise<ApiOutcome<unknown>>;
+  updateFeature: (featureId: number, patch: unknown) => Promise<ApiOutcome<FeatureRecordView>>;
   deleteFeature: (featureId: number) => Promise<ApiOutcome<unknown>>;
+  /** Reordena TODOS los grupos de la propiedad en una sola peticion. */
+  reorderGroups: (groupIds: readonly number[]) => Promise<ApiOutcome<unknown>>;
+  /** Reordena un ambito completo: un grupo, o `null` para "Sin grupo". */
+  reorderFeatures: (
+    groupId: number | null,
+    featureIds: readonly number[],
+  ) => Promise<ApiOutcome<unknown>>;
 }
 
 /**
@@ -153,7 +171,7 @@ export function createFeatureApi(propertyId: number, fetchFn: typeof fetch = fet
     },
 
     updateFeature(featureId, patch) {
-      return send(
+      return send<FeatureRecordView>(
         `${base}/features/${featureId}`,
         { method: 'PATCH', headers: JSON_HEADERS, body: JSON.stringify(patch) },
         MESSAGES.saveFeature,
@@ -166,6 +184,26 @@ export function createFeatureApi(propertyId: number, fetchFn: typeof fetch = fet
         `${base}/features/${featureId}`,
         { method: 'DELETE', headers: JSON_HEADERS },
         MESSAGES.saveFeature,
+      );
+    },
+
+    /*
+     * El orden viaja entero en una sola peticion. Nada de un PATCH por
+     * elemento: dos escrituras sueltas pueden dejar el intercambio a medias.
+     */
+    reorderGroups(groupIds) {
+      return send(
+        `${base}/feature-groups/order`,
+        { method: 'PUT', headers: JSON_HEADERS, body: JSON.stringify({ groupIds }) },
+        MESSAGES.reorder,
+      );
+    },
+
+    reorderFeatures(groupId, featureIds) {
+      return send(
+        `${base}/features/order`,
+        { method: 'PUT', headers: JSON_HEADERS, body: JSON.stringify({ groupId, featureIds }) },
+        MESSAGES.reorder,
       );
     },
   };

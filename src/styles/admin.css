@@ -938,6 +938,21 @@
   background: var(--admin-danger-tint);
 }
 
+/* Pareja Subir/Bajar: se leen juntos y se pulsan con el dedo o con Tab. */
+.feature-move {
+  display: inline-flex;
+  gap: 0.25rem;
+}
+
+.admin-button-move {
+  padding: 0.4rem 0.7rem;
+}
+
+.admin-button-move[disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 @media (max-width: 60rem) {
   .feature-grid {
     grid-template-columns: minmax(0, 1fr);
@@ -945,5 +960,11 @@
 
   .feature-status-box {
     margin-left: 0;
+  }
+
+  /* En movil los controles se apilan y siguen siendo pulsables. */
+  .feature-actions,
+  .feature-toolbar {
+    align-items: stretch;
   }
 }

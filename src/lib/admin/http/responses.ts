@@ -73,6 +73,8 @@ const STATUS_BY_ERROR: Record<AdminErrorCode, number> = {
   feature_not_found: 404,
   // Peticion entendible pero no procesable: el grupo no es de esa propiedad.
   feature_group_property_mismatch: 422,
+  // El orden enviado ya no describe la realidad: conflicto de estado.
+  feature_order_conflict: 409,
 };
 
 export function jsonFromAdminError(error: AdminError): Response {

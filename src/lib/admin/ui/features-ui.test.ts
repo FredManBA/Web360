@@ -12,12 +12,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { createFeatureApi, FEATURE_API_MESSAGES } from './feature-api';
-import {
-  CONFIRM_DELETE_GROUP,
-  EMPTY_TEXT,
-  LOADING_TEXT,
-  initFeatureEditor,
-} from './feature-editor';
+import { EMPTY_TEXT, LOADING_TEXT, deleteGroupMessage } from './feature-editor';
 import {
   addFeature,
   addGroup,
@@ -338,7 +333,7 @@ describe('consolidacion y borrado', () => {
     group.draft.nameEs = 'Terreno';
     group.state = 'dirty';
 
-    markGroupSaved(group);
+    markGroupSaved(group, { ...group.draft });
 
     expect(group.loaded.nameEs).toBe('Terreno');
     expect(isGroupDirty(group)).toBe(false);
@@ -359,7 +354,7 @@ describe('consolidacion y borrado', () => {
     expect(featuresOfGroup(state, 1).map((entry) => entry.id)).toEqual([5]);
     expect(ungroupedFeatures(state)).toHaveLength(0);
 
-    markFeatureSaved(feature);
+    markFeatureSaved(feature, { ...feature.draft });
 
     expect(featuresOfGroup(state, 1)).toHaveLength(0);
     expect(ungroupedFeatures(state).map((entry) => entry.id)).toEqual([5]);
@@ -619,8 +614,8 @@ describe('seccion de caracteristicas en el editor', () => {
   });
 
   it('46. el editor solo muestra la seccion cuando la propiedad ha cargado', () => {
-    expect(editor).toContain('if (!loaded) return;');
-    expect(editor).toContain('initFeatureEditor(propertyId)');
+    expect(editor).toContain('if (!loaded || coordinator === null) return;');
+    expect(editor).toContain('initFeatureEditor(propertyId, coordinator)');
   });
 
   it('47. un fallo de carga ofrece reintentar dentro de la seccion', () => {
@@ -637,16 +632,16 @@ describe('seccion de caracteristicas en el editor', () => {
   });
 
   it('49. borrar un grupo se confirma explicando que las caracteristicas se quedan', () => {
-    expect(CONFIRM_DELETE_GROUP).toContain('Las características del grupo no se eliminarán');
-    expect(CONFIRM_DELETE_GROUP).toContain('pasarán a "Sin grupo"');
-    expect(script).toContain('window.confirm(CONFIRM_DELETE_GROUP)');
+    expect(deleteGroupMessage(false)).toContain('Las características del grupo no se eliminarán');
+    expect(deleteGroupMessage(false)).toContain('pasarán a "Sin grupo"');
+    expect(script).toContain('window.confirm(deleteGroupMessage(');
   });
 
-  it('50. cada grupo y cada caracteristica tienen su propio guardado', () => {
-    expect(script).toContain('Guardar grupo');
-    expect(script).toContain('Guardar característica');
+  it('50. cada entidad puede eliminarse, y ya no tiene boton propio de guardar', () => {
     expect(script).toContain('Eliminar grupo');
     expect(script).toContain('Eliminar característica');
+    expect(script).not.toContain('Guardar grupo');
+    expect(script).not.toContain('Guardar característica');
   });
 
   it('51. el selector de grupo ofrece "Sin grupo" y no muestra identificadores', () => {
@@ -656,7 +651,7 @@ describe('seccion de caracteristicas en el editor', () => {
 
   it('52. cambiar el selector solo toca el borrador', () => {
     expect(script).toContain('entry.draft.groupId = value === ');
-    expect(script).toContain('la tarjeta no se mueve hasta guardar');
+    expect(script).toContain('la tarjeta no se mueve hasta que el PATCH');
   });
 
   it('53. se edita con campos, nunca con una tabla', () => {
@@ -665,8 +660,13 @@ describe('seccion de caracteristicas en el editor', () => {
     expect(read(ADMIN_CSS)).toContain('.feature-grid');
   });
 
-  it('54. en esta subfase no hay reordenacion', () => {
-    for (const word of ['Subir', 'Bajar', 'Mover', 'reorder', 'Reordenar']) {
+  it('54. la reordenacion se hace con botones, nunca arrastrando', () => {
+    expect(script).toContain("button('up', 'Subir'");
+    expect(script).toContain("button('down', 'Bajar'");
+    expect(script).toContain('data-action="move-${kind}"');
+    expect(script).toContain("case 'move-group':");
+    expect(script).toContain("case 'move-feature':");
+    for (const word of ['draggable', 'dragstart', 'dragover', 'drop']) {
       expect(script).not.toContain(word);
     }
   });
@@ -688,17 +688,17 @@ describe('seccion de caracteristicas en el editor', () => {
     expect(script).toContain('id="ungrouped-heading">Sin grupo</h3>');
   });
 
-  it('58. el aviso de salida suma las caracteristicas sin sustituir al coordinador', () => {
-    expect(editor).toContain('features?.hasPendingWork() === true');
-    expect(editor).toContain('coordinator?.snapshot().hasPendingWork === true');
+  it('58. el aviso de salida tiene una sola fuente: el coordinador', () => {
+    expect(editor).toContain('coordinator?.snapshot().hasPendingWork !== true) return');
+    expect(editor).not.toContain('features?.hasPendingWork');
   });
 
-  it('59. el boton global sigue guardando solo nucleo, espanol e ingles', () => {
+  it('59. el editor arranca con los tres puertos fijos y delega el resto', () => {
     expect(editor).toContain(
       "ports: { core: corePort, es: translationPort('es'), en: translationPort('en') }",
     );
-    expect(editor).not.toContain('saveGroup');
-    expect(editor).not.toContain('saveFeature');
+    // Los de caracteristicas los registra la propia seccion, con su id real.
+    expect(editor).toContain('initFeatureEditor(propertyId, coordinator)');
   });
 
   it('60. la seccion habla siempre con la API, nunca con la base de datos', () => {
@@ -715,15 +715,9 @@ describe('seccion de caracteristicas en el editor', () => {
     expect(css).toContain('grid-template-columns: minmax(0, 1fr)');
   });
 
-  it('62. sin contenedor en la pagina el modulo no hace nada', () => {
-    const previous = (globalThis as { document?: unknown }).document;
-    (globalThis as { document?: unknown }).document = { getElementById: () => null };
-
-    try {
-      expect(initFeatureEditor(1).hasPendingWork()).toBe(false);
-    } finally {
-      (globalThis as { document?: unknown }).document = previous;
-    }
+  it('62. el trabajo pendiente lo vigila el coordinador, no un contador aparte', () => {
+    expect(editor).toContain('coordinator?.snapshot().hasPendingWork !== true) return');
+    expect(script).not.toContain('hasPendingFeatureWork');
   });
 
   it('63. no se han anadido dependencias para probar el navegador', () => {

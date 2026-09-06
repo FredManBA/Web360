@@ -1,13 +1,19 @@
 /**
  * Coordinador de guardado del editor.
  *
- * Un unico punto que orquesta los tres grupos que la API escribe por separado:
+ * Un unico punto que orquesta todo lo que la API escribe por separado:
  *
- *   core -> PATCH  /api/admin/properties/:id
- *   es   -> PUT    /api/admin/properties/:id/translations/es
- *   en   -> PUT    /api/admin/properties/:id/translations/en
+ *   core        -> PATCH  /api/admin/properties/:id
+ *   es          -> PUT    /api/admin/properties/:id/translations/es
+ *   en          -> PUT    /api/admin/properties/:id/translations/en
+ *   group:<id>  -> PATCH  /api/admin/properties/:id/feature-groups/:groupId
+ *   feature:<id>-> PATCH  /api/admin/properties/:id/features/:featureId
  *
- * No se finge atomicidad entre ellos: cada grupo lleva su propio estado, y un
+ * Los tres primeros existen desde que se abre el editor; los de
+ * caracteristicas se registran y se dan de baja segun se crean o se eliminan.
+ * No hay un segundo sistema de autosave: todo pasa por aqui.
+ *
+ * No se finge atomicidad entre puertos: cada uno lleva su propio estado, y un
  * fallo parcial deja limpios los que si se guardaron.
  *
  * Autosave y boton manual usan EXACTAMENTE este mismo camino; el boton solo
@@ -22,9 +28,25 @@
  *   modo que no se bombardea la API.
  */
 
-export type SaveGroup = 'core' | 'es' | 'en';
+/**
+ * Clave de un puerto.
+ *
+ * Los tres fijos del editor son `core`, `es` y `en`. Las caracteristicas
+ * anaden claves dinamicas con la forma `group:<id>` y `feature:<id>`, que se
+ * registran cuando el servidor devuelve el id real.
+ */
+export type SaveGroup = string;
 
+/** Puertos fijos del editor: siempre presentes y siempre en este orden. */
 export const SAVE_GROUPS: readonly SaveGroup[] = ['core', 'es', 'en'];
+
+export function groupPortKey(groupId: number): SaveGroup {
+  return `group:${groupId}`;
+}
+
+export function featurePortKey(featureId: number): SaveGroup {
+  return `feature:${featureId}`;
+}
 
 export type GroupState = 'clean' | 'dirty' | 'saving' | 'error';
 
@@ -56,6 +78,7 @@ export interface SaveGroupPort {
 }
 
 export interface SaveCoordinatorOptions {
+  /** Puertos iniciales. Los dinamicos se anaden despues con `register`. */
   ports: Record<SaveGroup, SaveGroupPort>;
   /** Se llama cada vez que cambia algo observable por la UI. */
   onChange: (snapshot: CoordinatorSnapshot) => void;
@@ -81,18 +104,31 @@ export interface SaveCoordinator {
   notifyChange: (group: SaveGroup) => void;
   /** Guardado manual: consume el debounce y ejecuta una ronda ahora. */
   saveNow: () => Promise<void>;
+  /** Da de alta un puerto dinamico; sustituye al anterior si la clave existia. */
+  register: (group: SaveGroup, port: SaveGroupPort) => void;
+  /** Da de baja un puerto: su estado deja de contar para el estado global. */
+  unregister: (group: SaveGroup) => void;
+  /** Claves registradas ahora mismo, en orden de registro. */
+  registered: () => SaveGroup[];
   snapshot: () => CoordinatorSnapshot;
   /** Cancela cualquier debounce pendiente. */
   dispose: () => void;
 }
 
 export function createSaveCoordinator(options: SaveCoordinatorOptions): SaveCoordinator {
-  const { ports, onChange, onErrors, onRoundStart } = options;
+  const { onChange, onErrors, onRoundStart } = options;
   const debounceMs = options.debounceMs ?? DEFAULT_DEBOUNCE_MS;
 
-  const states: Record<SaveGroup, GroupState> = { core: 'clean', es: 'clean', en: 'clean' };
+  /*
+   * `Map` y no un objeto: conserva el orden de registro, de modo que las
+   * rondas recorren siempre core, es, en y despues las caracteristicas en el
+   * orden en que aparecieron. Nada de orden dependiente del azar.
+   */
+  const ports = new Map<SaveGroup, SaveGroupPort>(Object.entries(options.ports));
+  const states = new Map<SaveGroup, GroupState>();
+  for (const key of ports.keys()) states.set(key, 'clean');
 
-  /** Grupos que volvieron a cambiar mientras se estaban guardando. */
+  /** Puertos que volvieron a cambiar mientras se estaban guardando. */
   const dirtyAgain = new Set<SaveGroup>();
 
   let timer: ReturnType<typeof setTimeout> | null = null;
@@ -100,8 +136,10 @@ export function createSaveCoordinator(options: SaveCoordinatorOptions): SaveCoor
   /** Un cambio llego durante la ronda: hay que repetir al terminar. */
   let rerun = false;
 
+  const stateOf = (group: SaveGroup): GroupState => states.get(group) ?? 'clean';
+
   const globalState = (): GlobalSaveState => {
-    const values = SAVE_GROUPS.map((group) => states[group]);
+    const values = [...states.values()];
 
     // Una escritura activa manda sobre lo demas: es lo que esta pasando ahora.
     if (values.includes('saving')) return 'saving';
@@ -111,9 +149,9 @@ export function createSaveCoordinator(options: SaveCoordinatorOptions): SaveCoor
   };
 
   const snapshot = (): CoordinatorSnapshot => ({
-    groups: { ...states },
+    groups: Object.fromEntries(states),
     global: globalState(),
-    hasPendingWork: SAVE_GROUPS.some((group) => states[group] !== 'clean'),
+    hasPendingWork: [...states.values()].some((state) => state !== 'clean'),
   });
 
   const emit = (): void => {
@@ -138,37 +176,45 @@ export function createSaveCoordinator(options: SaveCoordinatorOptions): SaveCoor
     onRoundStart?.();
 
     try {
-      // Se intentan los grupos con cambios y los que fallaron antes.
-      const candidates = SAVE_GROUPS.filter(
-        (group) => states[group] === 'dirty' || states[group] === 'error',
+      // Se intentan los puertos con cambios y los que fallaron antes.
+      const candidates = [...states.keys()].filter(
+        (group) => stateOf(group) === 'dirty' || stateOf(group) === 'error',
       );
 
       const errors: GroupFieldError[] = [];
 
       for (const group of candidates) {
-        const port = ports[group];
+        const port = ports.get(group);
+        // Pudo darse de baja mientras se recorria la lista.
+        if (port === undefined) continue;
 
         if (!port.isDirty()) {
-          states[group] = 'clean';
+          states.set(group, 'clean');
           continue;
         }
 
         /*
-         * Validacion local antes de enviar. Un grupo invalido no bloquea a
+         * Validacion local antes de enviar. Un puerto invalido no bloquea a
          * los demas: se marca y se continua con el siguiente.
          */
         const localErrors = port.validate();
         if (localErrors.length > 0) {
-          states[group] = 'error';
+          states.set(group, 'error');
           errors.push(...localErrors);
           continue;
         }
 
-        states[group] = 'saving';
+        states.set(group, 'saving');
         dirtyAgain.delete(group);
         emit();
 
         const result = await port.persist();
+
+        // La entidad pudo eliminarse durante la escritura.
+        if (!ports.has(group)) {
+          dirtyAgain.delete(group);
+          continue;
+        }
 
         if (result.ok) {
           /*
@@ -176,10 +222,10 @@ export function createSaveCoordinator(options: SaveCoordinatorOptions): SaveCoor
            * ya marco como persistida SU instantanea, asi que lo escrito
            * despues sigue pendiente.
            */
-          states[group] = dirtyAgain.has(group) ? 'dirty' : 'clean';
+          states.set(group, dirtyAgain.has(group) ? 'dirty' : 'clean');
           dirtyAgain.delete(group);
         } else {
-          states[group] = 'error';
+          states.set(group, 'error');
           dirtyAgain.delete(group);
           if (result.errors !== undefined) errors.push(...result.errors);
           if (result.message !== undefined) {
@@ -203,7 +249,7 @@ export function createSaveCoordinator(options: SaveCoordinatorOptions): SaveCoor
      */
     if (rerun) {
       rerun = false;
-      const stillPending = SAVE_GROUPS.some((group) => states[group] === 'dirty');
+      const stillPending = [...states.values()].includes('dirty');
       if (stillPending) await runRound();
     }
   };
@@ -218,11 +264,15 @@ export function createSaveCoordinator(options: SaveCoordinatorOptions): SaveCoor
 
   return {
     notifyChange(group: SaveGroup): void {
-      if (states[group] === 'saving') {
+      const port = ports.get(group);
+      // Un cambio de algo no registrado no puede guardarse: se ignora.
+      if (port === undefined) return;
+
+      if (stateOf(group) === 'saving') {
         // Cambio durante la escritura: no puede marcarse como guardado.
         dirtyAgain.add(group);
       } else {
-        states[group] = ports[group].isDirty() ? 'dirty' : 'clean';
+        states.set(group, port.isDirty() ? 'dirty' : 'clean');
       }
 
       emit();
@@ -233,11 +283,28 @@ export function createSaveCoordinator(options: SaveCoordinatorOptions): SaveCoor
       // El boton consume el debounce y usa el mismo camino que el autosave.
       clearTimer();
 
-      for (const group of SAVE_GROUPS) {
-        if (states[group] === 'clean' && ports[group].isDirty()) states[group] = 'dirty';
+      for (const [group, port] of ports) {
+        if (stateOf(group) === 'clean' && port.isDirty()) states.set(group, 'dirty');
       }
 
       await runRound();
+    },
+
+    register(group: SaveGroup, port: SaveGroupPort): void {
+      ports.set(group, port);
+      states.set(group, port.isDirty() ? 'dirty' : 'clean');
+      emit();
+    },
+
+    unregister(group: SaveGroup): void {
+      ports.delete(group);
+      states.delete(group);
+      dirtyAgain.delete(group);
+      emit();
+    },
+
+    registered(): SaveGroup[] {
+      return [...ports.keys()];
     },
 
     snapshot,

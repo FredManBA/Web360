@@ -29,7 +29,7 @@ import {
   createCustomPropertyType,
   listActivePropertyTypes,
 } from '../property-types/property-types';
-import type { AdminDatabase } from '../types';
+import type { AdminBatchDatabase } from '../types';
 import {
   parseRouteId,
   readJsonBody,
@@ -42,7 +42,12 @@ import { jsonError, jsonFromResult, jsonInternalError, jsonSuccess } from './res
 export interface AdminHttpContext {
   request: Request;
   params: Record<string, string | undefined>;
-  db: AdminDatabase;
+  /*
+   * Se pide la variante con `batch` porque la reordenacion necesita escribir
+   * todo el orden en una sola transaccion. El resto de handlers la usa como
+   * una base normal.
+   */
+  db: AdminBatchDatabase;
   env: AdminHttpEnv;
 
   /**

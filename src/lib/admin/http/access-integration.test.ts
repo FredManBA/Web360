@@ -18,7 +18,7 @@ import {
 } from 'jose';
 
 import { applySeed, createTestDatabase } from '../test-database';
-import type { AdminDatabase } from '../types';
+import type { AdminBatchDatabase } from '../types';
 import type { AdminAuthEnv } from '../auth/authorize';
 import {
   handleCreateProperty,
@@ -35,7 +35,7 @@ let privateKey: CryptoKey;
 let foreignPrivateKey: CryptoKey;
 let jwks: JWTVerifyGetKey;
 
-let db: AdminDatabase;
+let db: AdminBatchDatabase;
 let sqlite: DatabaseSync;
 
 beforeAll(async () => {

@@ -11,7 +11,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DatabaseSync } from 'node:sqlite';
 
 import { applySeed, createTestDatabase } from '../test-database';
-import type { AdminDatabase } from '../types';
+import type { AdminBatchDatabase } from '../types';
 import {
   handleArchiveProperty,
   handleCreateProperty,
@@ -27,7 +27,7 @@ import {
 
 const BASE = 'https://panel.codeloba.test';
 
-let db: AdminDatabase;
+let db: AdminBatchDatabase;
 let sqlite: DatabaseSync;
 
 beforeEach(() => {
@@ -664,7 +664,7 @@ describe('errores inesperados', () => {
           'SQLITE_ERROR: no such table: properties\n    at Statement.all (node:sqlite:120:15)',
         );
       },
-    } as unknown as AdminDatabase;
+    } as unknown as AdminBatchDatabase;
 
     const response = await handleListProperties({
       request: new Request(`${BASE}/api/admin/properties`),
@@ -699,7 +699,7 @@ describe('errores inesperados', () => {
       select: () => {
         throw new Error('boom');
       },
-    } as unknown as AdminDatabase;
+    } as unknown as AdminBatchDatabase;
 
     const response = await handleListProperties({
       request: new Request(`${BASE}/api/admin/properties`),

@@ -396,9 +396,8 @@ describe('estados de guardado', () => {
 
   it('el aviso al salir solo se registra si queda trabajo pendiente', () => {
     const script = read('src/lib/admin/ui/editor-page.ts');
-    // Se consulta al coordinador y se sale sin avisar cuando no hay nada.
-    expect(script).toContain('coordinator?.snapshot().hasPendingWork === true');
-    expect(script).toContain('if (!corePending && !featuresPending) return;');
+    // Una sola fuente: el coordinador ya vigila tambien grupos y caracteristicas.
+    expect(script).toContain('coordinator?.snapshot().hasPendingWork !== true) return');
   });
 
   it('un fallo al guardar conserva los cambios locales', () => {

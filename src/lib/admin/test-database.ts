@@ -25,7 +25,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { drizzle } from 'drizzle-orm/sqlite-proxy';
 
 import * as schema from '../../db/schema';
-import type { AdminDatabase } from './types';
+import type { AdminBatchDatabase } from './types';
 
 const MIGRATIONS_DIR = path.resolve(process.cwd(), 'drizzle');
 const STATEMENT_SEPARATOR = '--> statement-breakpoint';
@@ -46,9 +46,32 @@ function applyMigrations(db: DatabaseSync): void {
 }
 
 export interface TestDatabase {
-  db: AdminDatabase;
+  db: AdminBatchDatabase;
   sqlite: DatabaseSync;
   close: () => void;
+}
+
+type ProxyMethod = 'run' | 'all' | 'values' | 'get';
+
+/** Ejecuta una sentencia con la forma de filas que espera `sqlite-proxy`. */
+function runStatement(
+  sqlite: DatabaseSync,
+  sql: string,
+  params: unknown[],
+  method: ProxyMethod,
+): { rows: unknown[] } {
+  const statement = sqlite.prepare(sql);
+
+  if (method === 'run') {
+    statement.run(...(params as never[]));
+    return { rows: [] };
+  }
+
+  // sqlite-proxy espera las filas como arrays de valores, no objetos.
+  statement.setReturnArrays(true);
+  const rows = statement.all(...(params as never[])) as unknown as unknown[][];
+
+  return method === 'get' ? { rows: rows[0] ?? [] } : { rows };
 }
 
 /**
@@ -65,19 +88,25 @@ export function createTestDatabase(): TestDatabase {
   applyMigrations(sqlite);
 
   const db = drizzle<typeof schema>(
-    async (sql, params, method) => {
-      const statement = sqlite.prepare(sql);
+    (sql, params, method) => Promise.resolve(runStatement(sqlite, sql, params, method)),
+    /*
+     * Lote en una transaccion real. D1 envuelve cada `batch()` en una
+     * transaccion implicita; aqui se reproduce con BEGIN/COMMIT para que los
+     * tests comprueben la atomicidad de verdad y no solo la intencion.
+     */
+    (batch) => {
+      sqlite.exec('BEGIN');
 
-      if (method === 'run') {
-        statement.run(...(params as never[]));
-        return { rows: [] };
+      try {
+        const results = batch.map((item) =>
+          runStatement(sqlite, item.sql, item.params, item.method),
+        );
+        sqlite.exec('COMMIT');
+        return Promise.resolve(results);
+      } catch (error) {
+        sqlite.exec('ROLLBACK');
+        throw error;
       }
-
-      // sqlite-proxy espera las filas como arrays de valores, no objetos.
-      statement.setReturnArrays(true);
-      const rows = statement.all(...(params as never[])) as unknown as unknown[][];
-
-      return method === 'get' ? { rows: rows[0] ?? [] } : { rows };
     },
     { schema },
   );

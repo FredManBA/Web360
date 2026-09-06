@@ -10,7 +10,7 @@
  */
 
 import { bindingFor, FIELD_BINDINGS } from './editor-fields';
-import { initFeatureEditor, type FeatureEditorHandle } from './feature-editor';
+import { initFeatureEditor } from './feature-editor';
 import {
   areaPreview,
   fieldsToRaw,
@@ -118,12 +118,6 @@ export function initEditorPage(): void {
   };
   let publicationStatus: PublicationStatus = 'draft';
   let coordinator: SaveCoordinator | null = null;
-  /*
-   * Las caracteristicas llevan por ahora su propio guardado, fuera del
-   * coordinador. La integracion se limita a sumar su trabajo pendiente al
-   * aviso de salida; la Fase 3C-3 las unificara.
-   */
-  let features: FeatureEditorHandle | null = null;
 
   /* ---------------------------------------------------------------------- */
   /* Lectura y escritura del formulario                                     */
@@ -236,8 +230,19 @@ export function initEditorPage(): void {
     }
   };
 
+  /*
+   * Los errores de grupos y caracteristicas ya se pintan en su propia tarjeta,
+   * que es donde el usuario esta mirando. Repetirlos en el aviso general del
+   * formulario solo los alejaria del campo que los provoca.
+   */
+  const belongsToFeatures = (field: string): boolean =>
+    field.startsWith('group:') || field.startsWith('feature:');
+
   const showErrors = (errors: GroupFieldError[]): void => {
-    for (const error of errors) showFieldError(error.field, error.message);
+    for (const error of errors) {
+      if (belongsToFeatures(error.field)) continue;
+      showFieldError(error.field, error.message);
+    }
   };
 
   /* ---------------------------------------------------------------------- */
@@ -627,25 +632,23 @@ export function initEditorPage(): void {
   });
 
   /*
-   * Solo se avisa al salir cuando queda trabajo sin persistir. Basta con
-   * `preventDefault()`: `returnValue` esta obsoleto.
+   * Una sola fuente de verdad: el coordinador ya vigila core, los dos idiomas
+   * y cada grupo y caracteristica registrados. Basta con `preventDefault()`:
+   * `returnValue` esta obsoleto.
    */
   window.addEventListener('beforeunload', (event) => {
-    const corePending = coordinator?.snapshot().hasPendingWork === true;
-    const featuresPending = features?.hasPendingWork() === true;
-
-    if (!corePending && !featuresPending) return;
+    if (coordinator?.snapshot().hasPendingWork !== true) return;
     event.preventDefault();
   });
 
   void load().then((loaded) => {
     // Sin propiedad no hay caracteristicas que editar: la seccion sigue oculta.
-    if (!loaded) return;
+    if (!loaded || coordinator === null) return;
 
     const featuresBox = byId<HTMLElement>('editor-features');
     if (featuresBox !== null) featuresBox.hidden = false;
 
-    // Vive fuera del coordinador: un fallo suyo no rompe el resto del editor.
-    features = initFeatureEditor(propertyId);
+    // Sus entidades se registran como puertos del MISMO coordinador.
+    initFeatureEditor(propertyId, coordinator);
   });
 }

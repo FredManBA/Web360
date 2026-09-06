@@ -9,7 +9,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DatabaseSync } from 'node:sqlite';
 
 import { applySeed, createTestDatabase } from '../test-database';
-import type { AdminDatabase } from '../types';
+import type { AdminBatchDatabase } from '../types';
 import { createPropertyDraft } from '../properties/create-property';
 import {
   handleCreateFeature,
@@ -17,6 +17,8 @@ import {
   handleDeleteFeature,
   handleDeleteFeatureGroup,
   handleGetFeatures,
+  handleReorderFeatureGroups,
+  handleReorderFeatures,
   handleUpdateFeature,
   handleUpdateFeatureGroup,
 } from './feature-handlers';
@@ -24,7 +26,7 @@ import type { AdminHttpContext } from './handlers';
 
 const BASE = 'https://panel.codeloba.test';
 
-let db: AdminDatabase;
+let db: AdminBatchDatabase;
 let sqlite: DatabaseSync;
 
 beforeEach(() => {
@@ -366,7 +368,7 @@ describe('errores inesperados', () => {
           'SQLITE_ERROR: no such table: property_features\n    at Statement.all (node:sqlite:120:15)',
         );
       },
-    } as unknown as AdminDatabase;
+    } as unknown as AdminBatchDatabase;
 
     const response = await handleGetFeatures({
       request: new Request(`${BASE}/x`),
@@ -391,5 +393,128 @@ describe('errores inesperados', () => {
 
     expect(consoleError).toHaveBeenCalled();
     consoleError.mockRestore();
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Reordenacion                                                               */
+/* -------------------------------------------------------------------------- */
+
+describe('endpoints de orden', () => {
+  it('(24) PUT de grupos aplica el orden completo', async () => {
+    const id = await newProperty();
+    const first = await newGroup(id, 'A');
+    const second = await newGroup(id, 'B');
+
+    const response = await handleReorderFeatureGroups(
+      ctx(jsonRequest('PUT', { groupIds: [second, first] }), { id }),
+    );
+
+    expect(response.status).toBe(200);
+
+    const view = await handleGetFeatures(ctx(jsonRequest('GET'), { id }));
+    const data = (await view.json()) as { data: { groups: { id: number }[] } };
+    expect(data.data.groups.map((group) => group.id)).toEqual([second, first]);
+  });
+
+  it('(25)(26) PUT de caracteristicas admite un grupo y tambien "Sin grupo"', async () => {
+    const id = await newProperty();
+    const groupId = await newGroup(id, 'Terreno');
+
+    const inGroup = await newFeature(id, { groupId });
+    const alsoInGroup = await newFeature(id, { groupId });
+    const loose = await newFeature(id, {});
+    const alsoLoose = await newFeature(id, {});
+
+    const grouped = await handleReorderFeatures(
+      ctx(jsonRequest('PUT', { groupId, featureIds: [alsoInGroup, inGroup] }), { id }),
+    );
+    expect(grouped.status).toBe(200);
+
+    const ungrouped = await handleReorderFeatures(
+      ctx(jsonRequest('PUT', { groupId: null, featureIds: [alsoLoose, loose] }), { id }),
+    );
+    expect(ungrouped.status).toBe(200);
+
+    const view = await handleGetFeatures(ctx(jsonRequest('GET'), { id }));
+    const data = (await view.json()) as {
+      data: { groups: { features: { id: number }[] }[]; ungrouped: { id: number }[] };
+    };
+
+    expect(data.data.groups[0]?.features.map((f) => f.id)).toEqual([alsoInGroup, inGroup]);
+    expect(data.data.ungrouped.map((f) => f.id)).toEqual([alsoLoose, loose]);
+  });
+
+  it('(30) una lista que no coincide devuelve 409 y no cambia nada', async () => {
+    const id = await newProperty();
+    const first = await newGroup(id, 'A');
+    const second = await newGroup(id, 'B');
+
+    const response = await handleReorderFeatureGroups(
+      ctx(jsonRequest('PUT', { groupIds: [second] }), { id }),
+    );
+
+    expect(response.status).toBe(409);
+
+    const body = (await response.json()) as { error: { code: string } };
+    expect(body.error.code).toBe('feature_order_conflict');
+
+    const view = await handleGetFeatures(ctx(jsonRequest('GET'), { id }));
+    const data = (await view.json()) as { data: { groups: { id: number }[] } };
+    expect(data.data.groups.map((group) => group.id)).toEqual([first, second]);
+  });
+
+  it('el cuerpo es estricto: no admite propertyId', async () => {
+    const id = await newProperty();
+
+    const response = await handleReorderFeatureGroups(
+      ctx(jsonRequest('PUT', { groupIds: [], propertyId: 99 }), { id }),
+    );
+
+    expect(response.status).toBe(422);
+  });
+
+  it('los identificadores deben ser enteros positivos', async () => {
+    const id = await newProperty();
+
+    const response = await handleReorderFeatures(
+      ctx(jsonRequest('PUT', { groupId: null, featureIds: [0] }), { id }),
+    );
+
+    expect(response.status).toBe(422);
+  });
+
+  it('el grupo es obligatorio y explicito en el cuerpo', async () => {
+    const id = await newProperty();
+
+    const response = await handleReorderFeatures(
+      ctx(jsonRequest('PUT', { featureIds: [] }), { id }),
+    );
+
+    expect(response.status).toBe(422);
+  });
+
+  it('sin acceso administrativo no se puede reordenar', async () => {
+    const id = await newProperty();
+
+    const response = await handleReorderFeatureGroups(
+      ctx(jsonRequest('PUT', { groupIds: [] }), { id }, false),
+    );
+
+    expect(response.status).toBe(403);
+  });
+
+  it('(36) el conflicto no filtra SQL ni nombres de tabla', async () => {
+    const id = await newProperty();
+    await newGroup(id, 'A');
+
+    const response = await handleReorderFeatureGroups(
+      ctx(jsonRequest('PUT', { groupIds: [] }), { id }),
+    );
+
+    const text = await response.text();
+    expect(text).not.toContain('property_feature');
+    expect(text).not.toContain('UPDATE');
+    expect(text).not.toContain('SQLITE');
   });
 });

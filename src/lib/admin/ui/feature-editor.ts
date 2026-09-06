@@ -4,47 +4,76 @@
  * Solo cableado de DOM: el estado vive en `feature-editor-state.ts` y las
  * llamadas en `feature-api.ts`. Nunca toca D1 y no duplica reglas de dominio.
  *
- * En esta subfase cada grupo y cada caracteristica tienen su propio boton de
- * guardar, deliberadamente fuera del coordinador global. La Fase 3C-3 podra
- * conectarlos sin rehacer esta UI, porque cada entidad ya expone su estado y
- * su parche.
+ * Desde la Fase 3C-3 cada grupo y cada caracteristica son un puerto mas del
+ * coordinador de guardado. Ya no hay botones de guardar por entidad: escribir
+ * dispara el autosave y `Guardar cambios` fuerza la misma ronda. Lo unico que
+ * queda fuera del debounce son crear, eliminar y reordenar, que son acciones
+ * explicitas e inmediatas.
  */
 
 import { createFeatureApi, type FeatureApi } from './feature-api';
 import {
   addFeature,
   addGroup,
+  applyFeatureOrder,
+  applyGroupOrder,
   featurePatch,
   featuresOfGroup,
   groupDisplayName,
+  groupOrder,
   groupPatch,
-  hasPendingFeatureWork,
   isEmpty,
   isFeatureDirty,
   isGroupDirty,
   markFeatureSaved,
   markGroupSaved,
+  moveAvailability,
+  moveFeature,
+  moveGroup,
   removeFeature,
   removeGroup,
   stateFromApi,
+  TOO_LONG_MESSAGE,
   ungroupedFeatures,
+  validateFeatureDraft,
+  validateGroupDraft,
   type EntityState,
+  type FeatureDraft,
   type FeatureEditorState,
   type FeatureEntry,
+  type GroupDraft,
   type GroupEntry,
   type GroupNameView,
+  type MoveDirection,
 } from './feature-editor-state';
 import { saveStateLabel } from './editor-state';
+import {
+  featurePortKey,
+  groupPortKey,
+  type PersistResult,
+  type SaveCoordinator,
+} from './save-coordinator';
 
-/** Texto exacto de la confirmacion: explica que las caracteristicas se quedan. */
-export const CONFIRM_DELETE_GROUP =
+const CONFIRM_DELETE_GROUP_BASE =
   'Se eliminará el grupo. Las características del grupo no se eliminarán; pasarán a "Sin grupo".';
 
-export const CONFIRM_DELETE_FEATURE =
+const CONFIRM_DELETE_FEATURE_BASE =
   'Se eliminará esta característica. Esta acción no se puede deshacer.';
+
+/** Aviso extra cuando la entidad tiene cambios que aun no se han guardado. */
+const UNSAVED_WARNING = 'Tiene cambios sin guardar que se perderán.';
 
 export const LOADING_TEXT = 'Cargando características…';
 export const EMPTY_TEXT = 'Aún no hay características.';
+
+/** El texto del aviso depende de si hay algo que perder. */
+export function deleteGroupMessage(dirty: boolean): string {
+  return dirty ? `${CONFIRM_DELETE_GROUP_BASE} ${UNSAVED_WARNING}` : CONFIRM_DELETE_GROUP_BASE;
+}
+
+export function deleteFeatureMessage(dirty: boolean): string {
+  return dirty ? `${CONFIRM_DELETE_FEATURE_BASE} ${UNSAVED_WARNING}` : CONFIRM_DELETE_FEATURE_BASE;
+}
 
 function escapeHtml(value: string): string {
   return value
@@ -71,22 +100,160 @@ function headingMarkup(name: GroupNameView): string {
 }
 
 export interface FeatureEditorHandle {
-  /** Lo consulta el editor para el aviso de salida. */
-  hasPendingWork: () => boolean;
+  /** Da de baja todos los puertos. Util al descartar la seccion. */
+  dispose: () => void;
 }
 
 export function initFeatureEditor(
   propertyId: number,
+  coordinator: SaveCoordinator,
   api: FeatureApi = createFeatureApi(propertyId),
 ): FeatureEditorHandle {
   const root = byId<HTMLElement>('admin-features');
-  if (root === null) return { hasPendingWork: () => false };
+  if (root === null) return { dispose: () => undefined };
 
   let state: FeatureEditorState = { groups: [], features: [] };
   /** Fallo de carga: sustituye a la seccion entera, sin tocar el resto. */
   let loadError: string | null = null;
-  /** Fallo de una accion suelta (crear, borrar): se muestra sobre la lista. */
+  /** Fallo de una accion suelta (crear, borrar, reordenar). */
   let sectionError: string | null = null;
+  /** Ambitos con una reordenacion en vuelo: sus botones quedan inertes. */
+  const reordering = new Set<string>();
+  /** Que boton recuperar el foco tras el proximo repintado. */
+  let focusAfterRender: string | null = null;
+
+  const GROUPS_SCOPE = 'groups';
+  const featureScopeKey = (groupId: number | null): string =>
+    groupId === null ? 'features:none' : `features:${groupId}`;
+
+  /* ---------------------------------------------------------------------- */
+  /* Puertos del coordinador                                                */
+  /* ---------------------------------------------------------------------- */
+
+  const groupById = (id: number): GroupEntry | undefined =>
+    state.groups.find((group) => group.id === id);
+
+  const featureById = (id: number): FeatureEntry | undefined =>
+    state.features.find((feature) => feature.id === id);
+
+  /**
+   * Puerto de un grupo.
+   *
+   * La instantanea se toma al empezar a escribir, y es esa la que se marca
+   * como persistida: lo que el usuario teclee durante la peticion sigue
+   * pendiente.
+   */
+  const registerGroupPort = (groupId: number): void => {
+    coordinator.register(groupPortKey(groupId), {
+      isDirty: () => {
+        const entry = groupById(groupId);
+        return entry !== undefined && isGroupDirty(entry);
+      },
+
+      validate: () => {
+        const entry = groupById(groupId);
+        if (entry === undefined) return [];
+
+        return validateGroupDraft(entry.draft).map((field) => {
+          entry.state = 'error';
+          entry.error = TOO_LONG_MESSAGE;
+          return { field: `group:${groupId}.${field}`, message: TOO_LONG_MESSAGE };
+        });
+      },
+
+      persist: async (): Promise<PersistResult> => {
+        const entry = groupById(groupId);
+        if (entry === undefined) return { ok: true };
+
+        const snapshot: GroupDraft = { ...entry.draft };
+
+        entry.state = 'saving';
+        entry.error = null;
+        paintStatus(`group-${groupId}-status`, entry.state, entry.error);
+
+        const result = await api.updateGroup(groupId, groupPatch(entry));
+
+        // Pudo eliminarse mientras se guardaba.
+        const current = groupById(groupId);
+        if (current === undefined) return { ok: true };
+
+        if (result.ok) {
+          markGroupSaved(current, snapshot);
+        } else {
+          // El draft se conserva; solo cambia el estado.
+          current.state = 'error';
+          current.error = result.message;
+        }
+
+        render();
+
+        /*
+         * El mensaje ya se ve en la tarjeta, asi que no se devuelve al
+         * coordinador: repetirlo arriba solo lo alejaria de su entidad.
+         */
+        return result.ok ? { ok: true } : { ok: false };
+      },
+    });
+  };
+
+  const registerFeaturePort = (featureId: number): void => {
+    coordinator.register(featurePortKey(featureId), {
+      isDirty: () => {
+        const entry = featureById(featureId);
+        return entry !== undefined && isFeatureDirty(entry);
+      },
+
+      validate: () => {
+        const entry = featureById(featureId);
+        if (entry === undefined) return [];
+
+        return validateFeatureDraft(entry.draft).map((field) => {
+          entry.state = 'error';
+          entry.error = TOO_LONG_MESSAGE;
+          return { field: `feature:${featureId}.${field}`, message: TOO_LONG_MESSAGE };
+        });
+      },
+
+      persist: async (): Promise<PersistResult> => {
+        const entry = featureById(featureId);
+        if (entry === undefined) return { ok: true };
+
+        const snapshot: FeatureDraft = { ...entry.draft };
+
+        entry.state = 'saving';
+        entry.error = null;
+        paintStatus(`feature-${featureId}-status`, entry.state, entry.error);
+
+        const result = await api.updateFeature(featureId, featurePatch(entry));
+
+        const current = featureById(featureId);
+        if (current === undefined) return { ok: true };
+
+        if (result.ok) {
+          // La tarjeta cambia de grupo AHORA, no antes: y con el orden que diga
+          // el servidor.
+          markFeatureSaved(current, snapshot, result.data.sortOrder);
+        } else {
+          current.state = 'error';
+          current.error = result.message;
+        }
+
+        render();
+
+        return result.ok ? { ok: true } : { ok: false };
+      },
+    });
+  };
+
+  const registerAll = (): void => {
+    for (const group of state.groups) registerGroupPort(group.id);
+    for (const feature of state.features) registerFeaturePort(feature.id);
+  };
+
+  const unregisterAll = (): void => {
+    for (const group of state.groups) coordinator.unregister(groupPortKey(group.id));
+    for (const feature of state.features) coordinator.unregister(featurePortKey(feature.id));
+  };
 
   /* ---------------------------------------------------------------------- */
   /* Render                                                                 */
@@ -109,10 +276,40 @@ export function initFeatureEditor(
     return `<option value=""${noneSelected}>Sin grupo</option>${options.join('')}`;
   };
 
-  const featureMarkup = (feature: FeatureEntry): string => {
+  /**
+   * Botones de orden.
+   *
+   * El nombre accesible dice QUE se mueve, no solo la direccion: "Subir" a
+   * secas se repite decenas de veces en la pagina y no distingue nada.
+   */
+  const moveButtons = (
+    kind: 'group' | 'feature',
+    id: number,
+    label: string,
+    ids: readonly number[],
+    scope: string,
+  ): string => {
+    const { canMoveUp, canMoveDown } = moveAvailability(ids, id);
+    const busy = reordering.has(scope);
+
+    const button = (direction: MoveDirection, text: string, enabled: boolean): string =>
+      `<button type="button" class="admin-button admin-button-move"
+        id="move-${kind}-${id}-${direction}"
+        data-action="move-${kind}" data-direction="${direction}"
+        aria-label="${escapeHtml(`${text} ${label}`)}"${enabled && !busy ? '' : ' disabled'}>${text}</button>`;
+
+    return `
+      <div class="feature-move" role="group" aria-label="${escapeHtml(`Orden de ${label}`)}">
+        ${button('up', 'Subir', canMoveUp)}
+        ${button('down', 'Bajar', canMoveDown)}
+      </div>`;
+  };
+
+  const featureMarkup = (feature: FeatureEntry, scopeIds: readonly number[]): string => {
     const id = feature.id;
     const invalid = feature.state === 'error' ? 'true' : 'false';
     const status = statusMarkup(feature.state, feature.error);
+    const name = feature.draft.labelEs.trim() || feature.draft.labelEn.trim() || 'sin etiqueta';
 
     return `
       <article class="feature-card" data-feature="${id}">
@@ -146,9 +343,7 @@ export function initFeatureEditor(
         </div>
 
         <div class="feature-actions">
-          <button type="button" class="admin-button" data-action="save-feature">
-            Guardar característica
-          </button>
+          ${moveButtons('feature', id, `característica ${name}`, scopeIds, featureScopeKey(feature.groupId))}
           <button type="button" class="admin-button admin-button-quiet" data-action="delete-feature">
             Eliminar característica
           </button>
@@ -157,16 +352,20 @@ export function initFeatureEditor(
       </article>`;
   };
 
-  const groupMarkup = (group: GroupEntry): string => {
+  const featureListMarkup = (features: readonly FeatureEntry[]): string => {
+    const ids = features.map((feature) => feature.id);
+    return features.map((feature) => featureMarkup(feature, ids)).join('');
+  };
+
+  const groupMarkup = (group: GroupEntry, orderIds: readonly number[]): string => {
     const id = group.id;
     const invalid = group.state === 'error' ? 'true' : 'false';
     const status = statusMarkup(group.state, group.error);
+    const name = groupDisplayName(group.draft);
 
     return `
       <section class="feature-group" data-group="${id}" aria-labelledby="group-${id}-heading">
-        <h3 class="feature-group-title" id="group-${id}-heading">${headingMarkup(
-          groupDisplayName(group.draft),
-        )}</h3>
+        <h3 class="feature-group-title" id="group-${id}-heading">${headingMarkup(name)}</h3>
 
         <div class="feature-grid">
           <div class="admin-field">
@@ -182,7 +381,7 @@ export function initFeatureEditor(
         </div>
 
         <div class="feature-actions">
-          <button type="button" class="admin-button" data-action="save-group">Guardar grupo</button>
+          ${moveButtons('group', id, `grupo ${name.text}`, orderIds, GROUPS_SCOPE)}
           <button type="button" class="admin-button" data-action="add-feature">
             Añadir característica
           </button>
@@ -192,7 +391,7 @@ export function initFeatureEditor(
           <div class="feature-status-box" id="group-${id}-status" role="status">${status}</div>
         </div>
 
-        <div class="feature-list">${featuresOfGroup(state, id).map(featureMarkup).join('')}</div>
+        <div class="feature-list">${featureListMarkup(featuresOfGroup(state, id))}</div>
       </section>`;
   };
 
@@ -215,7 +414,7 @@ export function initFeatureEditor(
         : `
       <section class="feature-group feature-group-loose" aria-labelledby="ungrouped-heading">
         <h3 class="feature-group-title" id="ungrouped-heading">Sin grupo</h3>
-        <div class="feature-list">${loose.map(featureMarkup).join('')}</div>
+        <div class="feature-list">${featureListMarkup(loose)}</div>
       </section>`;
 
     const emptyMarkup = isEmpty(state)
@@ -227,10 +426,12 @@ export function initFeatureEditor(
         ? ''
         : `<p class="editor-error" id="features-error" role="alert">${escapeHtml(sectionError)}</p>`;
 
+    const order = groupOrder(state);
+
     root.innerHTML = `
       ${errorMarkup}
       ${emptyMarkup}
-      ${state.groups.map(groupMarkup).join('')}
+      ${state.groups.map((group) => groupMarkup(group, order)).join('')}
       ${ungroupedSection}
       <div class="feature-toolbar">
         <button type="button" class="admin-button" data-action="add-group">Añadir grupo</button>
@@ -238,6 +439,12 @@ export function initFeatureEditor(
           Añadir característica sin grupo
         </button>
       </div>`;
+
+    // Tras reordenar, el foco vuelve al boton equivalente de la entidad movida.
+    if (focusAfterRender !== null) {
+      restoreFocus(focusAfterRender);
+      focusAfterRender = null;
+    }
   };
 
   /* ---------------------------------------------------------------------- */
@@ -252,14 +459,29 @@ export function initFeatureEditor(
     return Number.isSafeInteger(value) && value > 0 ? value : null;
   };
 
-  const groupById = (id: number): GroupEntry | undefined =>
-    state.groups.find((group) => group.id === id);
-
-  const featureById = (id: number): FeatureEntry | undefined =>
-    state.features.find((feature) => feature.id === id);
-
   const focusField = (id: string): void => {
     byId<HTMLElement & { focus: () => void }>(id)?.focus();
+  };
+
+  /**
+   * Devuelve el foco tras repintar.
+   *
+   * Si el boton pedido quedo deshabilitado (la entidad llego a un extremo), se
+   * pasa al de la direccion contraria: el foco nunca se queda en el aire.
+   */
+  const restoreFocus = (buttonId: string): void => {
+    const target = byId<HTMLButtonElement>(buttonId);
+
+    if (target !== null && !target.disabled) {
+      target.focus();
+      return;
+    }
+
+    const opposite = buttonId.endsWith('-up')
+      ? `${buttonId.slice(0, -3)}-down`
+      : `${buttonId.slice(0, -5)}-up`;
+
+    byId<HTMLButtonElement>(opposite)?.focus();
   };
 
   /** Refresca el estado de una entidad sin repintar, para no perder el foco. */
@@ -273,7 +495,7 @@ export function initFeatureEditor(
   };
 
   /* ---------------------------------------------------------------------- */
-  /* Acciones                                                               */
+  /* Carga                                                                  */
   /* ---------------------------------------------------------------------- */
 
   const load = async (): Promise<void> => {
@@ -288,11 +510,20 @@ export function initFeatureEditor(
       return;
     }
 
+    unregisterAll();
+
     loadError = null;
     sectionError = null;
     state = stateFromApi(result.data);
+
+    // Se registran ya con su id real: nunca antes de que exista la fila.
+    registerAll();
     render();
   };
+
+  /* ---------------------------------------------------------------------- */
+  /* Crear y eliminar (fuera del debounce, siempre inmediatas)              */
+  /* ---------------------------------------------------------------------- */
 
   const createGroup = async (button: HTMLButtonElement): Promise<void> => {
     button.disabled = true;
@@ -310,6 +541,7 @@ export function initFeatureEditor(
 
     sectionError = null;
     const entry = addGroup(state, result.data);
+    registerGroupPort(entry.id);
     render();
     focusField(`group-${entry.id}-name-es`);
   };
@@ -332,53 +564,20 @@ export function initFeatureEditor(
 
     sectionError = null;
     const entry = addFeature(state, result.data);
+    registerFeaturePort(entry.id);
     render();
     focusField(`feature-${entry.id}-label-es`);
   };
 
-  const saveGroup = async (entry: GroupEntry): Promise<void> => {
-    entry.state = 'saving';
-    entry.error = null;
-    paintStatus(`group-${entry.id}-status`, entry.state, entry.error);
-
-    const result = await api.updateGroup(entry.id, groupPatch(entry));
-
-    if (result.ok) {
-      markGroupSaved(entry);
-    } else {
-      // Lo escrito se conserva: solo cambia el estado.
-      entry.state = 'error';
-      entry.error = result.message;
-    }
-
-    render();
-  };
-
-  const saveFeature = async (entry: FeatureEntry): Promise<void> => {
-    entry.state = 'saving';
-    entry.error = null;
-    paintStatus(`feature-${entry.id}-status`, entry.state, entry.error);
-
-    const result = await api.updateFeature(entry.id, featurePatch(entry));
-
-    if (result.ok) {
-      // El cambio de grupo se consolida solo cuando el PATCH sale bien.
-      markFeatureSaved(entry);
-    } else {
-      entry.state = 'error';
-      entry.error = result.message;
-    }
-
-    render();
-  };
-
   const deleteGroup = async (entry: GroupEntry): Promise<void> => {
-    if (!window.confirm(CONFIRM_DELETE_GROUP)) return;
+    if (!window.confirm(deleteGroupMessage(isGroupDirty(entry)))) return;
 
     const result = await api.deleteGroup(entry.id);
 
     if (result.ok) {
-      // Sus caracteristicas pasan a "Sin grupo"; no se borran.
+      // Sus caracteristicas pasan a "Sin grupo" conservando sus borradores;
+      // sus puertos siguen registrados porque siguen existiendo.
+      coordinator.unregister(groupPortKey(entry.id));
       removeGroup(state, entry.id);
       sectionError = null;
     } else {
@@ -390,11 +589,12 @@ export function initFeatureEditor(
   };
 
   const deleteFeature = async (entry: FeatureEntry): Promise<void> => {
-    if (!window.confirm(CONFIRM_DELETE_FEATURE)) return;
+    if (!window.confirm(deleteFeatureMessage(isFeatureDirty(entry)))) return;
 
     const result = await api.deleteFeature(entry.id);
 
     if (result.ok) {
+      coordinator.unregister(featurePortKey(entry.id));
       removeFeature(state, entry.id);
       sectionError = null;
     } else {
@@ -403,6 +603,68 @@ export function initFeatureEditor(
       entry.error = result.message;
     }
 
+    render();
+  };
+
+  /* ---------------------------------------------------------------------- */
+  /* Orden                                                                  */
+  /* ---------------------------------------------------------------------- */
+
+  /**
+   * Reordena un grupo.
+   *
+   * La UI NO se mueve hasta que el servidor confirma: si falla, el orden que
+   * se ve sigue siendo el real, sin necesidad de revertir nada.
+   */
+  const reorderGroup = async (groupId: number, direction: MoveDirection): Promise<void> => {
+    if (reordering.has(GROUPS_SCOPE)) return;
+
+    const next = moveGroup(state, groupId, direction);
+    if (next === null) return;
+
+    reordering.add(GROUPS_SCOPE);
+    render();
+
+    const result = await api.reorderGroups(next);
+
+    reordering.delete(GROUPS_SCOPE);
+
+    if (result.ok) {
+      applyGroupOrder(state, next);
+      sectionError = null;
+    } else {
+      sectionError = result.message;
+    }
+
+    focusAfterRender = `move-group-${groupId}-${direction}`;
+    render();
+  };
+
+  const reorderFeature = async (featureId: number, direction: MoveDirection): Promise<void> => {
+    const entry = featureById(featureId);
+    if (entry === undefined) return;
+
+    const scope = featureScopeKey(entry.groupId);
+    if (reordering.has(scope)) return;
+
+    const next = moveFeature(state, featureId, direction);
+    if (next === null) return;
+
+    reordering.add(scope);
+    render();
+
+    const result = await api.reorderFeatures(next.groupId, next.featureIds);
+
+    reordering.delete(scope);
+
+    if (result.ok) {
+      applyFeatureOrder(state, next.groupId, next.featureIds);
+      sectionError = null;
+    } else {
+      sectionError = result.message;
+    }
+
+    focusAfterRender = `move-feature-${featureId}-${direction}`;
     render();
   };
 
@@ -425,7 +687,8 @@ export function initFeatureEditor(
       if (entry === undefined) return;
 
       if (field === 'groupId') {
-        // Solo cambia el borrador: la tarjeta no se mueve hasta guardar.
+        // Solo cambia el borrador: la tarjeta no se mueve hasta que el PATCH
+        // salga bien.
         entry.draft.groupId = value === '' ? null : Number(value);
       } else if (field in entry.draft) {
         (entry.draft as unknown as Record<string, string>)[field] = value;
@@ -434,6 +697,9 @@ export function initFeatureEditor(
       entry.state = isFeatureDirty(entry) ? 'dirty' : 'saved';
       entry.error = null;
       paintStatus(`feature-${entry.id}-status`, entry.state, entry.error);
+
+      // A partir de aqui manda el coordinador: mismo debounce que el resto.
+      coordinator.notifyChange(featurePortKey(entry.id));
       return;
     }
 
@@ -454,6 +720,8 @@ export function initFeatureEditor(
     // El titulo del grupo sigue lo escrito, sin esperar al guardado.
     const heading = byId<HTMLElement>(`group-${entry.id}-heading`);
     if (heading !== null) heading.innerHTML = headingMarkup(groupDisplayName(entry.draft));
+
+    coordinator.notifyChange(groupPortKey(entry.id));
   };
 
   root.addEventListener('input', onEdit);
@@ -467,6 +735,7 @@ export function initFeatureEditor(
     if (action === undefined) return;
 
     const button = target as HTMLButtonElement;
+    const direction = target.dataset.direction === 'up' ? 'up' : 'down';
     const featureId = closestId(target, 'feature');
     const groupId = closestId(target, 'group');
 
@@ -487,21 +756,17 @@ export function initFeatureEditor(
         if (groupId !== null) void createFeature(button, groupId);
         break;
 
-      case 'save-group': {
-        const entry = groupId === null ? undefined : groupById(groupId);
-        if (entry !== undefined) void saveGroup(entry);
+      case 'move-group':
+        if (groupId !== null) void reorderGroup(groupId, direction);
         break;
-      }
+
+      case 'move-feature':
+        if (featureId !== null) void reorderFeature(featureId, direction);
+        break;
 
       case 'delete-group': {
         const entry = groupId === null ? undefined : groupById(groupId);
         if (entry !== undefined) void deleteGroup(entry);
-        break;
-      }
-
-      case 'save-feature': {
-        const entry = featureId === null ? undefined : featureById(featureId);
-        if (entry !== undefined) void saveFeature(entry);
         break;
       }
 
@@ -518,5 +783,5 @@ export function initFeatureEditor(
 
   void load();
 
-  return { hasPendingWork: () => hasPendingFeatureWork(state) };
+  return { dispose: unregisterAll };
 }

@@ -8,6 +8,7 @@
  * No hay framework de errores: un discriminante `ok` y un codigo estable.
  */
 
+import type { BatchItem } from 'drizzle-orm/batch';
 import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
 import type { ZodError } from 'zod';
 
@@ -22,6 +23,24 @@ import type * as schema from '../../db/schema';
  */
 export type AdminDatabase = BaseSQLiteDatabase<'async', unknown, typeof schema>;
 
+/** Una sentencia de las que admite un lote. */
+export type AdminBatchItem = BatchItem<'sqlite'>;
+
+/**
+ * Base capaz de ejecutar varias sentencias en una sola transaccion.
+ *
+ * D1 no ofrece transacciones interactivas, pero si `batch()`, que envuelve el
+ * lote completo en una transaccion implicita: o se aplican todas las
+ * sentencias o ninguna. Es lo que necesita la reordenacion para no dejar
+ * medio intercambio persistido.
+ *
+ * Se declara aparte de `AdminDatabase` porque `BaseSQLiteDatabase` no incluye
+ * `batch`; lo aportan los drivers concretos (D1 y el proxy de los tests).
+ */
+export type AdminBatchDatabase = AdminDatabase & {
+  batch: (statements: [AdminBatchItem, ...AdminBatchItem[]]) => Promise<unknown[]>;
+};
+
 export type AdminErrorCode =
   | 'validation_failed'
   | 'not_found'
@@ -33,7 +52,9 @@ export type AdminErrorCode =
   | 'feature_group_not_found'
   | 'feature_not_found'
   // El grupo existe, pero es de otra propiedad: la base no puede impedirlo.
-  | 'feature_group_property_mismatch';
+  | 'feature_group_property_mismatch'
+  // La lista de reordenacion no coincide con lo que hay ahora en la base.
+  | 'feature_order_conflict';
 
 export interface FieldIssue {
   /** Ruta del campo, p. ej. "publicLatitude" o "translations.es.slug". */
