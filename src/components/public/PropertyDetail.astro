@@ -1,0 +1,95 @@
+---
+import type { Locale } from '../../lib/domain/vocabularies';
+import { commercialStatusLabel, labelsFor, locationLine } from '../../lib/public/labels';
+import { catalogueHref, type PublicPropertyDetail } from '../../lib/public/read-model';
+
+interface Props {
+  property: PublicPropertyDetail;
+  locale: Locale;
+}
+
+const { property, locale } = Astro.props;
+const labels = labelsFor(locale);
+const place = locationLine(property.location);
+---
+
+<article class="property-detail">
+  <header class="property-detail-head">
+    <p class="property-code">{labels.code} {property.code}</p>
+    <h1>{property.title}</h1>
+
+    <p class="property-detail-meta">
+      {property.propertyType && <span>{property.propertyType}</span>}
+      {
+        property.commercialStatus && (
+          <span class="property-status">
+            {commercialStatusLabel(property.commercialStatus, locale)}
+          </span>
+        )
+      }
+    </p>
+
+    <p class="property-detail-price">{property.price.text}</p>
+  </header>
+
+  {/* Hueco reservado: cuando exista entrega publica de R2, la galeria va aqui. */}
+  <section class="property-media" aria-label={labels.features}>
+    <p class="property-media-pending">{labels.mediaPending}</p>
+    {property.media.hasTour && <p class="property-tour-note">{labels.tourAvailable}</p>}
+  </section>
+
+  {
+    property.marketingDescription && (
+      <section class="property-section">
+        <h2>{labels.description}</h2>
+        <p>{property.marketingDescription}</p>
+      </section>
+    )
+  }
+
+  <section class="property-section">
+    <h2>{labels.location}</h2>
+    {place ? <p>{place}</p> : <p>—</p>}
+    {
+      property.area && (
+        <p>
+          {labels.area}: {property.area.text}
+        </p>
+      )
+    }
+  </section>
+
+  {
+    property.features.length > 0 && (
+      <section class="property-section">
+        <h2>{labels.features}</h2>
+        {property.features.map((group) => (
+          <div class="property-feature-group">
+            {group.name && <h3>{group.name}</h3>}
+            <dl>
+              {group.items.map((item) => (
+                <>
+                  <dt>{item.label}</dt>
+                  <dd>{item.value ?? '—'}</dd>
+                </>
+              ))}
+            </dl>
+          </div>
+        ))}
+      </section>
+    )
+  }
+
+  {
+    property.technicalDescription && (
+      <section class="property-section">
+        <h2>{labels.technical}</h2>
+        <p>{property.technicalDescription}</p>
+      </section>
+    )
+  }
+
+  <p class="property-back">
+    <a href={catalogueHref(locale)}>← {labels.backToCatalogue}</a>
+  </p>
+</article>

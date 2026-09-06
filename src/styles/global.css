@@ -72,3 +72,104 @@ p {
 a {
   color: inherit;
 }
+
+/* -------------------------------------------------------------------------- */
+/* Sitio publico                                                              */
+/* -------------------------------------------------------------------------- */
+
+/*
+ * Estilo minimo y deliberado: solo lo necesario para que el catalogo y la
+ * ficha se lean bien. El diseno definitivo llega en una fase posterior.
+ */
+
+.public-page {
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: var(--space-lg) var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.public-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.property-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+  gap: var(--space-md);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.property-card,
+.property-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.property-card-title {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.property-card-meta,
+.property-detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.property-code {
+  font-variant-numeric: tabular-nums;
+}
+
+.property-card-price,
+.property-detail-price {
+  margin: 0;
+  font-weight: 700;
+}
+
+.property-detail {
+  gap: var(--space-lg);
+}
+
+.property-detail-head,
+.property-section,
+.property-media {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.property-feature-group dl {
+  display: grid;
+  grid-template-columns: minmax(8rem, max-content) 1fr;
+  gap: 0.25rem var(--space-md);
+  margin: 0;
+}
+
+.property-feature-group dt {
+  font-weight: 600;
+}
+
+.property-feature-group dd {
+  margin: 0;
+}
+
+@media (max-width: 40rem) {
+  .property-feature-group dl {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .property-feature-group dd {
+    margin-bottom: var(--space-xs);
+  }
+}

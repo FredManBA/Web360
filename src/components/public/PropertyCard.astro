@@ -1,0 +1,43 @@
+---
+import type { Locale } from '../../lib/domain/vocabularies';
+import { commercialStatusLabel, labelsFor, locationLine } from '../../lib/public/labels';
+import type { PublicPropertyCard } from '../../lib/public/read-model';
+
+interface Props {
+  property: PublicPropertyCard;
+  locale: Locale;
+}
+
+const { property, locale } = Astro.props;
+const labels = labelsFor(locale);
+const place = locationLine(property.location);
+---
+
+<article class="property-card">
+  <h2 class="property-card-title">
+    <a href={property.href}>{property.title}</a>
+  </h2>
+
+  <p class="property-card-meta">
+    <span class="property-code">{labels.code} {property.code}</span>
+    {property.propertyType && <span>{property.propertyType}</span>}
+    {
+      property.commercialStatus && (
+        <span class="property-status">
+          {commercialStatusLabel(property.commercialStatus, locale)}
+        </span>
+      )
+    }
+  </p>
+
+  {place && <p class="property-card-place">{place}</p>}
+
+  <p class="property-card-price">{property.price.text}</p>
+  {
+    property.area && (
+      <p class="property-card-area">
+        {labels.area}: {property.area.text}
+      </p>
+    )
+  }
+</article>

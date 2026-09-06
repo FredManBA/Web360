@@ -1,0 +1,33 @@
+---
+import PropertyDetail from '../../../components/public/PropertyDetail.astro';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { catalogueOf, type PublicPropertyDetail } from '../../../lib/public/read-model';
+import { loadPublicSnapshot } from '../../../lib/public/snapshot';
+
+/*
+ * Una ruta por cada propiedad publicada CON traduccion utilizable en este
+ * idioma. Las que no la tienen simplemente no existen aqui: no se inventa el
+ * slug ni se recurre al otro idioma.
+ */
+export function getStaticPaths() {
+  const snapshot = loadPublicSnapshot();
+
+  return catalogueOf(snapshot, 'es').map((property) => ({
+    params: { slug: property.slug },
+    props: { property: property as PublicPropertyDetail },
+  }));
+}
+
+const locale = 'es' as const;
+const { property } = Astro.props as { property: PublicPropertyDetail };
+---
+
+<BaseLayout
+  lang={locale}
+  title={property.title}
+  description={property.marketingDescription ?? undefined}
+>
+  <main class="public-page">
+    <PropertyDetail property={property} locale={locale} />
+  </main>
+</BaseLayout>

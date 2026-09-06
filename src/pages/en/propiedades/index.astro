@@ -1,0 +1,41 @@
+---
+import PropertyCard from '../../../components/public/PropertyCard.astro';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { labelsFor, otherLocale } from '../../../lib/public/labels';
+import { catalogueHref, catalogueOf } from '../../../lib/public/read-model';
+import { loadPublicSnapshot } from '../../../lib/public/snapshot';
+
+/*
+ * Pagina estatica. El catalogo sale del snapshot que se construye en el build
+ * a partir de la base local; en tiempo de ejecucion no se consulta nada.
+ */
+const locale = 'en' as const;
+const labels = labelsFor(locale);
+
+const snapshot = loadPublicSnapshot();
+const properties = catalogueOf(snapshot, locale);
+---
+
+<BaseLayout lang={locale} title={labels.catalogueTitle} description={labels.catalogueDescription}>
+  <main class="public-page">
+    <header class="public-head">
+      <h1>{labels.catalogueTitle}</h1>
+      <p>{labels.catalogueDescription}</p>
+      <p><a href={catalogueHref(otherLocale(locale))}>{labels.otherLanguage}</a></p>
+    </header>
+
+    {
+      properties.length === 0 ? (
+        <p class="public-empty">{labels.empty}</p>
+      ) : (
+        <ul class="property-list">
+          {properties.map((property) => (
+            <li>
+              <PropertyCard property={property} locale={locale} />
+            </li>
+          ))}
+        </ul>
+      )
+    }
+  </main>
+</BaseLayout>

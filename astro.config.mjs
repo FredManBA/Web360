@@ -2,6 +2,8 @@
 import { defineConfig } from 'astro/config';
 import cloudflare from '@astrojs/cloudflare';
 
+import { publicSnapshotPlugin } from './src/lib/public/snapshot-plugin.ts';
+
 // https://astro.build/config
 export default defineConfig({
   // Regla de renderizado de CodeLoba:
@@ -9,6 +11,13 @@ export default defineConfig({
   // Una ruta concreta pasa a ejecutarse on-demand en el Worker solo si
   // declara explicitamente `export const prerender = false`.
   output: 'static',
+
+  // El catalogo publico se resuelve en el build: el plugin lee la base local
+  // en Node y entrega el snapshot ya listo, porque el prerenderizado del
+  // adaptador ocurre dentro de workerd y alli no hay acceso a ficheros.
+  vite: {
+    plugins: [publicSnapshotPlugin()],
+  },
 
   adapter: cloudflare({
     // 'compile': las imagenes se optimizan en el build con sharp.
