@@ -37,6 +37,17 @@ export const FIELD_BINDINGS: Record<string, FieldBinding> = {
   publicLatitude: { input: 'field-public-lat', error: 'field-public-lat-error' },
   publicLongitude: { input: 'field-public-lng', error: 'field-public-lng-error' },
   locationPrecision: { input: 'field-precision' },
+
+  // Contenido traducible. Los errores de un idioma nunca tocan al otro.
+  'es.title': { input: 'field-es-title' },
+  'es.slug': { input: 'field-es-slug', error: 'field-es-slug-error' },
+  'es.marketingDescription': { input: 'field-es-marketing' },
+  'es.technicalDescription': { input: 'field-es-technical' },
+
+  'en.title': { input: 'field-en-title' },
+  'en.slug': { input: 'field-en-slug', error: 'field-en-slug-error' },
+  'en.marketingDescription': { input: 'field-en-marketing' },
+  'en.technicalDescription': { input: 'field-en-technical' },
 };
 
 export function bindingFor(field: string): FieldBinding | null {

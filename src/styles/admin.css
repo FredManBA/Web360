@@ -739,3 +739,99 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/* Editor: secciones de idioma                                                */
+/* -------------------------------------------------------------------------- */
+
+/* Secciones verticales, no pestanas: mejor con teclado y en movil. */
+.editor-language {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius);
+  background: var(--admin-surface-muted);
+}
+
+.editor-language-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.editor-language-head h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+/*
+ * El estado del idioma se transmite por texto; el color y el punto solo
+ * acompanan.
+ */
+.editor-language-status[data-status='empty'] {
+  border-color: var(--admin-border-strong);
+  background: var(--admin-surface);
+  color: var(--admin-text-soft);
+}
+
+.editor-language-status[data-status='partial'] {
+  border-color: var(--admin-accent);
+  background: var(--admin-accent-tint);
+  color: #6f5729;
+  border-style: dashed;
+}
+
+.editor-language-status[data-status='filled'] {
+  border-color: var(--admin-green);
+  background: var(--admin-green-tint);
+  color: var(--admin-green);
+}
+
+.editor-language textarea {
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--admin-border-strong);
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  font: inherit;
+  /* Ancho de lectura comodo, sin editores lado a lado. */
+  resize: vertical;
+  min-height: 6rem;
+}
+
+.editor-language input[type='text'] {
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--admin-border-strong);
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  font: inherit;
+}
+
+.editor-language input[aria-invalid='true'] {
+  border-color: var(--admin-danger);
+  border-width: 2px;
+}
+
+.editor-slug {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  align-items: center;
+}
+
+.editor-slug input {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
+@media (max-width: 60rem) {
+  .editor-slug {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

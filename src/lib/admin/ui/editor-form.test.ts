@@ -563,21 +563,28 @@ describe('guardado con los campos nuevos', () => {
   it('(19 bis) una validacion local fallida no envia el PATCH', () => {
     const script = read(EDITOR_SCRIPT);
 
-    // Se retorna antes de llegar al fetch.
-    expect(script).toContain('if (!parsed.ok)');
-    expect(script).toContain("setSaveState('error')");
+    // El puerto expone la validacion, que el coordinador consulta antes de
+    // escribir; ademas `persist` vuelve a cortar si algo no cuadra.
+    expect(script).toContain('return parsed.ok ? [] : parsed.errors');
+    expect(script).toContain('if (!parsed.ok) return { ok: false, errors: parsed.errors }');
   });
 
   it('(29) un fallo conserva los valores locales', () => {
     const script = read(EDITOR_SCRIPT);
 
     expect(script).not.toContain('location.reload()');
-    // Tras un error no se reescriben los campos con lo cargado.
-    expect(script).not.toContain("writeRaw(fieldsToRaw(loaded));\n        setSaveState('error')");
+
+    /*
+     * El formulario solo se reescribe al CARGAR. Guardar nunca lo repuebla,
+     * asi que lo tecleado durante la peticion no se pierde ni al fallar ni al
+     * ir bien.
+     */
+    expect(script.match(/writeRaw\(fieldsToRaw/g)).toHaveLength(1);
+    expect(script.match(/writeTranslation\(locale, loadedTranslations/g)).toHaveLength(1);
   });
 
-  it('(30) el aviso al salir sigue dependiendo del estado', () => {
-    expect(read(EDITOR_SCRIPT)).toContain('shouldWarnBeforeUnload(saveState)');
+  it('(30) el aviso al salir depende del trabajo pendiente', () => {
+    expect(read(EDITOR_SCRIPT)).toContain('coordinator?.snapshot().hasPendingWork');
   });
 
   it('un unico boton de guardar para todo el formulario', () => {

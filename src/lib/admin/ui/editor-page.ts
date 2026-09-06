@@ -1,12 +1,12 @@
 /**
  * Editor de propiedades en el navegador.
  *
- * Carga la propiedad por la API administrativa, permite editar informacion
- * basica, precio, superficie y ubicacion, y lo guarda todo con un unico PATCH
- * parcial. Sin autosave, sin estado global y sin router de cliente.
+ * Cablea el DOM con las reglas puras que viven en `editor-form.ts`,
+ * `editor-state.ts`, `translation-state.ts` y `save-coordinator.ts`.
  *
- * Las reglas viven en `editor-form.ts` y `editor-state.ts`; aqui solo hay
- * cableado de DOM.
+ * El guardado pasa siempre por el coordinador: autosave y boton manual
+ * comparten camino. La API escribe tres cosas por separado (nucleo, ES, EN) y
+ * aqui no se finge que sean una sola.
  */
 
 import { bindingFor, FIELD_BINDINGS } from './editor-fields';
@@ -19,12 +19,11 @@ import {
 } from './editor-form';
 import {
   buildPatch,
-  isDirty,
+  isDirty as isCoreDirty,
   loadStateMessage,
   mapSaveError,
   resolveLoadState,
   saveStateLabel,
-  shouldWarnBeforeUnload,
   toEditorFields,
   type EditorFields,
   type PropertyPayload,
@@ -32,16 +31,36 @@ import {
 } from './editor-state';
 import { commercialStatusLabel, publicationStatusLabel } from './labels';
 import { resolveTitle, type PropertyTypePayload } from './property-row';
-import type { PublicationStatus } from '../../domain/vocabularies';
+import {
+  createSaveCoordinator,
+  type GroupFieldError,
+  type PersistResult,
+  type SaveCoordinator,
+  type SaveGroup,
+  type SaveGroupPort,
+} from './save-coordinator';
+import {
+  EMPTY_TRANSLATION,
+  isTranslationDirty,
+  languageStatusLabel,
+  parseTranslationForm,
+  resolveLanguageStatus,
+  slugFromTitle,
+  translationToRaw,
+  type TranslationFields,
+  type TranslationFormRaw,
+} from './translation-state';
+import type { Locale, PublicationStatus } from '../../domain/vocabularies';
 
 interface EditorProperty extends PropertyPayload {
   publicationStatus: PublicationStatus;
 }
 
-interface TranslationPayload {
-  locale: 'es' | 'en';
-  title: string | null;
+interface TranslationPayload extends TranslationFields {
+  locale: Locale;
 }
+
+const LOCALES: readonly Locale[] = ['es', 'en'];
 
 function escapeHtml(value: string): string {
   return value
@@ -61,7 +80,7 @@ function byId<T extends object>(id: string): T | null {
 }
 
 function inputValue(id: string): string {
-  const element = byId<HTMLInputElement | HTMLSelectElement>(id);
+  const element = byId<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(id);
   return element === null ? '' : element.value;
 }
 
@@ -91,10 +110,17 @@ export function initEditorPage(): void {
 
   if (form === null || stateBox === null) return;
 
-  let loaded: EditorFields | null = null;
-  let saveState: SaveState = 'saved';
-  /** Traducciones de la ultima carga, para repintar la cabecera al guardar. */
-  let translations: TranslationPayload[] = [];
+  let loadedCore: EditorFields | null = null;
+  const loadedTranslations: Record<Locale, TranslationFields> = {
+    es: { ...EMPTY_TRANSLATION },
+    en: { ...EMPTY_TRANSLATION },
+  };
+  let publicationStatus: PublicationStatus = 'draft';
+  let coordinator: SaveCoordinator | null = null;
+
+  /* ---------------------------------------------------------------------- */
+  /* Lectura y escritura del formulario                                     */
+  /* ---------------------------------------------------------------------- */
 
   const readRaw = (): EditorFormRaw => ({
     code: inputValue('field-code'),
@@ -121,10 +147,17 @@ export function initEditorPage(): void {
     locationPrecision: inputValue('field-precision'),
   });
 
+  const readTranslationRaw = (locale: Locale): TranslationFormRaw => ({
+    title: inputValue(`field-${locale}-title`),
+    slug: inputValue(`field-${locale}-slug`),
+    marketingDescription: inputValue(`field-${locale}-marketing`),
+    technicalDescription: inputValue(`field-${locale}-technical`),
+  });
+
   const writeRaw = (raw: EditorFormRaw): void => {
     for (const [field, value] of Object.entries(raw)) {
       const binding = bindingFor(field);
-      if (binding === undefined || binding === null) continue;
+      if (binding === null) continue;
 
       const element = byId<HTMLInputElement | HTMLSelectElement>(binding.input);
       if (element === null) continue;
@@ -137,6 +170,27 @@ export function initEditorPage(): void {
     }
   };
 
+  const writeTranslation = (locale: Locale, fields: TranslationFields): void => {
+    const raw = translationToRaw(fields);
+
+    for (const [key, value] of Object.entries(raw)) {
+      const element = byId<HTMLInputElement | HTMLTextAreaElement>(
+        `field-${locale}-${
+          key === 'marketingDescription'
+            ? 'marketing'
+            : key === 'technicalDescription'
+              ? 'technical'
+              : key
+        }`,
+      );
+      if (element !== null) element.value = value;
+    }
+  };
+
+  /* ---------------------------------------------------------------------- */
+  /* Errores                                                                */
+  /* ---------------------------------------------------------------------- */
+
   const clearErrors = (): void => {
     for (const binding of Object.values(FIELD_BINDINGS)) {
       if (binding.error === undefined) continue;
@@ -146,9 +200,7 @@ export function initEditorPage(): void {
         box.textContent = '';
         box.hidden = true;
       }
-
-      const input = byId<HTMLElement>(binding.input);
-      input?.setAttribute('aria-invalid', 'false');
+      byId<HTMLElement>(binding.input)?.setAttribute('aria-invalid', 'false');
     }
 
     if (formError !== null) {
@@ -157,7 +209,7 @@ export function initEditorPage(): void {
     }
   };
 
-  /** Asocia el error a su campo, o lo deja como error general si no hay uno. */
+  /** Asocia el error a su campo, o lo deja general si no hay uno concreto. */
   const showFieldError = (field: string | null, message: string): void => {
     const binding = field === null ? null : bindingFor(field);
 
@@ -177,14 +229,15 @@ export function initEditorPage(): void {
     }
   };
 
-  const focusField = (field: string | null): void => {
-    const binding = field === null ? null : bindingFor(field);
-    if (binding === null) return;
-    byId<HTMLElement & { focus: () => void }>(binding.input)?.focus();
+  const showErrors = (errors: GroupFieldError[]): void => {
+    for (const error of errors) showFieldError(error.field, error.message);
   };
 
+  /* ---------------------------------------------------------------------- */
+  /* Pintado                                                                */
+  /* ---------------------------------------------------------------------- */
+
   const setSaveState = (next: SaveState): void => {
-    saveState = next;
     if (saveStatus !== null) {
       saveStatus.textContent = saveStateLabel(next);
       saveStatus.dataset.state = next;
@@ -192,13 +245,48 @@ export function initEditorPage(): void {
     if (saveButton !== null) saveButton.disabled = next === 'saving';
   };
 
-  /**
-   * Refresca lo que depende del modo de precio y de la precision.
-   *
-   * En modo "Consultar" el importe se DESACTIVA, no se borra: cambiar el
-   * selector no debe hacer desaparecer un dato que el usuario todavia no ha
-   * guardado.
-   */
+  const renderHeader = (): void => {
+    if (headerBox === null || loadedCore === null) return;
+
+    const title = resolveTitle({
+      titleEs: loadedTranslations.es.title,
+      titleEn: loadedTranslations.en.title,
+    });
+
+    const titleClass = title.locale === null ? 'admin-title admin-title-missing' : 'admin-title';
+    const langNote =
+      title.locale === 'en'
+        ? ' <span class="admin-lang-note" title="Falta el título en español">Falta ES</span>'
+        : '';
+
+    headerBox.innerHTML = `
+      <p class="admin-code">${escapeHtml(loadedCore.code)}</p>
+      <p class="editor-title"><span class="${titleClass}">${escapeHtml(title.text)}</span>${langNote}</p>
+      <p class="editor-badges">
+        <span class="admin-badge admin-badge-${publicationStatus}">${escapeHtml(
+          publicationStatusLabel(publicationStatus),
+        )}</span>
+        <span class="admin-badge admin-badge-${loadedCore.commercialStatus}">${escapeHtml(
+          commercialStatusLabel(loadedCore.commercialStatus),
+        )}</span>
+      </p>`;
+  };
+
+  /** Etiqueta informativa de cada idioma, calculada sobre lo que hay escrito. */
+  const refreshLanguageStatus = (): void => {
+    for (const locale of LOCALES) {
+      const badge = byId<HTMLElement>(`lang-${locale}-status`);
+      if (badge === null) continue;
+
+      const parsed = parseTranslationForm(locale, readTranslationRaw(locale));
+      const fields = parsed.ok ? parsed.fields : loadedTranslations[locale];
+      const status = resolveLanguageStatus(fields);
+
+      badge.textContent = languageStatusLabel(status);
+      badge.dataset.status = status;
+    }
+  };
+
   const refreshConditionalUi = (): void => {
     const mode = inputValue('field-price-mode');
     const needsAmount = mode === 'exact' || mode === 'negotiable';
@@ -222,49 +310,147 @@ export function initEditorPage(): void {
     if (precisionNote !== null) {
       precisionNote.hidden = inputValue('field-precision') !== 'approximate';
     }
+
+    refreshLanguageStatus();
   };
 
-  const refreshDirty = (): void => {
-    refreshConditionalUi();
-    if (loaded === null || saveState === 'saving') return;
+  /* ---------------------------------------------------------------------- */
+  /* Puertos de guardado                                                    */
+  /* ---------------------------------------------------------------------- */
 
-    const parsed = parseEditorForm(readRaw());
+  const corePort: SaveGroupPort = {
+    isDirty(): boolean {
+      if (loadedCore === null) return false;
+      const parsed = parseEditorForm(readRaw());
+      // Si no se puede interpretar, hay cambios pendientes igualmente.
+      return parsed.ok ? isCoreDirty(loadedCore, parsed.fields) : true;
+    },
 
-    // Con el formulario a medio corregir, se sigue considerando "sin guardar".
-    if (!parsed.ok) {
-      setSaveState('dirty');
-      return;
-    }
+    validate(): GroupFieldError[] {
+      const parsed = parseEditorForm(readRaw());
+      return parsed.ok ? [] : parsed.errors;
+    },
 
-    setSaveState(isDirty(loaded, parsed.fields) ? 'dirty' : 'saved');
+    async persist(): Promise<PersistResult> {
+      if (loadedCore === null) return { ok: true };
+
+      const parsed = parseEditorForm(readRaw());
+      if (!parsed.ok) return { ok: false, errors: parsed.errors };
+
+      // Instantanea: es exactamente lo que esta ronda intenta persistir.
+      const snapshot = parsed.fields;
+      const patch = buildPatch(loadedCore, snapshot);
+
+      if (Object.keys(patch).length === 0) {
+        loadedCore = snapshot;
+        return { ok: true };
+      }
+
+      try {
+        const response = await fetch(`/api/admin/properties/${propertyId}`, {
+          method: 'PATCH',
+          headers: { 'content-type': 'application/json', accept: 'application/json' },
+          body: JSON.stringify(patch),
+        });
+
+        if (!response.ok) {
+          let body: unknown = null;
+          try {
+            body = await response.json();
+          } catch {
+            body = null;
+          }
+
+          const error = mapSaveError(response.status, body);
+          return {
+            ok: false,
+            errors: [{ field: error.field ?? 'core', message: error.message }],
+          };
+        }
+
+        const body = (await response.json()) as { data?: EditorProperty };
+
+        /*
+         * Se adopta lo que devuelve el servidor como "persistido", pero NO se
+         * reescriben los campos: el usuario puede estar escribiendo y no debe
+         * perder lo tecleado durante la peticion.
+         */
+        loadedCore = body.data === undefined ? snapshot : toEditorFields(body.data);
+        if (body.data !== undefined) publicationStatus = body.data.publicationStatus;
+
+        renderHeader();
+        return { ok: true };
+      } catch {
+        return { ok: false, message: 'No pudimos guardar los cambios.' };
+      }
+    },
   };
 
-  const renderHeader = (property: EditorProperty, translations: TranslationPayload[]): void => {
-    if (headerBox === null) return;
+  const translationPort = (locale: Locale): SaveGroupPort => ({
+    isDirty(): boolean {
+      const parsed = parseTranslationForm(locale, readTranslationRaw(locale));
+      return parsed.ok ? isTranslationDirty(loadedTranslations[locale], parsed.fields) : true;
+    },
 
-    const title = resolveTitle({
-      titleEs: translations.find((t) => t.locale === 'es')?.title ?? null,
-      titleEn: translations.find((t) => t.locale === 'en')?.title ?? null,
-    });
+    validate(): GroupFieldError[] {
+      const parsed = parseTranslationForm(locale, readTranslationRaw(locale));
+      return parsed.ok ? [] : parsed.errors;
+    },
 
-    const titleClass = title.locale === null ? 'admin-title admin-title-missing' : 'admin-title';
-    const langNote =
-      title.locale === 'en'
-        ? ' <span class="admin-lang-note" title="Falta el título en español">Falta ES</span>'
-        : '';
+    async persist(): Promise<PersistResult> {
+      const parsed = parseTranslationForm(locale, readTranslationRaw(locale));
+      if (!parsed.ok) return { ok: false, errors: parsed.errors };
 
-    headerBox.innerHTML = `
-      <p class="admin-code">${escapeHtml(property.code)}</p>
-      <p class="editor-title"><span class="${titleClass}">${escapeHtml(title.text)}</span>${langNote}</p>
-      <p class="editor-badges">
-        <span class="admin-badge admin-badge-${property.publicationStatus}">${escapeHtml(
-          publicationStatusLabel(property.publicationStatus),
-        )}</span>
-        <span class="admin-badge admin-badge-${property.commercialStatus}">${escapeHtml(
-          commercialStatusLabel(property.commercialStatus),
-        )}</span>
-      </p>`;
-  };
+      const snapshot = parsed.fields;
+
+      /*
+       * Sin cambios no se escribe. Esto evita crear una fila de traduccion
+       * vacia solo por haber abierto el editor.
+       */
+      if (!isTranslationDirty(loadedTranslations[locale], snapshot)) return { ok: true };
+
+      try {
+        const response = await fetch(`/api/admin/properties/${propertyId}/translations/${locale}`, {
+          method: 'PUT',
+          headers: { 'content-type': 'application/json', accept: 'application/json' },
+          // El slug viaja siempre explicito, para que el servidor no lo
+          // regenere por su cuenta a partir del titulo.
+          body: JSON.stringify({
+            slug: snapshot.slug,
+            title: snapshot.title,
+            marketingDescription: snapshot.marketingDescription,
+            technicalDescription: snapshot.technicalDescription,
+          }),
+        });
+
+        if (!response.ok) {
+          let body: unknown = null;
+          try {
+            body = await response.json();
+          } catch {
+            body = null;
+          }
+
+          const error = mapSaveError(response.status, body);
+
+          // El error se ancla al idioma que fallo: nunca al otro.
+          const field = error.field === null ? locale : `${locale}.${error.field}`;
+          return { ok: false, errors: [{ field, message: error.message }] };
+        }
+
+        loadedTranslations[locale] = snapshot;
+        renderHeader();
+        refreshLanguageStatus();
+        return { ok: true };
+      } catch {
+        return { ok: false, message: 'No pudimos guardar los cambios.' };
+      }
+    },
+  });
+
+  /* ---------------------------------------------------------------------- */
+  /* Carga                                                                  */
+  /* ---------------------------------------------------------------------- */
 
   const fillTypes = (types: PropertyTypePayload[], selected: number | null): void => {
     const typeSelect = byId<HTMLSelectElement>('field-type');
@@ -337,97 +523,106 @@ export function initEditorPage(): void {
     stateBox.hidden = true;
     form.hidden = false;
 
-    translations = payload.translations ?? [];
-    renderHeader(property, translations);
-
-    loaded = toEditorFields(property);
-    writeRaw(fieldsToRaw(loaded));
-    // El select de tipos se rellena despues, para conservar la seleccion.
+    loadedCore = toEditorFields(property);
+    publicationStatus = property.publicationStatus;
+    writeRaw(fieldsToRaw(loadedCore));
     fillTypes(types, property.propertyTypeId);
 
+    // Un idioma sin traduccion se queda con sus campos vacios.
+    for (const locale of LOCALES) {
+      const found = (payload.translations ?? []).find((entry) => entry.locale === locale);
+
+      loadedTranslations[locale] =
+        found === undefined
+          ? { ...EMPTY_TRANSLATION }
+          : {
+              title: found.title,
+              slug: found.slug,
+              marketingDescription: found.marketingDescription,
+              technicalDescription: found.technicalDescription,
+            };
+
+      writeTranslation(locale, loadedTranslations[locale]);
+    }
+
+    renderHeader();
     clearErrors();
     refreshConditionalUi();
     setSaveState('saved');
   };
 
-  const save = async (): Promise<void> => {
-    if (loaded === null || saveState === 'saving') return;
+  /* ---------------------------------------------------------------------- */
+  /* Coordinador                                                            */
+  /* ---------------------------------------------------------------------- */
 
-    clearErrors();
+  coordinator = createSaveCoordinator({
+    ports: { core: corePort, es: translationPort('es'), en: translationPort('en') },
+    onRoundStart: clearErrors,
+    onErrors: showErrors,
+    onChange: (snapshot) => setSaveState(snapshot.global),
+  });
 
-    const parsed = parseEditorForm(readRaw());
+  /** A que grupo pertenece un control, segun el prefijo de su `name`. */
+  const groupOf = (element: EventTarget | null): SaveGroup => {
+    const name =
+      element !== null && 'name' in element ? String((element as { name: unknown }).name) : '';
 
-    // Si la validacion local falla, no se llega a enviar el PATCH.
-    if (!parsed.ok) {
-      for (const error of parsed.errors) showFieldError(error.field, error.message);
-      focusField(parsed.errors[0]?.field ?? null);
-      setSaveState('error');
-      return;
-    }
-
-    const patch = buildPatch(loaded, parsed.fields);
-    if (Object.keys(patch).length === 0) {
-      setSaveState('saved');
-      return;
-    }
-
-    setSaveState('saving');
-
-    try {
-      const response = await fetch(`/api/admin/properties/${propertyId}`, {
-        method: 'PATCH',
-        headers: { 'content-type': 'application/json', accept: 'application/json' },
-        body: JSON.stringify(patch),
-      });
-
-      if (!response.ok) {
-        let body: unknown = null;
-        try {
-          body = await response.json();
-        } catch {
-          body = null;
-        }
-
-        const error = mapSaveError(response.status, body);
-        showFieldError(error.field, error.message);
-        focusField(error.field);
-
-        // Los cambios locales se conservan para no perder el trabajo.
-        setSaveState('error');
-        return;
-      }
-
-      const body = (await response.json()) as { data?: EditorProperty };
-      if (body.data !== undefined) {
-        loaded = toEditorFields(body.data);
-        writeRaw(fieldsToRaw(loaded));
-        renderHeader(body.data, translations);
-      } else {
-        loaded = parsed.fields;
-      }
-
-      refreshConditionalUi();
-      setSaveState('saved');
-    } catch {
-      showFieldError(null, 'No pudimos guardar los cambios.');
-      setSaveState('error');
-    }
+    if (name.startsWith('es.')) return 'es';
+    if (name.startsWith('en.')) return 'en';
+    return 'core';
   };
 
-  form.addEventListener('input', refreshDirty);
-  form.addEventListener('change', refreshDirty);
+  const onEdit = (event: Event): void => {
+    refreshConditionalUi();
+    coordinator?.notifyChange(groupOf(event.target));
+  };
+
+  form.addEventListener('input', onEdit);
+  form.addEventListener('change', onEdit);
+
   form.addEventListener('submit', (event) => {
     event.preventDefault();
-    void save();
+    void coordinator?.saveNow();
+  });
+
+  // Generar slug: accion explicita, sobre el titulo del MISMO idioma.
+  form.addEventListener('click', (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+
+    const locale = target.dataset.generateSlug as Locale | undefined;
+    if (locale === undefined) return;
+
+    event.preventDefault();
+
+    const result = slugFromTitle(inputValue(`field-${locale}-title`));
+
+    if (!result.ok) {
+      showFieldError(`${locale}.slug`, result.message);
+      return;
+    }
+
+    const slugInput = byId<HTMLInputElement>(`field-${locale}-slug`);
+    if (slugInput === null) return;
+
+    slugInput.value = result.slug;
+    showFieldError(`${locale}.slug`, '');
+    byId<HTMLElement>(`field-${locale}-slug`)?.setAttribute('aria-invalid', 'false');
+
+    const errorBox = byId<HTMLElement>(`field-${locale}-slug-error`);
+    if (errorBox !== null) errorBox.hidden = true;
+
+    // Queda marcado como sucio y entra en el flujo normal de autosave.
+    coordinator?.notifyChange(locale);
+    refreshLanguageStatus();
   });
 
   /*
-   * Solo se avisa al salir cuando hay cambios que se perderian. Basta con
-   * `preventDefault()`: `returnValue` esta obsoleto y los navegadores
-   * actuales ya no lo necesitan.
+   * Solo se avisa al salir cuando queda trabajo sin persistir. Basta con
+   * `preventDefault()`: `returnValue` esta obsoleto.
    */
   window.addEventListener('beforeunload', (event) => {
-    if (!shouldWarnBeforeUnload(saveState)) return;
+    if (coordinator?.snapshot().hasPendingWork !== true) return;
     event.preventDefault();
   });
 

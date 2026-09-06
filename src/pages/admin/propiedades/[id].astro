@@ -254,6 +254,90 @@ const { id } = Astro.params;
         </div>
       </fieldset>
 
+      <section class="editor-language" aria-labelledby="lang-es-heading">
+        <div class="editor-language-head">
+          <h2 id="lang-es-heading">Español</h2>
+          <span class="admin-badge editor-language-status" id="lang-es-status" data-status="empty">
+            Sin contenido
+          </span>
+        </div>
+
+        <div class="admin-field">
+          <label for="field-es-title">Título</label>
+          <input type="text" id="field-es-title" name="es.title" maxlength="200" />
+        </div>
+
+        <div class="admin-field">
+          <label for="field-es-slug">Slug</label>
+          <div class="editor-slug">
+            <input
+              type="text"
+              id="field-es-slug"
+              name="es.slug"
+              aria-describedby="field-es-slug-error"
+              aria-invalid="false"
+            />
+            <button type="button" class="admin-button" data-generate-slug="es">
+              Generar desde el título en español
+            </button>
+          </div>
+          <p class="editor-error" id="field-es-slug-error" hidden></p>
+        </div>
+
+        <div class="admin-field">
+          <label for="field-es-marketing">Descripción comercial</label>
+          <textarea id="field-es-marketing" name="es.marketingDescription" rows="5"></textarea>
+        </div>
+
+        <div class="admin-field">
+          <label for="field-es-technical">Descripción técnica</label>
+          <textarea id="field-es-technical" name="es.technicalDescription" rows="5"></textarea>
+        </div>
+      </section>
+
+      <section class="editor-language" aria-labelledby="lang-en-heading">
+        <div class="editor-language-head">
+          <h2 id="lang-en-heading">English</h2>
+          <span class="admin-badge editor-language-status" id="lang-en-status" data-status="empty">
+            Sin contenido
+          </span>
+        </div>
+
+        <p class="editor-help">Opcional. Puedes completar la versión en inglés más adelante.</p>
+
+        <div class="admin-field">
+          <label for="field-en-title">Title</label>
+          <input type="text" id="field-en-title" name="en.title" maxlength="200" />
+        </div>
+
+        <div class="admin-field">
+          <label for="field-en-slug">Slug</label>
+          <div class="editor-slug">
+            <input
+              type="text"
+              id="field-en-slug"
+              name="en.slug"
+              aria-describedby="field-en-slug-error"
+              aria-invalid="false"
+            />
+            <button type="button" class="admin-button" data-generate-slug="en">
+              Generar desde el título en inglés
+            </button>
+          </div>
+          <p class="editor-error" id="field-en-slug-error" hidden></p>
+        </div>
+
+        <div class="admin-field">
+          <label for="field-en-marketing">Marketing description</label>
+          <textarea id="field-en-marketing" name="en.marketingDescription" rows="5"></textarea>
+        </div>
+
+        <div class="admin-field">
+          <label for="field-en-technical">Technical description</label>
+          <textarea id="field-en-technical" name="en.technicalDescription" rows="5"></textarea>
+        </div>
+      </section>
+
       <p class="editor-error" id="editor-form-error" role="alert" hidden></p>
 
       <div class="editor-actions">

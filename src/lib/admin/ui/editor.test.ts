@@ -394,15 +394,15 @@ describe('estados de guardado', () => {
     expect(shouldWarnBeforeUnload('error')).toBe(true);
   });
 
-  it('el aviso al salir solo se registra desde el estado', () => {
+  it('el aviso al salir solo se registra si queda trabajo pendiente', () => {
     const script = read('src/lib/admin/ui/editor-page.ts');
-    expect(script).toContain('shouldWarnBeforeUnload(saveState)');
+    expect(script).toContain('coordinator?.snapshot().hasPendingWork !== true) return');
   });
 
   it('un fallo al guardar conserva los cambios locales', () => {
     const script = read('src/lib/admin/ui/editor-page.ts');
-    // Tras el error se marca el estado, pero no se recarga ni se restaura.
-    expect(script).toContain("setSaveState('error')");
+    // El fallo se devuelve al coordinador; no se recarga ni se restaura nada.
+    expect(script).toContain('return { ok: false, errors:');
     expect(script).not.toContain('location.reload()');
   });
 });
