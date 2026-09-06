@@ -14,7 +14,7 @@ import { createPropertyDraft } from '../properties/create-property';
 import { createFeatureGroup, deleteFeatureGroup, updateFeatureGroup } from './feature-groups';
 import { createFeature, deleteFeature, updateFeature } from './features';
 import { getPropertyFeatures } from './get-features';
-import { nextSortOrder, normalizeText } from './shared';
+import { nextSortOrder, normalizeText } from '../shared';
 
 let db: AdminDatabase;
 let sqlite: DatabaseSync;

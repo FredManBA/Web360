@@ -14,7 +14,7 @@ import {
 } from '../../../db/schema';
 import type { Locale } from '../../domain/vocabularies';
 import { fail, ok, type AdminDatabase, type AdminResult } from '../types';
-import { nextSortOrder, normalizeText } from './shared';
+import { nextSortOrder, normalizeText } from '../shared';
 
 export interface FeatureGroupNames {
   nameEs?: string | null;

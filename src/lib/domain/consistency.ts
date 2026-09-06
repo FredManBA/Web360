@@ -7,6 +7,7 @@
  * las filas ya cargadas y devuelven los problemas encontrados.
  */
 
+import { canBeCatalogCover, canBeHero } from './media';
 import type { MediaKind } from './vocabularies';
 
 /* -------------------------------------------------------------------------- */
@@ -168,8 +169,8 @@ export function validateMediaRoles(propertyId: number, media: MediaLike[]): Medi
     problems.push('hero_not_found');
   } else {
     if (hero.propertyId !== propertyId) problems.push('hero_belongs_to_other_property');
-    if (hero.mediaKind !== 'image' && hero.mediaKind !== 'video')
-      problems.push('hero_invalid_kind');
+    // La regla de que tipos valen vive en `media.ts`, en un solo sitio.
+    if (!canBeHero(hero.mediaKind)) problems.push('hero_invalid_kind');
   }
 
   const cover = media.find((item) => item.isCatalogCover);
@@ -177,7 +178,7 @@ export function validateMediaRoles(propertyId: number, media: MediaLike[]): Medi
     problems.push('catalog_cover_not_found');
   } else {
     if (cover.propertyId !== propertyId) problems.push('catalog_cover_belongs_to_other_property');
-    if (cover.mediaKind !== 'image') problems.push('catalog_cover_invalid_kind');
+    if (!canBeCatalogCover(cover.mediaKind)) problems.push('catalog_cover_invalid_kind');
   }
 
   return problems;

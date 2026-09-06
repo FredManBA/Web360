@@ -75,6 +75,15 @@ const STATUS_BY_ERROR: Record<AdminErrorCode, number> = {
   feature_group_property_mismatch: 422,
   // El orden enviado ya no describe la realidad: conflicto de estado.
   feature_order_conflict: 409,
+
+  media_not_found: 404,
+  media_group_not_found: 404,
+  media_group_property_mismatch: 422,
+  media_invalid_provider: 422,
+  media_role_conflict: 422,
+  // Choque con algo que ya existe, no con la forma de la peticion.
+  media_object_key_taken: 409,
+  media_in_use: 409,
 };
 
 export function jsonFromAdminError(error: AdminError): Response {

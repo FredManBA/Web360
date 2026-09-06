@@ -16,7 +16,7 @@ import { validateFeatureGroup } from '../../domain/consistency';
 import type { Locale } from '../../domain/vocabularies';
 import { fail, ok, type AdminDatabase, type AdminResult } from '../types';
 import { loadGroup } from './feature-groups';
-import { nextSortOrder, normalizeText } from './shared';
+import { nextSortOrder, normalizeText } from '../shared';
 
 export interface FeatureTexts {
   labelEs?: string | null;

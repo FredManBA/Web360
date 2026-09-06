@@ -1,5 +1,9 @@
 /**
- * Piezas compartidas por grupos y caracteristicas.
+ * Piezas compartidas por la capa administrativa.
+ *
+ * Nacieron con las caracteristicas, pero no tienen nada de especifico suyo:
+ * multimedia usa exactamente las mismas reglas para el texto opcional y para
+ * colocar algo al final de una lista.
  */
 
 /** Texto opcional: se recorta y el vacio se guarda como `null`. */

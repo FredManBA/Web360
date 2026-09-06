@@ -54,7 +54,20 @@ export type AdminErrorCode =
   // El grupo existe, pero es de otra propiedad: la base no puede impedirlo.
   | 'feature_group_property_mismatch'
   // La lista de reordenacion no coincide con lo que hay ahora en la base.
-  | 'feature_order_conflict';
+  | 'feature_order_conflict'
+
+  // -- Multimedia ------------------------------------------------------------
+  | 'media_not_found'
+  | 'media_group_not_found'
+  | 'media_group_property_mismatch'
+  // Combinacion imposible de proveedor y tipo (un panorama de YouTube, p. ej.).
+  | 'media_invalid_provider'
+  // El tipo no admite el rol pedido: un documento no puede encabezar la ficha.
+  | 'media_role_conflict'
+  // Otra fila ya usa esa clave de R2.
+  | 'media_object_key_taken'
+  // No se puede borrar: un nodo del recorrido 360 depende de este panorama.
+  | 'media_in_use';
 
 export interface FieldIssue {
   /** Ruta del campo, p. ej. "publicLatitude" o "translations.es.slug". */
