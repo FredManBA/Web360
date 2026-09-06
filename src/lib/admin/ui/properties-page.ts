@@ -16,6 +16,7 @@ import {
   readFilters,
   type PropertyFilters,
 } from './filters';
+import { createPropertyCreator, editorPath } from './create-property';
 import { propertyCountLabel } from './labels';
 import { canRetry, listStateMessage, resolveListState, type ListState } from './list-state';
 import {
@@ -57,11 +58,21 @@ function renderRow(row: PropertyRowView): string {
       : `<span class="admin-price-note">${escapeHtml(row.price.note)}</span>`
   }`;
 
+  /*
+   * El enlace va en el codigo y el titulo, no en la fila entera: asi es
+   * navegable con teclado y no hace falta `onclick` sobre un `<tr>`.
+   */
+  const href = editorPath(row.id);
+
   return `
     <tr>
-      <td data-label="Código"><span class="admin-code">${escapeHtml(row.code)}</span></td>
+      <td data-label="Código">
+        <a class="admin-code admin-row-link" href="${href}">${escapeHtml(row.code)}</a>
+      </td>
       <td data-label="Título">
-        <span class="${titleClass}">${escapeHtml(row.title.text)}</span>${langNote}
+        <a class="admin-row-link" href="${href}">
+          <span class="${titleClass}">${escapeHtml(row.title.text)}</span>
+        </a>${langNote}
       </td>
       <td data-label="Tipo">${
         row.typeName === null
@@ -111,6 +122,8 @@ export function initPropertiesPage(): void {
   const count = document.querySelector('#admin-count') as HTMLElement | null;
   const form = document.querySelector('#admin-filters') as HTMLFormElement | null;
   const typeSelect = document.querySelector('#filter-type') as HTMLSelectElement | null;
+  const createButton = document.querySelector('#admin-create') as HTMLButtonElement | null;
+  const createError = document.querySelector('#admin-create-error') as HTMLElement | null;
 
   if (results === null || form === null) return;
 
@@ -270,6 +283,45 @@ export function initPropertiesPage(): void {
       applyFilters({ publicationStatus: null, commercialStatus: null, propertyTypeId: null });
     }
   });
+
+  /*
+   * Nueva propiedad: se crea el borrador vacio por la API y se entra al
+   * editor. El creador ignora las llamadas mientras hay una en vuelo, de modo
+   * que un doble clic no genera dos propiedades.
+   */
+  if (createButton !== null) {
+    const creator = createPropertyCreator();
+
+    createButton.addEventListener('click', () => {
+      void (async () => {
+        if (createError !== null) {
+          createError.hidden = true;
+          createError.textContent = '';
+        }
+
+        createButton.disabled = true;
+        const previousLabel = createButton.textContent;
+        createButton.textContent = 'Creando…';
+
+        const result = await creator.create();
+
+        if (result === null) return;
+
+        if (result.ok) {
+          window.location.href = editorPath(result.id);
+          return;
+        }
+
+        if (createError !== null) {
+          createError.textContent = result.message;
+          createError.hidden = false;
+        }
+
+        createButton.disabled = false;
+        createButton.textContent = previousLabel;
+      })();
+    });
+  }
 
   syncFormFromFilters();
   void loadTypes().then(load);

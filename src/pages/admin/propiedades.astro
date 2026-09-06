@@ -45,7 +45,16 @@ export const prerender = false;
     </div>
   </form>
 
-  <p class="admin-count" id="admin-count" aria-live="polite"></p>
+  <div class="admin-listing-bar">
+    <p class="admin-count" id="admin-count" aria-live="polite"></p>
+
+    <div class="admin-create">
+      <button type="button" class="admin-button admin-button-primary" id="admin-create">
+        Nueva propiedad
+      </button>
+      <p class="editor-error" id="admin-create-error" role="alert" hidden></p>
+    </div>
+  </div>
 
   <div class="admin-panel">
     <div id="admin-results" aria-busy="false">

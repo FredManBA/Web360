@@ -1,0 +1,102 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { COMMERCIAL_STATUSES } from '../../../lib/domain/vocabularies';
+import { COMMERCIAL_STATUS_LABELS } from '../../../lib/admin/ui/labels';
+
+export const prerender = false;
+
+const { id } = Astro.params;
+
+/*
+ * El shell se renderiza en el servidor; la propiedad la carga el navegador
+ * contra `/api/admin/properties/:id`, para no saltarse la capa HTTP.
+ */
+---
+
+<AdminLayout title="Editar propiedad">
+  <p class="editor-back">
+    <a href="/admin/propiedades">← Propiedades</a>
+  </p>
+
+  <div id="admin-editor" data-property-id={id}>
+    <div id="editor-state" aria-live="polite">
+      <div class="admin-state"><p>Cargando propiedad…</p></div>
+    </div>
+
+    <div class="editor-header admin-panel" id="editor-header"></div>
+
+    <form id="editor-form" class="editor-form admin-panel" hidden>
+      <h2>Información básica</h2>
+
+      <div class="admin-field">
+        <label for="field-code">Código</label>
+        <input
+          type="text"
+          id="field-code"
+          name="code"
+          maxlength="64"
+          required
+          aria-describedby="field-code-help field-code-error"
+          aria-invalid="false"
+        />
+        <p class="editor-help" id="field-code-help">
+          Se genera automáticamente, pero puedes modificarlo.
+        </p>
+        <p class="editor-error" id="field-code-error" hidden></p>
+      </div>
+
+      <div class="admin-field">
+        <label for="field-type">Tipo de propiedad</label>
+        <select id="field-type" name="propertyTypeId">
+          <option value="">Sin tipo</option>
+        </select>
+      </div>
+
+      <div class="admin-field">
+        <label for="field-commercial">Estado comercial</label>
+        <select id="field-commercial" name="commercialStatus">
+          {
+            COMMERCIAL_STATUSES.map((status) => (
+              <option value={status}>{COMMERCIAL_STATUS_LABELS[status]}</option>
+            ))
+          }
+        </select>
+      </div>
+
+      <div class="editor-check">
+        <input type="checkbox" id="field-featured" name="isFeatured" />
+        <label for="field-featured">Mostrar como propiedad destacada</label>
+      </div>
+
+      <div class="editor-check">
+        <input
+          type="checkbox"
+          id="field-show-when-sold"
+          name="showWhenSold"
+          aria-describedby="field-show-when-sold-help"
+        />
+        <label for="field-show-when-sold">Mantener visible cuando esté vendida</label>
+        <p class="editor-help" id="field-show-when-sold-help">
+          Si se desactiva, una propiedad vendida no aparecerá públicamente.
+        </p>
+      </div>
+
+      <p class="editor-error" id="editor-form-error" role="alert" hidden></p>
+
+      <div class="editor-actions">
+        <button type="submit" class="admin-button admin-button-primary" id="editor-save">
+          Guardar cambios
+        </button>
+        <p class="editor-save-status" id="editor-save-status" role="status" data-state="saved">
+          Guardado
+        </p>
+      </div>
+    </form>
+  </div>
+</AdminLayout>
+
+<script>
+  import { initEditorPage } from '../../../lib/admin/ui/editor-page';
+
+  initEditorPage();
+</script>

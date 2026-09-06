@@ -506,3 +506,186 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/* Listado: barra superior                                                    */
+/* -------------------------------------------------------------------------- */
+
+.admin-listing-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+
+.admin-listing-bar .admin-count {
+  margin: 0.4rem 0 0;
+}
+
+.admin-create {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.35rem;
+}
+
+/* Enlace de fila: se ve como enlace, sin convertir el <tr> en clicable. */
+.admin-row-link {
+  color: var(--admin-green);
+  text-decoration: none;
+}
+
+.admin-row-link:hover {
+  text-decoration: underline;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Editor                                                                     */
+/* -------------------------------------------------------------------------- */
+
+.editor-back {
+  margin: 0 0 var(--space-md);
+}
+
+.editor-back a {
+  color: var(--admin-green);
+  text-decoration: none;
+}
+
+.editor-back a:hover {
+  text-decoration: underline;
+}
+
+.editor-header {
+  padding: var(--space-md);
+  margin-bottom: var(--space-md);
+}
+
+.editor-header:empty {
+  display: none;
+}
+
+.editor-header p {
+  margin: 0;
+}
+
+.editor-title {
+  margin-top: 0.2rem !important;
+  font-size: 1.15rem;
+}
+
+.editor-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: var(--space-sm) !important;
+}
+
+.editor-form {
+  /* Formulario comodo pero no excesivamente ancho. */
+  max-width: 34rem;
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.editor-form h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.editor-form .admin-field {
+  min-width: 0;
+}
+
+.editor-form input[type='text'] {
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--admin-border-strong);
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  font: inherit;
+}
+
+.editor-form input[aria-invalid='true'] {
+  border-color: var(--admin-danger);
+  /* El error no se transmite solo por color: hay texto asociado debajo. */
+  border-width: 2px;
+}
+
+.editor-help {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--admin-text-soft);
+}
+
+.editor-error {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--admin-danger);
+}
+
+.editor-check {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.editor-check input {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.editor-check .editor-help {
+  grid-column: 2;
+}
+
+.editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-md);
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--admin-border);
+}
+
+.editor-save-status {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--admin-text-soft);
+}
+
+.editor-save-status[data-state='dirty'] {
+  color: var(--admin-accent);
+  font-weight: 600;
+}
+
+.editor-save-status[data-state='error'] {
+  color: var(--admin-danger);
+  font-weight: 600;
+}
+
+@media (max-width: 60rem) {
+  .admin-listing-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-create {
+    align-items: stretch;
+  }
+
+  .editor-form {
+    max-width: none;
+  }
+
+  .editor-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

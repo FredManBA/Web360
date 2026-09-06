@@ -486,14 +486,21 @@ describe('layout administrativo', () => {
     expect(page.match(/<option value="">Todos<\/option>/g)).toHaveLength(3);
   });
 
-  it('no hay acciones de fila que lleven a pantallas inexistentes', () => {
+  it('la fila abre el editor mediante enlaces, no con onclick', () => {
     const script = readFileSync(
       path.resolve(process.cwd(), 'src/lib/admin/ui/properties-page.ts'),
       'utf8',
     );
 
-    expect(script).not.toContain('Editar');
-    expect(script).not.toContain('Nueva propiedad');
-    expect(script).not.toContain('/admin/propiedades/');
+    // Codigo y titulo son enlaces reales, navegables con teclado.
+    expect(script).toContain('admin-row-link');
+    expect(script).toContain('editorPath(row.id)');
+
+    // La fila entera no es clicable.
+    expect(script).not.toContain('<tr onclick');
+    expect(script).not.toContain('<tr class="admin-row-clickable"');
+
+    // Sigue sin haber botones repetidos por fila.
+    expect(script).not.toContain('>Editar<');
   });
 });
