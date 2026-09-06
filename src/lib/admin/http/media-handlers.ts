@@ -15,7 +15,7 @@
 import { z } from 'zod';
 
 import { getPropertyMedia } from '../media/get-media';
-import { createMedia, setMediaRoles, updateMedia } from '../media/media';
+import { createMedia, loadMediaRow, setMediaRoles, updateMedia } from '../media/media';
 import { createMediaGroup, deleteMediaGroup, updateMediaGroup } from '../media/media-groups';
 import { deleteMediaWithObject, uploadMedia } from '../media/upload';
 import { MEDIA_KINDS, SOURCE_PROVIDERS } from '../../domain/vocabularies';
@@ -342,5 +342,64 @@ export function handleUploadMedia(ctx: AdminHttpContext): Promise<Response> {
       }),
       201,
     );
+  });
+}
+
+/* -------------------------------------------------------------------------- */
+/* GET /api/admin/properties/:id/media/:mediaId/file                          */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Sirve el objeto de R2 DENTRO del panel.
+ *
+ * Existe porque el bucket no tiene URL publica y el editor 360 necesita
+ * cargar el panorama en el visor. Es deliberadamente estrecho:
+ *
+ * - pasa por el mismo guardia que el resto del admin, asi que fuera de una
+ *   sesion valida devuelve 403 como todo lo demas;
+ * - la clave NO viaja en la peticion: se lee de la fila, que ya se ha
+ *   comprobado que pertenece a esta propiedad. No hay forma de pedir un
+ *   objeto arbitrario del bucket;
+ * - `no-store`, igual que el resto del panel: son archivos de fichas que
+ *   todavia pueden ser borradores.
+ *
+ * No es un CDN ni pretende serlo: la entrega publica se resolvera cuando haya
+ * estrategia de publicacion.
+ */
+export function handleGetMediaFile(ctx: AdminHttpContext): Promise<Response> {
+  return handle(ctx, async () => {
+    const propertyId = parseRouteId(ctx.params.id);
+    if (propertyId === null) return invalidId('id');
+
+    const mediaId = parseRouteId(ctx.params.mediaId);
+    if (mediaId === null) return invalidId('mediaId');
+
+    const found = await loadMediaRow(ctx.db, propertyId, mediaId);
+    if (!found.ok) return jsonFromResult(found);
+
+    const { objectKey, mimeType } = found.data;
+
+    // Un video de YouTube no tiene objeto que servir.
+    if (objectKey === null) {
+      return jsonError('media_not_found', 'Este archivo no tiene copia almacenada.', 404, {
+        field: 'mediaId',
+      });
+    }
+
+    const object = await ctx.bucket.get(objectKey);
+
+    if (object === null || object.body === null) {
+      return jsonError('media_not_found', 'El archivo ya no está almacenado.', 404, {
+        field: 'mediaId',
+      });
+    }
+
+    return new Response(object.body, {
+      headers: {
+        'content-type': object.httpMetadata?.contentType ?? mimeType ?? 'application/octet-stream',
+        'content-length': String(object.size),
+        'cache-control': 'no-store',
+      },
+    });
   });
 }

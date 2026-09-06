@@ -13,9 +13,18 @@ export interface MediaObjectOptions {
   customMetadata?: Record<string, string>;
 }
 
+/** Lo que devuelve `get`: los bytes mas lo justo para servirlos. */
+export interface FetchedObject {
+  body: ReadableStream | null;
+  httpMetadata?: { contentType?: string } | undefined;
+  size: number;
+}
+
 export interface MediaBucket {
   put: (key: string, value: ArrayBuffer, options?: MediaObjectOptions) => Promise<unknown>;
   delete: (key: string) => Promise<void>;
+  /** `null` cuando el objeto no esta. */
+  get: (key: string) => Promise<FetchedObject | null>;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -84,6 +93,17 @@ export function createMemoryBucket(): MemoryBucket {
 
       objects.delete(key);
       return Promise.resolve();
+    },
+
+    get(key) {
+      const stored = objects.get(key);
+      if (stored === undefined) return Promise.resolve(null);
+
+      return Promise.resolve({
+        body: new Blob([stored.bytes as unknown as BlobPart]).stream(),
+        httpMetadata: { contentType: stored.contentType },
+        size: stored.bytes.byteLength,
+      });
     },
   };
 }

@@ -1219,3 +1219,207 @@
     align-items: stretch;
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/* Recorrido 360                                                              */
+/* -------------------------------------------------------------------------- */
+
+.editor-tour {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  margin-top: var(--space-md);
+}
+
+.editor-tour h2 {
+  margin: 0;
+}
+
+/* Escritorio: lista al lado del visor. Movil: lista arriba, visor debajo. */
+.tour-layout {
+  display: grid;
+  grid-template-columns: minmax(14rem, 20rem) minmax(0, 1fr);
+  gap: var(--space-md);
+  align-items: start;
+}
+
+.tour-side,
+.tour-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  min-width: 0;
+}
+
+.tour-node-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tour-node-item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  align-items: baseline;
+  width: 100%;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.tour-node-item:hover {
+  background: var(--admin-surface-muted);
+}
+
+.tour-node-item[data-selected='true'] {
+  border-color: var(--admin-green);
+  background: var(--admin-green-tint);
+}
+
+.tour-node-name {
+  flex: 1 1 8rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.tour-node-links {
+  color: var(--admin-text-soft);
+  font-size: 0.85rem;
+}
+
+.tour-badge-start {
+  border-color: var(--admin-green);
+  background: var(--admin-green-tint);
+  color: var(--admin-green);
+}
+
+.tour-add {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius);
+  background: var(--admin-surface-muted);
+}
+
+/*
+ * Alto fijo: el visor necesita un contenedor con medidas, y sin ellas Photo
+ * Sphere Viewer no llega a dibujar nada.
+ */
+.tour-viewer {
+  width: 100%;
+  height: min(60vh, 30rem);
+  border-radius: var(--admin-radius);
+  background: var(--admin-surface-muted);
+  overflow: hidden;
+}
+
+.tour-detail,
+.tour-link {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius);
+  background: var(--admin-surface);
+}
+
+.tour-detail h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.tour-detail h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--admin-text-soft);
+}
+
+.tour-links {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.tour-link-target {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.tour-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-sm) var(--space-md);
+}
+
+.tour-grid input[type='text'],
+.tour-grid input[type='number'],
+.tour-grid select {
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--admin-border-strong);
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  font: inherit;
+}
+
+.tour-grid input[aria-invalid='true'] {
+  border-color: var(--admin-danger);
+  border-width: 2px;
+}
+
+.tour-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  align-items: center;
+}
+
+.tour-status-box {
+  margin-left: auto;
+}
+
+/* Marca del salto dentro del panorama. */
+.tour-hotspot {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 3px solid #ffffff;
+  border-radius: 50%;
+  background: rgb(31 64 52 / 75%);
+  box-shadow: 0 0 0 2px rgb(31 64 52 / 45%);
+}
+
+@media (max-width: 60rem) {
+  .tour-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .tour-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .tour-status-box {
+    margin-left: 0;
+  }
+
+  .tour-actions {
+    align-items: stretch;
+  }
+
+  .tour-viewer {
+    height: min(50vh, 22rem);
+  }
+}

@@ -29,6 +29,8 @@
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.3.0",
+    "@photo-sphere-viewer/core": "^5.15.1",
+    "@photo-sphere-viewer/markers-plugin": "^5.15.1",
     "astro": "^7.3.1",
     "drizzle-orm": "^0.45.2",
     "jose": "^6.2.12",

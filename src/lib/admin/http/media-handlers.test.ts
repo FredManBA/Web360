@@ -5,6 +5,8 @@
  * repiten los tests de dominio: aqui se comprueba la adaptacion HTTP.
  */
 
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -17,6 +19,7 @@ import { SAMPLE_JPEG, SAMPLE_PDF, toArrayBuffer } from '../media/test-files';
 import type { AdminHttpContext } from './handlers';
 import {
   handleCreateMedia,
+  handleGetMediaFile,
   handleUploadMedia,
   handleCreateMediaGroup,
   handleDeleteMedia,
@@ -679,5 +682,125 @@ describe('subida de archivos', () => {
     const body = (await removed.json()) as { data: { objectRemoved: boolean } };
     expect(body.data.objectRemoved).toBe(true);
     expect(bucket.objects.size).toBe(0);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Previsualizacion dentro del panel                                          */
+/* -------------------------------------------------------------------------- */
+
+describe('servir un archivo de R2 en el panel', () => {
+  it('devuelve los bytes con su tipo y sin cachear', async () => {
+    const id = await newProperty();
+
+    const created = await handleUploadMedia(
+      ctx(uploadRequest(id, sampleFile(SAMPLE_JPEG)), { id }),
+    );
+    const mediaId = String(await idOf(created));
+
+    const response = await handleGetMediaFile(ctx(jsonRequest('GET'), { id, mediaId }));
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toBe('image/jpeg');
+    expect(response.headers.get('cache-control')).toBe('no-store');
+
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    expect(bytes.byteLength).toBe(SAMPLE_JPEG.byteLength);
+  });
+
+  it('sin acceso administrativo responde 403, no el archivo', async () => {
+    const id = await newProperty();
+
+    const created = await handleUploadMedia(
+      ctx(uploadRequest(id, sampleFile(SAMPLE_JPEG)), { id }),
+    );
+    const mediaId = String(await idOf(created));
+
+    const response = await handleGetMediaFile(ctx(jsonRequest('GET'), { id, mediaId }, false));
+
+    expect(response.status).toBe(403);
+    expect(response.headers.get('content-type')).toContain('application/json');
+  });
+
+  it('un archivo de otra propiedad no se sirve', async () => {
+    const first = await newProperty();
+    const second = await newProperty();
+
+    const created = await handleUploadMedia(
+      ctx(uploadRequest(second, sampleFile(SAMPLE_JPEG)), { id: second }),
+    );
+    const mediaId = String(await idOf(created));
+
+    // Mismo archivo, pero pedido desde la propiedad equivocada.
+    const response = await handleGetMediaFile(ctx(jsonRequest('GET'), { id: first, mediaId }));
+
+    expect(response.status).toBe(404);
+    expect(await errorCode(response)).toBe('media_not_found');
+  });
+
+  it('un archivo inexistente devuelve 404', async () => {
+    const id = await newProperty();
+
+    const response = await handleGetMediaFile(ctx(jsonRequest('GET'), { id, mediaId: '9999' }));
+
+    expect(response.status).toBe(404);
+  });
+
+  it('un video de YouTube no tiene archivo que servir', async () => {
+    const id = await newProperty();
+
+    const created = await handleCreateMedia(
+      ctx(
+        jsonRequest('POST', {
+          mediaKind: 'video',
+          sourceProvider: 'youtube',
+          youtubeVideoId: 'dQw4w9WgXcQ',
+        }),
+        { id },
+      ),
+    );
+    const mediaId = String(await idOf(created));
+
+    const response = await handleGetMediaFile(ctx(jsonRequest('GET'), { id, mediaId }));
+
+    expect(response.status).toBe(404);
+    expect(await errorCode(response)).toBe('media_not_found');
+  });
+
+  it('si el objeto ya no esta en R2, se dice, no se sirve vacio', async () => {
+    const id = await newProperty();
+
+    const created = await handleUploadMedia(
+      ctx(uploadRequest(id, sampleFile(SAMPLE_JPEG)), { id }),
+    );
+    const mediaId = String(await idOf(created));
+
+    // Se borra el objeto por detras, dejando la fila apuntando a nada.
+    bucket.objects.clear();
+
+    const response = await handleGetMediaFile(ctx(jsonRequest('GET'), { id, mediaId }));
+
+    expect(response.status).toBe(404);
+    expect(await errorCode(response)).toBe('media_not_found');
+  });
+
+  it('la clave no viaja en la peticion: sale de la fila', async () => {
+    const source = readFileSync(
+      path.resolve(process.cwd(), 'src/lib/admin/http/media-handlers.ts'),
+      'utf8',
+    );
+
+    // El handler solo lee ids de ruta; nunca una clave del cliente.
+    expect(source).toContain('const { objectKey, mimeType } = found.data;');
+    expect(source).not.toContain('params.objectKey');
+    expect(source).not.toContain('searchParams.get');
+  });
+
+  it('un identificador de ruta invalido se rechaza con 422', async () => {
+    const id = await newProperty();
+
+    const response = await handleGetMediaFile(ctx(jsonRequest('GET'), { id, mediaId: '0' }));
+
+    expect(response.status).toBe(422);
   });
 });
