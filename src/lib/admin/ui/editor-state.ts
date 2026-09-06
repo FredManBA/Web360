@@ -10,44 +10,66 @@
  */
 
 import { validatePropertyCode } from '../properties/codes';
-import type { CommercialStatus } from '../../domain/vocabularies';
+import type { CommercialStatus, LocationPrecision, PriceMode } from '../../domain/vocabularies';
 
-/** Los unicos campos que esta subfase edita. */
-export interface BasicFields {
+/** Campos que el editor sabe editar hoy. */
+export interface EditorFields {
   code: string;
   propertyTypeId: number | null;
   commercialStatus: CommercialStatus;
   isFeatured: boolean;
   showWhenSold: boolean;
+
+  priceMode: PriceMode;
+  priceAmountMinor: number | null;
+  currencyCode: string | null;
+
+  areaSquareMeters: number | null;
+
+  province: string | null;
+  canton: string | null;
+  district: string | null;
+  locality: string | null;
+
+  privateLatitude: number | null;
+  privateLongitude: number | null;
+  publicLatitude: number | null;
+  publicLongitude: number | null;
+  locationPrecision: LocationPrecision;
 }
 
-export interface PropertyPayload {
-  id: number;
-  code: string;
-  propertyTypeId: number | null;
-  commercialStatus: CommercialStatus;
-  isFeatured: boolean;
-  showWhenSold: boolean;
+export type PropertyPayload = EditorFields & { id: number };
+
+/** Orden en que se comparan y se envian los campos. */
+const EDITOR_FIELD_KEYS = [
+  'code',
+  'propertyTypeId',
+  'commercialStatus',
+  'isFeatured',
+  'showWhenSold',
+  'priceMode',
+  'priceAmountMinor',
+  'currencyCode',
+  'areaSquareMeters',
+  'province',
+  'canton',
+  'district',
+  'locality',
+  'privateLatitude',
+  'privateLongitude',
+  'publicLatitude',
+  'publicLongitude',
+  'locationPrecision',
+] as const satisfies readonly (keyof EditorFields)[];
+
+export function toEditorFields(property: PropertyPayload): EditorFields {
+  const fields = {} as Record<string, unknown>;
+  for (const key of EDITOR_FIELD_KEYS) fields[key] = property[key];
+  return fields as unknown as EditorFields;
 }
 
-export function toBasicFields(property: PropertyPayload): BasicFields {
-  return {
-    code: property.code,
-    propertyTypeId: property.propertyTypeId,
-    commercialStatus: property.commercialStatus,
-    isFeatured: property.isFeatured,
-    showWhenSold: property.showWhenSold,
-  };
-}
-
-export function isDirty(loaded: BasicFields, current: BasicFields): boolean {
-  return (
-    loaded.code !== current.code ||
-    loaded.propertyTypeId !== current.propertyTypeId ||
-    loaded.commercialStatus !== current.commercialStatus ||
-    loaded.isFeatured !== current.isFeatured ||
-    loaded.showWhenSold !== current.showWhenSold
-  );
+export function isDirty(loaded: EditorFields, current: EditorFields): boolean {
+  return EDITOR_FIELD_KEYS.some((key) => loaded[key] !== current[key]);
 }
 
 /**
@@ -56,18 +78,12 @@ export function isDirty(loaded: BasicFields, current: BasicFields): boolean {
  * Enviar un PATCH parcial evita, por ejemplo, que reenviar un codigo intacto
  * pueda chocar contra su propio UNIQUE.
  */
-export function buildPatch(loaded: BasicFields, current: BasicFields): Record<string, unknown> {
+export function buildPatch(loaded: EditorFields, current: EditorFields): Record<string, unknown> {
   const patch: Record<string, unknown> = {};
 
-  if (loaded.code !== current.code) patch.code = current.code;
-  if (loaded.propertyTypeId !== current.propertyTypeId) {
-    patch.propertyTypeId = current.propertyTypeId;
+  for (const key of EDITOR_FIELD_KEYS) {
+    if (loaded[key] !== current[key]) patch[key] = current[key];
   }
-  if (loaded.commercialStatus !== current.commercialStatus) {
-    patch.commercialStatus = current.commercialStatus;
-  }
-  if (loaded.isFeatured !== current.isFeatured) patch.isFeatured = current.isFeatured;
-  if (loaded.showWhenSold !== current.showWhenSold) patch.showWhenSold = current.showWhenSold;
 
   return patch;
 }

@@ -1,11 +1,22 @@
 /**
- * Editor de informacion basica en el navegador.
+ * Editor de propiedades en el navegador.
  *
- * Carga la propiedad por la API administrativa, permite editar los cinco
- * campos de esta subfase y los guarda con un PATCH parcial. Sin autosave, sin
- * estado global y sin router de cliente.
+ * Carga la propiedad por la API administrativa, permite editar informacion
+ * basica, precio, superficie y ubicacion, y lo guarda todo con un unico PATCH
+ * parcial. Sin autosave, sin estado global y sin router de cliente.
+ *
+ * Las reglas viven en `editor-form.ts` y `editor-state.ts`; aqui solo hay
+ * cableado de DOM.
  */
 
+import { bindingFor, FIELD_BINDINGS } from './editor-fields';
+import {
+  areaPreview,
+  fieldsToRaw,
+  parseEditorForm,
+  pricePreview,
+  type EditorFormRaw,
+} from './editor-form';
 import {
   buildPatch,
   isDirty,
@@ -14,15 +25,14 @@ import {
   resolveLoadState,
   saveStateLabel,
   shouldWarnBeforeUnload,
-  toBasicFields,
-  validateCodeLocally,
-  type BasicFields,
+  toEditorFields,
+  type EditorFields,
   type PropertyPayload,
   type SaveState,
 } from './editor-state';
 import { commercialStatusLabel, publicationStatusLabel } from './labels';
 import { resolveTitle, type PropertyTypePayload } from './property-row';
-import type { CommercialStatus, PublicationStatus } from '../../domain/vocabularies';
+import type { PublicationStatus } from '../../domain/vocabularies';
 
 interface EditorProperty extends PropertyPayload {
   publicationStatus: PublicationStatus;
@@ -46,44 +56,132 @@ function escapeHtml(value: string): string {
  * runtime de Workers definen su propio `Element` (el de HTMLRewriter) y
  * chocan con el del DOM.
  */
-function el<T extends object>(selector: string): T | null {
-  return document.querySelector(selector) as T | null;
+function byId<T extends object>(id: string): T | null {
+  return document.getElementById(id) as T | null;
+}
+
+function inputValue(id: string): string {
+  const element = byId<HTMLInputElement | HTMLSelectElement>(id);
+  return element === null ? '' : element.value;
+}
+
+function checkboxValue(id: string): boolean {
+  const element = byId<HTMLInputElement>(id);
+  return element === null ? false : element.checked;
 }
 
 export function initEditorPage(): void {
-  const root = el<HTMLElement>('#admin-editor');
+  const root = byId<HTMLElement>('admin-editor');
   if (root === null) return;
 
   const propertyId = Number(root.dataset.propertyId);
   if (!Number.isSafeInteger(propertyId) || propertyId <= 0) return;
 
-  const stateBox = el<HTMLElement>('#editor-state');
-  const form = el<HTMLFormElement>('#editor-form');
-  const headerBox = el<HTMLElement>('#editor-header');
-  const saveStatus = el<HTMLElement>('#editor-save-status');
-  const saveButton = el<HTMLButtonElement>('#editor-save');
+  const stateBox = byId<HTMLElement>('editor-state');
+  const form = byId<HTMLFormElement>('editor-form');
+  const headerBox = byId<HTMLElement>('editor-header');
+  const saveStatus = byId<HTMLElement>('editor-save-status');
+  const saveButton = byId<HTMLButtonElement>('editor-save');
+  const formError = byId<HTMLElement>('editor-form-error');
 
-  const codeInput = el<HTMLInputElement>('#field-code');
-  const codeError = el<HTMLElement>('#field-code-error');
-  const typeSelect = el<HTMLSelectElement>('#field-type');
-  const commercialSelect = el<HTMLSelectElement>('#field-commercial');
-  const featuredInput = el<HTMLInputElement>('#field-featured');
-  const showWhenSoldInput = el<HTMLInputElement>('#field-show-when-sold');
-  const formError = el<HTMLElement>('#editor-form-error');
+  const pricePreviewBox = byId<HTMLElement>('field-price-amount-preview');
+  const areaPreviewBox = byId<HTMLElement>('field-area-preview');
+  const precisionNote = byId<HTMLElement>('field-precision-note');
+  const priceRow = byId<HTMLElement>('price-amount-row');
 
   if (form === null || stateBox === null) return;
 
-  let loaded: BasicFields | null = null;
+  let loaded: EditorFields | null = null;
   let saveState: SaveState = 'saved';
+  /** Traducciones de la ultima carga, para repintar la cabecera al guardar. */
+  let translations: TranslationPayload[] = [];
 
-  const readForm = (): BasicFields => ({
-    code: codeInput?.value ?? '',
-    propertyTypeId:
-      typeSelect === null || typeSelect.value === '' ? null : Number(typeSelect.value),
-    commercialStatus: (commercialSelect?.value ?? 'available') as CommercialStatus,
-    isFeatured: featuredInput?.checked ?? false,
-    showWhenSold: showWhenSoldInput?.checked ?? false,
+  const readRaw = (): EditorFormRaw => ({
+    code: inputValue('field-code'),
+    propertyTypeId: inputValue('field-type'),
+    commercialStatus: inputValue('field-commercial'),
+    isFeatured: checkboxValue('field-featured'),
+    showWhenSold: checkboxValue('field-show-when-sold'),
+
+    priceMode: inputValue('field-price-mode'),
+    priceAmount: inputValue('field-price-amount'),
+    currencyCode: inputValue('field-currency'),
+
+    areaSquareMeters: inputValue('field-area'),
+
+    province: inputValue('field-province'),
+    canton: inputValue('field-canton'),
+    district: inputValue('field-district'),
+    locality: inputValue('field-locality'),
+
+    privateLatitude: inputValue('field-private-lat'),
+    privateLongitude: inputValue('field-private-lng'),
+    publicLatitude: inputValue('field-public-lat'),
+    publicLongitude: inputValue('field-public-lng'),
+    locationPrecision: inputValue('field-precision'),
   });
+
+  const writeRaw = (raw: EditorFormRaw): void => {
+    for (const [field, value] of Object.entries(raw)) {
+      const binding = bindingFor(field);
+      if (binding === undefined || binding === null) continue;
+
+      const element = byId<HTMLInputElement | HTMLSelectElement>(binding.input);
+      if (element === null) continue;
+
+      if (typeof value === 'boolean') {
+        (element as HTMLInputElement).checked = value;
+      } else {
+        element.value = value;
+      }
+    }
+  };
+
+  const clearErrors = (): void => {
+    for (const binding of Object.values(FIELD_BINDINGS)) {
+      if (binding.error === undefined) continue;
+
+      const box = byId<HTMLElement>(binding.error);
+      if (box !== null) {
+        box.textContent = '';
+        box.hidden = true;
+      }
+
+      const input = byId<HTMLElement>(binding.input);
+      input?.setAttribute('aria-invalid', 'false');
+    }
+
+    if (formError !== null) {
+      formError.textContent = '';
+      formError.hidden = true;
+    }
+  };
+
+  /** Asocia el error a su campo, o lo deja como error general si no hay uno. */
+  const showFieldError = (field: string | null, message: string): void => {
+    const binding = field === null ? null : bindingFor(field);
+
+    if (binding?.error !== undefined) {
+      const box = byId<HTMLElement>(binding.error);
+      if (box !== null) {
+        box.textContent = message;
+        box.hidden = false;
+      }
+      byId<HTMLElement>(binding.input)?.setAttribute('aria-invalid', 'true');
+      return;
+    }
+
+    if (formError !== null) {
+      formError.textContent = message;
+      formError.hidden = false;
+    }
+  };
+
+  const focusField = (field: string | null): void => {
+    const binding = field === null ? null : bindingFor(field);
+    if (binding === null) return;
+    byId<HTMLElement & { focus: () => void }>(binding.input)?.focus();
+  };
 
   const setSaveState = (next: SaveState): void => {
     saveState = next;
@@ -94,23 +192,51 @@ export function initEditorPage(): void {
     if (saveButton !== null) saveButton.disabled = next === 'saving';
   };
 
-  const setCodeError = (message: string | null): void => {
-    if (codeInput === null || codeError === null) return;
+  /**
+   * Refresca lo que depende del modo de precio y de la precision.
+   *
+   * En modo "Consultar" el importe se DESACTIVA, no se borra: cambiar el
+   * selector no debe hacer desaparecer un dato que el usuario todavia no ha
+   * guardado.
+   */
+  const refreshConditionalUi = (): void => {
+    const mode = inputValue('field-price-mode');
+    const needsAmount = mode === 'exact' || mode === 'negotiable';
 
-    codeError.textContent = message ?? '';
-    codeError.hidden = message === null;
-    codeInput.setAttribute('aria-invalid', message === null ? 'false' : 'true');
-  };
+    const amountInput = byId<HTMLInputElement>('field-price-amount');
+    const currencySelect = byId<HTMLSelectElement>('field-currency');
 
-  const setFormError = (message: string | null): void => {
-    if (formError === null) return;
-    formError.textContent = message ?? '';
-    formError.hidden = message === null;
+    if (amountInput !== null) amountInput.disabled = !needsAmount;
+    if (currencySelect !== null) currencySelect.disabled = !needsAmount;
+    if (priceRow !== null) priceRow.dataset.disabled = String(!needsAmount);
+
+    if (pricePreviewBox !== null) {
+      pricePreviewBox.textContent =
+        pricePreview(inputValue('field-price-amount'), inputValue('field-currency')) ?? '';
+    }
+
+    if (areaPreviewBox !== null) {
+      areaPreviewBox.textContent = areaPreview(inputValue('field-area')) ?? '';
+    }
+
+    if (precisionNote !== null) {
+      precisionNote.hidden = inputValue('field-precision') !== 'approximate';
+    }
   };
 
   const refreshDirty = (): void => {
+    refreshConditionalUi();
     if (loaded === null || saveState === 'saving') return;
-    setSaveState(isDirty(loaded, readForm()) ? 'dirty' : 'saved');
+
+    const parsed = parseEditorForm(readRaw());
+
+    // Con el formulario a medio corregir, se sigue considerando "sin guardar".
+    if (!parsed.ok) {
+      setSaveState('dirty');
+      return;
+    }
+
+    setSaveState(isDirty(loaded, parsed.fields) ? 'dirty' : 'saved');
   };
 
   const renderHeader = (property: EditorProperty, translations: TranslationPayload[]): void => {
@@ -141,6 +267,7 @@ export function initEditorPage(): void {
   };
 
   const fillTypes = (types: PropertyTypePayload[], selected: number | null): void => {
+    const typeSelect = byId<HTMLSelectElement>('field-type');
     if (typeSelect === null) return;
 
     const options = types.map((type) => {
@@ -210,36 +337,35 @@ export function initEditorPage(): void {
     stateBox.hidden = true;
     form.hidden = false;
 
-    renderHeader(property, payload.translations ?? []);
+    translations = payload.translations ?? [];
+    renderHeader(property, translations);
+
+    loaded = toEditorFields(property);
+    writeRaw(fieldsToRaw(loaded));
+    // El select de tipos se rellena despues, para conservar la seleccion.
     fillTypes(types, property.propertyTypeId);
 
-    if (codeInput !== null) codeInput.value = property.code;
-    if (commercialSelect !== null) commercialSelect.value = property.commercialStatus;
-    if (featuredInput !== null) featuredInput.checked = property.isFeatured;
-    if (showWhenSoldInput !== null) showWhenSoldInput.checked = property.showWhenSold;
-
-    loaded = toBasicFields(property);
+    clearErrors();
+    refreshConditionalUi();
     setSaveState('saved');
   };
 
   const save = async (): Promise<void> => {
     if (loaded === null || saveState === 'saving') return;
 
-    setCodeError(null);
-    setFormError(null);
+    clearErrors();
 
-    const current = readForm();
+    const parsed = parseEditorForm(readRaw());
 
-    // Comprobacion local previa; la API sigue siendo la autoridad.
-    const codeProblem = validateCodeLocally(current.code);
-    if (codeProblem !== null) {
-      setCodeError(codeProblem);
+    // Si la validacion local falla, no se llega a enviar el PATCH.
+    if (!parsed.ok) {
+      for (const error of parsed.errors) showFieldError(error.field, error.message);
+      focusField(parsed.errors[0]?.field ?? null);
       setSaveState('error');
-      codeInput?.focus();
       return;
     }
 
-    const patch = buildPatch(loaded, current);
+    const patch = buildPatch(loaded, parsed.fields);
     if (Object.keys(patch).length === 0) {
       setSaveState('saved');
       return;
@@ -263,12 +389,8 @@ export function initEditorPage(): void {
         }
 
         const error = mapSaveError(response.status, body);
-        if (error.field === 'code') {
-          setCodeError(error.message);
-          codeInput?.focus();
-        } else {
-          setFormError(error.message);
-        }
+        showFieldError(error.field, error.message);
+        focusField(error.field);
 
         // Los cambios locales se conservan para no perder el trabajo.
         setSaveState('error');
@@ -277,15 +399,17 @@ export function initEditorPage(): void {
 
       const body = (await response.json()) as { data?: EditorProperty };
       if (body.data !== undefined) {
-        loaded = toBasicFields(body.data);
-        if (codeInput !== null) codeInput.value = body.data.code;
+        loaded = toEditorFields(body.data);
+        writeRaw(fieldsToRaw(loaded));
+        renderHeader(body.data, translations);
       } else {
-        loaded = current;
+        loaded = parsed.fields;
       }
 
+      refreshConditionalUi();
       setSaveState('saved');
     } catch {
-      setFormError('No pudimos guardar los cambios.');
+      showFieldError(null, 'No pudimos guardar los cambios.');
       setSaveState('error');
     }
   };

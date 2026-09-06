@@ -20,9 +20,9 @@ import {
   resolveLoadState,
   saveStateLabel,
   shouldWarnBeforeUnload,
-  toBasicFields,
+  toEditorFields,
   validateCodeLocally,
-  type BasicFields,
+  type EditorFields,
 } from './editor-state';
 import { commercialStatusLabel } from './labels';
 
@@ -34,13 +34,26 @@ const EDITOR_PAGE = 'src/pages/admin/propiedades/[id].astro';
 const LISTING_PAGE = 'src/pages/admin/propiedades.astro';
 const LISTING_SCRIPT = 'src/lib/admin/ui/properties-page.ts';
 
-function fields(overrides: Partial<BasicFields> = {}): BasicFields {
+function fields(overrides: Partial<EditorFields> = {}): EditorFields {
   return {
     code: 'LOBA-001',
     propertyTypeId: 1,
     commercialStatus: 'available',
     isFeatured: false,
     showWhenSold: false,
+    priceMode: 'contact',
+    priceAmountMinor: null,
+    currencyCode: null,
+    areaSquareMeters: null,
+    province: null,
+    canton: null,
+    district: null,
+    locality: null,
+    privateLatitude: null,
+    privateLongitude: null,
+    publicLatitude: null,
+    publicLongitude: null,
+    locationPrecision: 'approximate',
     ...overrides,
   };
 }
@@ -341,24 +354,17 @@ describe('cambios pendientes', () => {
     expect(patch).not.toHaveProperty('code');
   });
 
-  it('toBasicFields toma solo los cinco campos de esta subfase', () => {
-    const basic = toBasicFields({
-      id: 4,
-      code: 'LOBA-004',
-      propertyTypeId: 2,
-      commercialStatus: 'reserved',
-      isFeatured: true,
-      showWhenSold: true,
-    });
+  it('toEditorFields toma los campos editables y descarta el id', () => {
+    const editable = toEditorFields({ id: 4, ...fields({ code: 'LOBA-004' }) });
 
-    expect(Object.keys(basic).sort()).toEqual([
-      'code',
-      'commercialStatus',
-      'isFeatured',
-      'propertyTypeId',
-      'showWhenSold',
-    ]);
-    expect(basic).not.toHaveProperty('id');
+    expect(editable).not.toHaveProperty('id');
+    expect(editable.code).toBe('LOBA-004');
+
+    // Los cinco de la subfase anterior mas precio, superficie y ubicacion.
+    expect(Object.keys(editable)).toHaveLength(18);
+    for (const key of ['code', 'priceMode', 'areaSquareMeters', 'publicLatitude']) {
+      expect(editable).toHaveProperty(key);
+    }
   });
 });
 
@@ -480,7 +486,9 @@ describe('accesibilidad del editor', () => {
 
   it('el error de codigo se marca al fallar', () => {
     const script = read('src/lib/admin/ui/editor-page.ts');
-    expect(script).toContain("codeInput.setAttribute('aria-invalid'");
+    // El marcado es generico: sirve para cualquier campo con error asociado.
+    expect(script).toContain("setAttribute('aria-invalid', 'true')");
+    expect(script).toContain("setAttribute('aria-invalid', 'false')");
   });
 
   it('el estado de guardado se anuncia', () => {

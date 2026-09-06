@@ -2,6 +2,19 @@
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import { COMMERCIAL_STATUSES } from '../../../lib/domain/vocabularies';
 import { COMMERCIAL_STATUS_LABELS } from '../../../lib/admin/ui/labels';
+import { SUPPORTED_CURRENCY_CODES } from '../../../lib/domain/money';
+
+/** Etiquetas humanas; los identificadores internos no se muestran. */
+const PRICE_MODE_OPTIONS = [
+  { value: 'exact', label: 'Precio exacto' },
+  { value: 'negotiable', label: 'Negociable' },
+  { value: 'contact', label: 'Consultar' },
+] as const;
+
+const PRECISION_OPTIONS = [
+  { value: 'exact', label: 'Exacta' },
+  { value: 'approximate', label: 'Aproximada' },
+] as const;
 
 export const prerender = false;
 
@@ -80,6 +93,166 @@ const { id } = Astro.params;
           Si se desactiva, una propiedad vendida no aparecerá públicamente.
         </p>
       </div>
+
+      <h2>Precio y superficie</h2>
+
+      <div class="admin-field">
+        <label for="field-price-mode">Modo de precio</label>
+        <select id="field-price-mode" name="priceMode">
+          {PRICE_MODE_OPTIONS.map((option) => <option value={option.value}>{option.label}</option>)}
+        </select>
+      </div>
+
+      <div class="editor-row" id="price-amount-row">
+        <div class="admin-field">
+          <label for="field-price-amount">Precio</label>
+          <input
+            type="text"
+            inputmode="decimal"
+            id="field-price-amount"
+            name="priceAmount"
+            aria-describedby="field-price-amount-preview field-price-amount-error"
+            aria-invalid="false"
+          />
+          <p class="editor-help" id="field-price-amount-preview"></p>
+          <p class="editor-error" id="field-price-amount-error" hidden></p>
+        </div>
+
+        <div class="admin-field">
+          <label for="field-currency">Moneda</label>
+          <select
+            id="field-currency"
+            name="currencyCode"
+            aria-describedby="field-currency-error"
+            aria-invalid="false"
+          >
+            <option value="">Sin moneda</option>
+            {SUPPORTED_CURRENCY_CODES.map((code) => <option value={code}>{code}</option>)}
+          </select>
+          <p class="editor-error" id="field-currency-error" hidden></p>
+        </div>
+      </div>
+
+      <div class="admin-field">
+        <label for="field-area">Superficie (m²)</label>
+        <input
+          type="text"
+          inputmode="decimal"
+          id="field-area"
+          name="areaSquareMeters"
+          aria-describedby="field-area-preview field-area-error"
+          aria-invalid="false"
+        />
+        <p class="editor-help" id="field-area-preview"></p>
+        <p class="editor-error" id="field-area-error" hidden></p>
+      </div>
+
+      <h2>Ubicación</h2>
+
+      <div class="editor-row">
+        <div class="admin-field">
+          <label for="field-province">Provincia</label>
+          <input type="text" id="field-province" name="province" maxlength="120" />
+        </div>
+        <div class="admin-field">
+          <label for="field-canton">Cantón</label>
+          <input type="text" id="field-canton" name="canton" maxlength="120" />
+        </div>
+      </div>
+
+      <div class="editor-row">
+        <div class="admin-field">
+          <label for="field-district">Distrito</label>
+          <input type="text" id="field-district" name="district" maxlength="120" />
+        </div>
+        <div class="admin-field">
+          <label for="field-locality">Localidad</label>
+          <input type="text" id="field-locality" name="locality" maxlength="120" />
+        </div>
+      </div>
+
+      <fieldset class="editor-fieldset">
+        <legend>Coordenadas privadas</legend>
+        <p class="editor-help" id="private-coords-help">
+          Estas coordenadas son internas y nunca se usan como ubicación pública automáticamente.
+        </p>
+
+        <div class="editor-row">
+          <div class="admin-field">
+            <label for="field-private-lat">Latitud privada</label>
+            <input
+              type="text"
+              inputmode="decimal"
+              id="field-private-lat"
+              name="privateLatitude"
+              aria-describedby="private-coords-help field-private-lat-error"
+              aria-invalid="false"
+            />
+            <p class="editor-error" id="field-private-lat-error" hidden></p>
+          </div>
+          <div class="admin-field">
+            <label for="field-private-lng">Longitud privada</label>
+            <input
+              type="text"
+              inputmode="decimal"
+              id="field-private-lng"
+              name="privateLongitude"
+              aria-describedby="private-coords-help field-private-lng-error"
+              aria-invalid="false"
+            />
+            <p class="editor-error" id="field-private-lng-error" hidden></p>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="editor-fieldset">
+        <legend>Ubicación pública</legend>
+        <p class="editor-help" id="public-coords-help">
+          Las coordenadas privadas son internas. El sitio público utiliza únicamente las coordenadas
+          públicas.
+        </p>
+
+        <div class="admin-field">
+          <label for="field-precision">Precisión pública</label>
+          <select id="field-precision" name="locationPrecision">
+            {
+              PRECISION_OPTIONS.map((option) => (
+                <option value={option.value}>{option.label}</option>
+              ))
+            }
+          </select>
+          <p class="editor-help" id="field-precision-note" hidden>
+            Introduce manualmente la ubicación aproximada que podrá mostrarse públicamente.
+          </p>
+        </div>
+
+        <div class="editor-row">
+          <div class="admin-field">
+            <label for="field-public-lat">Latitud pública</label>
+            <input
+              type="text"
+              inputmode="decimal"
+              id="field-public-lat"
+              name="publicLatitude"
+              aria-describedby="public-coords-help field-public-lat-error"
+              aria-invalid="false"
+            />
+            <p class="editor-error" id="field-public-lat-error" hidden></p>
+          </div>
+          <div class="admin-field">
+            <label for="field-public-lng">Longitud pública</label>
+            <input
+              type="text"
+              inputmode="decimal"
+              id="field-public-lng"
+              name="publicLongitude"
+              aria-describedby="public-coords-help field-public-lng-error"
+              aria-invalid="false"
+            />
+            <p class="editor-error" id="field-public-lng-error" hidden></p>
+          </div>
+        </div>
+      </fieldset>
 
       <p class="editor-error" id="editor-form-error" role="alert" hidden></p>
 

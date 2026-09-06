@@ -689,3 +689,53 @@
     align-items: stretch;
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/* Editor: filas de dos columnas                                              */
+/* -------------------------------------------------------------------------- */
+
+.editor-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-md);
+  align-items: start;
+}
+
+/* Precio en modo "Consultar": los campos siguen visibles, solo desactivados. */
+.editor-row[data-disabled='true'] {
+  opacity: 0.6;
+}
+
+.editor-form input:disabled,
+.editor-form select:disabled {
+  background: var(--admin-surface-muted);
+  cursor: not-allowed;
+}
+
+.editor-fieldset {
+  margin: 0;
+  padding: var(--space-md);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.editor-fieldset legend {
+  padding: 0 0.4rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--admin-text);
+}
+
+.editor-form h2 + .admin-field,
+.editor-form h2 + .editor-row {
+  margin-top: -0.4rem;
+}
+
+@media (max-width: 60rem) {
+  .editor-row {
+    grid-template-columns: 1fr;
+  }
+}
