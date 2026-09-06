@@ -478,13 +478,33 @@ describe('el snapshot no contiene nada privado', () => {
     }
   });
 
-  it('no lleva claves de R2 ni identificadores de YouTube', async () => {
+  it('no lleva claves de R2, ni el nombre del objeto', async () => {
     const json = JSON.stringify(await fullSnapshot());
 
     expect(json).not.toContain('objectKey');
     expect(json).not.toContain('secreto.jpg');
-    expect(json).not.toContain('youtubeVideoId');
-    expect(json).not.toContain('dQw4w9WgXcQ');
+    expect(json).not.toContain('propiedades/1/panorama');
+  });
+
+  it('el identificador de YouTube si viaja: es publico por definicion', async () => {
+    const data = await fullSnapshot();
+    const property = catalogueOf(data, 'es')[0];
+
+    const video = property?.media.items.find((item) => item.kind === 'video');
+
+    expect(video?.youtubeVideoId).toBe('dQw4w9WgXcQ');
+    // Y no se sirve desde R2: no hay URL propia que proxie el video.
+    expect(video?.url).toBeNull();
+  });
+
+  it('cada archivo de R2 se publica como ruta, no como clave', async () => {
+    const data = await fullSnapshot();
+    const property = catalogueOf(data, 'es')[0];
+
+    const panorama = property?.media.items.find((item) => item.kind === 'panorama');
+
+    expect(panorama?.url).toMatch(/^\/media\/\d+$/);
+    expect(panorama?.youtubeVideoId).toBeNull();
   });
 
   it('no lleva nada de revisiones, tokens ni contactos', async () => {

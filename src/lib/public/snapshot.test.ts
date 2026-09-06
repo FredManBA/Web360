@@ -193,14 +193,51 @@ describe('catalogo y ficha', () => {
     expect(detail).toContain('property.features.map');
   });
 
-  it('la ficha deja hueco para multimedia y 360 sin exponer nada', () => {
+  it('la ficha muestra la galeria y avisa del recorrido 360', () => {
     const detail = read(DETAIL_COMPONENT);
 
+    expect(detail).toContain('property.media.items');
+    expect(detail).toContain('property.media.hero');
     expect(detail).toContain('property.media.hasTour');
-    expect(detail).toContain('labels.mediaPending');
-    // Sin URLs de R2: todavia no hay entrega publica.
+    expect(detail).toContain('labels.noImages');
+  });
+
+  it('la ficha sirve las imagenes por la ruta publica, nunca por la del admin', () => {
+    const detail = read(DETAIL_COMPONENT);
+    const image = read('src/components/public/PropertyImage.astro');
+
     expect(detail).not.toContain('objectKey');
     expect(detail).not.toContain('/api/admin');
+    expect(image).not.toContain('/api/admin');
+    // La URL viene ya hecha en el snapshot.
+    expect(image).toContain('image.url');
+  });
+
+  it('la principal no se repite en la galeria', () => {
+    const detail = read(DETAIL_COMPONENT);
+
+    /*
+     * El snapshot viaja serializado, asi que `media.hero` y su gemelo en
+     * `items` son objetos distintos. La principal se busca DENTRO de la lista
+     * para que la comparacion por referencia siga valiendo.
+     */
+    expect(detail).toContain('images.find((image) => image.url === heroUrl)');
+    expect(detail).toContain('images.filter((image) => image !== lead)');
+  });
+
+  it('el video de YouTube se enlaza, no se incrusta', () => {
+    const detail = read(DETAIL_COMPONENT);
+
+    expect(detail).toContain('youtube.com/watch');
+    expect(detail).not.toContain('<iframe');
+  });
+
+  it('las imagenes cargan de forma diferida salvo la principal', () => {
+    const image = read('src/components/public/PropertyImage.astro');
+
+    expect(image).toContain("loading={priority ? 'eager' : 'lazy'}");
+    expect(image).toContain('fetchpriority');
+    expect(image).toContain('alt={alt}');
   });
 
   it('el HTML es semantico', () => {
@@ -220,7 +257,6 @@ describe('catalogo y ficha', () => {
         'privateLongitude',
         'publicationStatus',
         'objectKey',
-        'youtubeVideoId',
       ]) {
         expect(source).not.toContain(forbidden);
       }

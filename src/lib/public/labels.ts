@@ -20,9 +20,14 @@ export interface PublicLabels {
   technical: string;
   backToCatalogue: string;
   otherLanguage: string;
-  /** Se anuncia lo que habra cuando exista entrega publica de multimedia. */
-  mediaPending: string;
   tourAvailable: string;
+  /** Cuando la propiedad todavia no tiene ninguna foto. */
+  noImages: string;
+  gallery: string;
+  documents: string;
+  watchOnYoutube: string;
+  /** Se usa cuando la imagen no trae texto alternativo propio. */
+  imageOf: (title: string) => string;
 }
 
 const ES: PublicLabels = {
@@ -37,8 +42,12 @@ const ES: PublicLabels = {
   technical: 'Detalles técnicos',
   backToCatalogue: 'Volver a propiedades',
   otherLanguage: 'English',
-  mediaPending: 'Las fotografías estarán disponibles próximamente.',
   tourAvailable: 'Esta propiedad tiene recorrido 360°.',
+  noImages: 'Todavía no hay fotografías de esta propiedad.',
+  gallery: 'Galería',
+  documents: 'Documentos',
+  watchOnYoutube: 'Ver el vídeo en YouTube',
+  imageOf: (title) => `Fotografía de ${title}`,
 };
 
 const EN: PublicLabels = {
@@ -53,8 +62,12 @@ const EN: PublicLabels = {
   technical: 'Technical details',
   backToCatalogue: 'Back to properties',
   otherLanguage: 'Español',
-  mediaPending: 'Photographs will be available soon.',
   tourAvailable: 'This property has a 360° tour.',
+  noImages: 'There are no photographs of this property yet.',
+  gallery: 'Gallery',
+  documents: 'Documents',
+  watchOnYoutube: 'Watch the video on YouTube',
+  imageOf: (title) => `Photograph of ${title}`,
 };
 
 export function labelsFor(locale: Locale): PublicLabels {

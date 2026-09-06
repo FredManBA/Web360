@@ -1,0 +1,37 @@
+---
+import type { Locale } from '../../lib/domain/vocabularies';
+import { labelsFor } from '../../lib/public/labels';
+import type { PublicMediaItem } from '../../lib/public/read-model';
+
+interface Props {
+  image: PublicMediaItem;
+  locale: Locale;
+  /** Titulo de la propiedad, para describir la imagen si no trae texto. */
+  propertyTitle: string;
+  /** La principal se carga cuanto antes; el resto puede esperar. */
+  priority?: boolean;
+}
+
+const { image, locale, propertyTitle, priority = false } = Astro.props;
+const labels = labelsFor(locale);
+
+/*
+ * El texto alternativo sale del que escribio el editor. Si no hay, se describe
+ * con el titulo de la propiedad: nunca se deja un `alt` vacio ni se repite el
+ * nombre del archivo, que no dice nada a quien no ve la imagen.
+ */
+const alt = image.altText ?? image.title ?? labels.imageOf(propertyTitle);
+---
+
+{
+  image.url && (
+    <img
+      class="property-image"
+      src={image.url}
+      alt={alt}
+      loading={priority ? 'eager' : 'lazy'}
+      decoding={priority ? 'sync' : 'async'}
+      fetchpriority={priority ? 'high' : 'auto'}
+    />
+  )
+}

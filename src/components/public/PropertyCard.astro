@@ -1,4 +1,5 @@
 ---
+import PropertyImage from './PropertyImage.astro';
 import type { Locale } from '../../lib/domain/vocabularies';
 import { commercialStatusLabel, labelsFor, locationLine } from '../../lib/public/labels';
 import type { PublicPropertyCard } from '../../lib/public/read-model';
@@ -11,9 +12,26 @@ interface Props {
 const { property, locale } = Astro.props;
 const labels = labelsFor(locale);
 const place = locationLine(property.location);
+
+/*
+ * La portada del catalogo es la que marco el editor. Si no hay ninguna, sirve
+ * cualquier imagen de la propiedad antes que dejar la tarjeta desnuda.
+ */
+const cover =
+  property.media.cover ?? property.media.items.find((item) => item.kind === 'image') ?? null;
 ---
 
 <article class="property-card">
+  <a class="property-card-media" href={property.href} aria-hidden="true" tabindex="-1">
+    {
+      cover ? (
+        <PropertyImage image={cover} locale={locale} propertyTitle={property.title} />
+      ) : (
+        <span class="property-card-placeholder" />
+      )
+    }
+  </a>
+
   <h2 class="property-card-title">
     <a href={property.href}>{property.title}</a>
   </h2>

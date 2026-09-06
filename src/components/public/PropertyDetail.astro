@@ -1,4 +1,5 @@
 ---
+import PropertyImage from './PropertyImage.astro';
 import type { Locale } from '../../lib/domain/vocabularies';
 import { commercialStatusLabel, labelsFor, locationLine } from '../../lib/public/labels';
 import { catalogueHref, type PublicPropertyDetail } from '../../lib/public/read-model';
@@ -11,6 +12,24 @@ interface Props {
 const { property, locale } = Astro.props;
 const labels = labelsFor(locale);
 const place = locationLine(property.location);
+
+const images = property.media.items.filter((item) => item.kind === 'image');
+
+/*
+ * La que encabeza: la marcada como hero si es imagen, y si no la primera.
+ *
+ * Se busca DENTRO de `images` en vez de usar `media.hero` directamente. El
+ * snapshot viaja serializado, asi que `hero` y su gemelo en `items` son dos
+ * objetos distintos; compararlos por referencia pintaria la imagen dos veces.
+ */
+const heroUrl = property.media.hero?.kind === 'image' ? property.media.hero.url : null;
+const lead = images.find((image) => image.url === heroUrl) ?? images[0] ?? null;
+const rest = images.filter((image) => image !== lead);
+
+const videos = property.media.items.filter(
+  (item) => item.kind === 'video' && item.youtubeVideoId !== null,
+);
+const documents = property.media.items.filter((item) => item.kind === 'document');
 ---
 
 <article class="property-detail">
@@ -32,9 +51,38 @@ const place = locationLine(property.location);
     <p class="property-detail-price">{property.price.text}</p>
   </header>
 
-  {/* Hueco reservado: cuando exista entrega publica de R2, la galeria va aqui. */}
-  <section class="property-media" aria-label={labels.features}>
-    <p class="property-media-pending">{labels.mediaPending}</p>
+  <section class="property-gallery" aria-label={labels.gallery}>
+    {
+      lead ? (
+        <figure class="property-lead">
+          <PropertyImage
+            image={lead}
+            locale={locale}
+            propertyTitle={property.title}
+            priority={true}
+          />
+          {lead.caption && <figcaption>{lead.caption}</figcaption>}
+        </figure>
+      ) : (
+        <p class="admin-muted">{labels.noImages}</p>
+      )
+    }
+
+    {
+      rest.length > 0 && (
+        <ul class="property-gallery-list">
+          {rest.map((image) => (
+            <li>
+              <figure>
+                <PropertyImage image={image} locale={locale} propertyTitle={property.title} />
+                {image.caption && <figcaption>{image.caption}</figcaption>}
+              </figure>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+
     {property.media.hasTour && <p class="property-tour-note">{labels.tourAvailable}</p>}
   </section>
 
@@ -76,6 +124,49 @@ const place = locationLine(property.location);
             </dl>
           </div>
         ))}
+      </section>
+    )
+  }
+
+  {
+    videos.length > 0 && (
+      <section class="property-section">
+        <h2>{labels.gallery}</h2>
+        {/*
+          Enlace, no iframe: incrustar YouTube trae varios cientos de kB y sus
+          cookies a una pagina que puede no verse nunca. La reproduccion sin
+          salir del sitio llega con la fase visual.
+        */}
+        <ul class="property-video-list">
+          {videos.map((video) => (
+            <li>
+              <a
+                href={`https://www.youtube.com/watch?v=${video.youtubeVideoId}`}
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                {video.title ?? labels.watchOnYoutube}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )
+  }
+
+  {
+    documents.length > 0 && (
+      <section class="property-section">
+        <h2>{labels.documents}</h2>
+        <ul class="property-document-list">
+          {documents.map((document) => (
+            <li>
+              <a href={document.url ?? '#'}>
+                {document.title ?? document.altText ?? labels.documents}
+              </a>
+            </li>
+          ))}
+        </ul>
       </section>
     )
   }

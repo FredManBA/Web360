@@ -29,6 +29,9 @@ import {
   propertyFeatureTranslations,
   propertyFeatures,
   propertyMedia,
+  propertyMediaGroupTranslations,
+  propertyMediaGroups,
+  propertyMediaTranslations,
   propertyTourNodes,
   propertyTranslations,
   propertyTypeTranslations,
@@ -75,14 +78,43 @@ export interface PublicLocation {
 }
 
 /**
- * Que hay para ver, sin decir donde esta.
+ * Un archivo publicable.
  *
- * Cuando exista entrega publica de R2 esto crecera con las URLs; hoy solo
- * sirve para que la ficha sepa que va a poder mostrar.
+ * Lo que se publica es la URL ya construida, no el identificador suelto: asi
+ * el sitio no tiene que saber como se forma una ruta de media, y la clave del
+ * objeto en R2 sigue sin salir de la base.
+ *
+ * Para YouTube se publica el identificador del video, que es publico por
+ * definicion: es el que aparece en cualquier enlace de YouTube.
  */
+export interface PublicMediaItem {
+  kind: MediaKind;
+  /** Ruta servida por el Worker. `null` en los videos de YouTube. */
+  url: string | null;
+  youtubeVideoId: string | null;
+
+  title: string | null;
+  /** Texto alternativo del idioma de la ficha; nunca se inventa. */
+  altText: string | null;
+  caption: string | null;
+
+  /** Nombre del grupo al que pertenece, si tiene. */
+  group: string | null;
+  isHero: boolean;
+  isCatalogCover: boolean;
+}
+
+/** Que hay para ver, y donde pedirlo. */
 export interface PublicMediaSummary {
   counts: Record<MediaKind, number>;
   hasTour: boolean;
+
+  /** Imagen de la tarjeta del catalogo. */
+  cover: PublicMediaItem | null;
+  /** Imagen o video que encabeza la ficha. */
+  hero: PublicMediaItem | null;
+  /** Todo lo publicable, en el orden en que se edito. */
+  items: PublicMediaItem[];
 }
 
 export interface PublicFeature {
@@ -146,6 +178,19 @@ export function catalogueHref(locale: Locale): string {
 
 export function propertyHref(locale: Locale, slug: string): string {
   return `/${locale}/propiedades/${slug}`;
+}
+
+/**
+ * Ruta publica de un archivo.
+ *
+ * El identificador que viaja es el de la fila de multimedia: estable, no
+ * revela nada del bucket y no obliga al sitio a saber nada de R2. La clave del
+ * objeto la resuelve el Worker leyendo la base, nunca llega desde la URL.
+ *
+ * Los videos de YouTube no pasan por aqui: se enlazan con su identificador.
+ */
+export function publicMediaUrl(mediaId: number): string {
+  return `/media/${mediaId}`;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -299,12 +344,47 @@ export async function buildPublicSnapshot(
     .from(propertyFeatureTranslations);
 
   /*
-   * De multimedia solo interesa CUANTO hay de cada tipo. No se lee
-   * `object_key` en ninguna consulta de este modulo.
+   * `object_key` NO se selecciona en ninguna consulta de este modulo: la
+   * resolucion de la clave es cosa del Worker que sirve el archivo, y asi no
+   * puede colarse en el snapshot ni por descuido.
    */
   const media = await db
-    .select({ propertyId: propertyMedia.propertyId, mediaKind: propertyMedia.mediaKind })
-    .from(propertyMedia);
+    .select({
+      id: propertyMedia.id,
+      propertyId: propertyMedia.propertyId,
+      groupId: propertyMedia.propertyMediaGroupId,
+      mediaKind: propertyMedia.mediaKind,
+      sourceProvider: propertyMedia.sourceProvider,
+      youtubeVideoId: propertyMedia.youtubeVideoId,
+      sortOrder: propertyMedia.sortOrder,
+      isHero: propertyMedia.isHero,
+      isCatalogCover: propertyMedia.isCatalogCover,
+    })
+    .from(propertyMedia)
+    .orderBy(asc(propertyMedia.sortOrder), asc(propertyMedia.id));
+
+  const mediaTexts = await db
+    .select({
+      mediaId: propertyMediaTranslations.propertyMediaId,
+      locale: propertyMediaTranslations.locale,
+      title: propertyMediaTranslations.title,
+      altText: propertyMediaTranslations.altText,
+      caption: propertyMediaTranslations.caption,
+    })
+    .from(propertyMediaTranslations);
+
+  const mediaGroups = await db
+    .select()
+    .from(propertyMediaGroups)
+    .orderBy(asc(propertyMediaGroups.sortOrder), asc(propertyMediaGroups.id));
+
+  const mediaGroupNames = await db
+    .select({
+      groupId: propertyMediaGroupTranslations.propertyMediaGroupId,
+      locale: propertyMediaGroupTranslations.locale,
+      name: propertyMediaGroupTranslations.name,
+    })
+    .from(propertyMediaGroupTranslations);
 
   const tourNodes = await db
     .select({ propertyId: propertyTourNodes.propertyId })
@@ -335,11 +415,85 @@ export async function buildPublicSnapshot(
     mediaCounts.set(row.propertyId, counts);
   }
 
+  const mediaTextOf = new Map<
+    string,
+    { title: string | null; altText: string | null; caption: string | null }
+  >();
+  for (const row of mediaTexts) {
+    mediaTextOf.set(`${row.mediaId}:${row.locale}`, {
+      title: row.title,
+      altText: row.altText,
+      caption: row.caption,
+    });
+  }
+
+  const mediaGroupNameOf = new Map<string, string | null>();
+  for (const row of mediaGroupNames) {
+    mediaGroupNameOf.set(`${row.groupId}:${row.locale}`, row.name);
+  }
+
+  /** Orden de los grupos, para presentar la galeria como en el editor. */
+  const mediaGroupOrder = new Map<number, number>();
+  mediaGroups.forEach((group, index) => mediaGroupOrder.set(group.id, index));
+
   const withTour = new Set(
     tourNodes.filter((row) => visibleIds.has(row.propertyId)).map((row) => row.propertyId),
   );
 
   /* -- Montaje por idioma -------------------------------------------------- */
+
+  /**
+   * Multimedia publicable de una propiedad en un idioma.
+   *
+   * Se ordena por grupo y despues por la posicion dentro del grupo, que es
+   * como se ve en el editor. Un archivo sin textos en este idioma se publica
+   * igualmente: la foto sirve aunque no tenga pie.
+   */
+  const mediaFor = (propertyId: number, locale: Locale): PublicMediaSummary => {
+    const rows = media.filter((row) => row.propertyId === propertyId);
+
+    const items: PublicMediaItem[] = rows
+      .slice()
+      .sort((a, b) => {
+        const groupA =
+          a.groupId === null ? Number.MAX_SAFE_INTEGER : (mediaGroupOrder.get(a.groupId) ?? 0);
+        const groupB =
+          b.groupId === null ? Number.MAX_SAFE_INTEGER : (mediaGroupOrder.get(b.groupId) ?? 0);
+
+        if (groupA !== groupB) return groupA - groupB;
+        return a.sortOrder === b.sortOrder ? a.id - b.id : a.sortOrder - b.sortOrder;
+      })
+      .map((row) => {
+        const texts = mediaTextOf.get(`${row.id}:${locale}`);
+        const youtube = row.sourceProvider === 'youtube' ? row.youtubeVideoId : null;
+
+        return {
+          kind: row.mediaKind,
+          // Los de YouTube no se sirven desde R2: se enlazan con su id.
+          url: youtube === null ? publicMediaUrl(row.id) : null,
+          youtubeVideoId: youtube,
+
+          title: texts?.title?.trim() ?? null,
+          altText: texts?.altText?.trim() ?? null,
+          caption: texts?.caption?.trim() ?? null,
+
+          group:
+            row.groupId === null
+              ? null
+              : (mediaGroupNameOf.get(`${row.groupId}:${locale}`) ?? null),
+          isHero: row.isHero,
+          isCatalogCover: row.isCatalogCover,
+        };
+      });
+
+    return {
+      counts: mediaCounts.get(propertyId) ?? emptyCounts(),
+      hasTour: withTour.has(propertyId),
+      cover: items.find((item) => item.isCatalogCover) ?? null,
+      hero: items.find((item) => item.isHero) ?? null,
+      items,
+    };
+  };
 
   const buildFor = (locale: Locale): PublicPropertyDetail[] => {
     const list: PublicPropertyDetail[] = [];
@@ -419,10 +573,7 @@ export async function buildPublicSnapshot(
         commercialStatus: publishedCommercialStatus(row.commercialStatus),
         isFeatured: row.isFeatured,
 
-        media: {
-          counts: mediaCounts.get(row.id) ?? emptyCounts(),
-          hasTour: withTour.has(row.id),
-        },
+        media: mediaFor(row.id, locale),
 
         href: propertyHref(locale, slug),
 

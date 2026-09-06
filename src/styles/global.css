@@ -164,6 +164,86 @@ a {
   margin: 0;
 }
 
+/* -------------------------------------------------------------------------- */
+/* Multimedia publica                                                         */
+/* -------------------------------------------------------------------------- */
+
+/*
+ * Las imagenes se sirven tal cual estan en R2: todavia no hay variantes web.
+ * Para que la pagina no de saltos mientras cargan, el hueco lo reserva la
+ * proporcion del contenedor, no las dimensiones del archivo, que muchas veces
+ * no se conocen.
+ */
+.property-card-media,
+.property-lead,
+.property-gallery-list li {
+  display: block;
+  aspect-ratio: 3 / 2;
+  overflow: hidden;
+  border-radius: 8px;
+  background: rgb(0 0 0 / 6%);
+}
+
+.property-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.property-card-placeholder {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.property-gallery {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.property-lead {
+  margin: 0;
+  position: relative;
+}
+
+.property-lead figcaption,
+.property-gallery-list figcaption {
+  /*
+   * El pie va dentro del hueco reservado para no alterar la proporcion; se
+   * apoya en la parte baja de la imagen.
+   */
+  position: absolute;
+  inset: auto 0 0;
+  padding: var(--space-xs) var(--space-sm);
+  background: rgb(0 0 0 / 55%);
+  color: #ffffff;
+  font-size: 0.85rem;
+}
+
+.property-gallery-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  gap: var(--space-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.property-gallery-list figure {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+.property-video-list,
+.property-document-list {
+  margin: 0;
+  padding-left: var(--space-md);
+}
+
 @media (max-width: 40rem) {
   .property-feature-group dl {
     grid-template-columns: minmax(0, 1fr);
@@ -171,5 +251,9 @@ a {
 
   .property-feature-group dd {
     margin-bottom: var(--space-xs);
+  }
+
+  .property-gallery-list {
+    grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
   }
 }

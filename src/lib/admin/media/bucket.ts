@@ -18,6 +18,8 @@ export interface FetchedObject {
   body: ReadableStream | null;
   httpMetadata?: { contentType?: string } | undefined;
   size: number;
+  /** ETag con comillas, tal cual lo devuelve R2. Sirve para revalidar. */
+  httpEtag?: string | undefined;
 }
 
 export interface MediaBucket {
@@ -103,6 +105,7 @@ export function createMemoryBucket(): MemoryBucket {
         body: new Blob([stored.bytes as unknown as BlobPart]).stream(),
         httpMetadata: { contentType: stored.contentType },
         size: stored.bytes.byteLength,
+        httpEtag: `"${key}"`,
       });
     },
   };
