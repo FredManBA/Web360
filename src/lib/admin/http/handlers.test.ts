@@ -10,6 +10,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DatabaseSync } from 'node:sqlite';
 
+import { createMemoryBucket } from '../media/bucket';
 import { applySeed, createTestDatabase } from '../test-database';
 import type { AdminBatchDatabase } from '../types';
 import {
@@ -47,6 +48,7 @@ function ctx(
     request,
     params,
     db,
+    bucket: createMemoryBucket(),
     // `isDev` siempre true: lo que se prueba aqui es que la variable por si
     // sola no abre nada. El caso "produccion + bypass" vive en auth.test.ts.
     env: bypass ? { isDev: true, ADMIN_DEV_BYPASS: 'true' } : { isDev: true },
@@ -103,6 +105,7 @@ describe('guardia de acceso', () => {
         request: new Request(`${BASE}/api/admin/properties`),
         params: {},
         db,
+        bucket: createMemoryBucket(),
         env: { isDev: true, ADMIN_DEV_BYPASS: value },
       });
       expect(response.status).toBe(403);
@@ -670,6 +673,7 @@ describe('errores inesperados', () => {
       request: new Request(`${BASE}/api/admin/properties`),
       params: {},
       db: brokenDb,
+      bucket: createMemoryBucket(),
       env: { isDev: true, ADMIN_DEV_BYPASS: 'true' },
     });
 
@@ -705,6 +709,7 @@ describe('errores inesperados', () => {
       request: new Request(`${BASE}/api/admin/properties`),
       params: {},
       db: brokenDb,
+      bucket: createMemoryBucket(),
       env: { isDev: true, ADMIN_DEV_BYPASS: 'true' },
     });
 

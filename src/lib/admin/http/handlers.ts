@@ -29,6 +29,7 @@ import {
   createCustomPropertyType,
   listActivePropertyTypes,
 } from '../property-types/property-types';
+import type { MediaBucket } from '../media/bucket';
 import type { AdminBatchDatabase } from '../types';
 import {
   parseRouteId,
@@ -48,6 +49,9 @@ export interface AdminHttpContext {
    * una base normal.
    */
   db: AdminBatchDatabase;
+
+  /** Bucket R2 de multimedia. Se inyecta para poder falsearlo en los tests. */
+  bucket: MediaBucket;
   env: AdminHttpEnv;
 
   /**

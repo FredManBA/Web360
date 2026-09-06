@@ -67,7 +67,11 @@ export type AdminErrorCode =
   // Otra fila ya usa esa clave de R2.
   | 'media_object_key_taken'
   // No se puede borrar: un nodo del recorrido 360 depende de este panorama.
-  | 'media_in_use';
+  | 'media_in_use'
+  // El archivo no pasa las comprobaciones: tipo, contenido o tamano.
+  | 'media_upload_rejected'
+  // R2 no acepto la escritura; no se ha registrado nada.
+  | 'media_upload_failed';
 
 export interface FieldIssue {
   /** Ruta del campo, p. ej. "publicLatitude" o "translations.es.slug". */

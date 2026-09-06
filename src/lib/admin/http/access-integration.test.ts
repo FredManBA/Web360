@@ -17,6 +17,7 @@ import {
   type JWTVerifyGetKey,
 } from 'jose';
 
+import { createMemoryBucket } from '../media/bucket';
 import { applySeed, createTestDatabase } from '../test-database';
 import type { AdminBatchDatabase } from '../types';
 import type { AdminAuthEnv } from '../auth/authorize';
@@ -78,7 +79,7 @@ function productionEnv(extra: Partial<AdminAuthEnv> = {}): AdminAuthEnv {
 }
 
 function ctxWith(request: Request, env: AdminAuthEnv): AdminHttpContext {
-  return { request, params: {}, db, env, accessKeyResolver: jwks };
+  return { request, params: {}, db, bucket: createMemoryBucket(), env, accessKeyResolver: jwks };
 }
 
 function requestWith(token: string | undefined, method = 'GET'): Request {

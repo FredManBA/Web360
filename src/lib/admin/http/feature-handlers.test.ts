@@ -8,6 +8,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DatabaseSync } from 'node:sqlite';
 
+import { createMemoryBucket } from '../media/bucket';
 import { applySeed, createTestDatabase } from '../test-database';
 import type { AdminBatchDatabase } from '../types';
 import { createPropertyDraft } from '../properties/create-property';
@@ -45,6 +46,7 @@ function ctx(
     request,
     params,
     db,
+    bucket: createMemoryBucket(),
     env: bypass ? { isDev: true, ADMIN_DEV_BYPASS: 'true' } : { isDev: true },
   };
 }
@@ -374,6 +376,7 @@ describe('errores inesperados', () => {
       request: new Request(`${BASE}/x`),
       params: { id: '1' },
       db: brokenDb,
+      bucket: createMemoryBucket(),
       env: { isDev: true, ADMIN_DEV_BYPASS: 'true' },
     });
 

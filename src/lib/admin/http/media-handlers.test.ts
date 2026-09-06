@@ -10,11 +10,14 @@ import type { DatabaseSync } from 'node:sqlite';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createPropertyDraft } from '../properties/create-property';
+import { createMemoryBucket, type MemoryBucket } from '../media/bucket';
 import { applySeed, createTestDatabase } from '../test-database';
 import type { AdminBatchDatabase } from '../types';
+import { SAMPLE_JPEG, SAMPLE_PDF, toArrayBuffer } from '../media/test-files';
 import type { AdminHttpContext } from './handlers';
 import {
   handleCreateMedia,
+  handleUploadMedia,
   handleCreateMediaGroup,
   handleDeleteMedia,
   handleDeleteMediaGroup,
@@ -28,11 +31,14 @@ const BASE = 'https://panel.codeloba.test';
 
 let db: AdminBatchDatabase;
 let sqlite: DatabaseSync;
+/** Compartido entre llamadas para poder comprobar que queda en el bucket. */
+let bucket: MemoryBucket;
 
 beforeEach(() => {
   const test = createTestDatabase();
   db = test.db;
   sqlite = test.sqlite;
+  bucket = createMemoryBucket();
   applySeed(sqlite);
 });
 
@@ -45,6 +51,7 @@ function ctx(
     request,
     params,
     db,
+    bucket,
     env: bypass ? { isDev: true, ADMIN_DEV_BYPASS: 'true' } : { isDev: true },
   };
 }
@@ -460,6 +467,7 @@ describe('errores internos', () => {
       request: jsonRequest('GET'),
       params: { id: '1' },
       db: brokenDb,
+      bucket,
       env: { isDev: true, ADMIN_DEV_BYPASS: 'true' },
     });
 
@@ -478,5 +486,198 @@ describe('errores internos', () => {
 
     expect(consoleError).toHaveBeenCalled();
     consoleError.mockRestore();
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Subida                                                                     */
+/* -------------------------------------------------------------------------- */
+
+/** Peticion multipart equivalente a la que enviara el formulario del panel. */
+function uploadRequest(
+  id: string,
+  file: File,
+  fields: Record<string, string> = { mediaKind: 'image' },
+): Request {
+  const form = new FormData();
+  form.set('file', file);
+  for (const [name, value] of Object.entries(fields)) form.set(name, value);
+
+  // `FormData` fija por si mismo el content-type con su boundary.
+  return new Request(`${BASE}/api/admin/properties/${id}/media/upload`, {
+    method: 'POST',
+    body: form,
+  });
+}
+
+function sampleFile(bytes: Uint8Array, name = 'fachada.jpg', type = 'image/jpeg'): File {
+  return new File([toArrayBuffer(bytes)], name, { type });
+}
+
+describe('subida de archivos', () => {
+  it('sube una imagen y responde 201 con la fila creada', async () => {
+    const id = await newProperty();
+
+    const response = await handleUploadMedia(
+      ctx(uploadRequest(id, sampleFile(SAMPLE_JPEG)), { id }),
+    );
+
+    expect(response.status).toBe(201);
+
+    const body = (await response.json()) as { ok: boolean; data: { sourceProvider: string } };
+    expect(body.ok).toBe(true);
+    expect(body.data.sourceProvider).toBe('r2');
+    expect(bucket.objects.size).toBe(1);
+  });
+
+  it('acepta los campos de texto y el grupo junto al archivo', async () => {
+    const id = await newProperty();
+    const groupId = await newGroup(id, 'Galería');
+
+    const response = await handleUploadMedia(
+      ctx(
+        uploadRequest(id, sampleFile(SAMPLE_JPEG), {
+          mediaKind: 'image',
+          groupId: String(groupId),
+          titleEs: 'Fachada',
+        }),
+        { id },
+      ),
+    );
+
+    expect(response.status).toBe(201);
+
+    const listed = await handleGetMedia(ctx(jsonRequest('GET'), { id }));
+    const body = (await listed.json()) as {
+      data: { groups: { media: { translations: { es?: { title: string | null } } }[] }[] };
+    };
+
+    expect(body.data.groups[0]?.media[0]?.translations.es?.title).toBe('Fachada');
+  });
+
+  it('un cuerpo que no es multipart se rechaza con 415', async () => {
+    const id = await newProperty();
+
+    const response = await handleUploadMedia(
+      ctx(jsonRequest('POST', { mediaKind: 'image' }), { id }),
+    );
+
+    expect(response.status).toBe(415);
+  });
+
+  it('sin archivo se rechaza con 422', async () => {
+    const id = await newProperty();
+
+    const form = new FormData();
+    form.set('mediaKind', 'image');
+
+    const request = new Request(`${BASE}/api/admin/properties/${id}/media/upload`, {
+      method: 'POST',
+      body: form,
+    });
+
+    const response = await handleUploadMedia(ctx(request, { id }));
+
+    expect(response.status).toBe(422);
+    expect(bucket.objects.size).toBe(0);
+  });
+
+  it('un tipo de archivo desconocido se rechaza en el esquema', async () => {
+    const id = await newProperty();
+
+    const response = await handleUploadMedia(
+      ctx(uploadRequest(id, sampleFile(SAMPLE_JPEG), { mediaKind: 'audio' }), { id }),
+    );
+
+    expect(response.status).toBe(422);
+    expect(bucket.objects.size).toBe(0);
+  });
+
+  it('un campo desconocido se rechaza: el formulario tambien es estricto', async () => {
+    const id = await newProperty();
+
+    const response = await handleUploadMedia(
+      ctx(uploadRequest(id, sampleFile(SAMPLE_JPEG), { mediaKind: 'image', propertyId: '99' }), {
+        id,
+      }),
+    );
+
+    expect(response.status).toBe(422);
+  });
+
+  it('el contenido se comprueba: un PDF disfrazado de JPEG no pasa', async () => {
+    const id = await newProperty();
+
+    const response = await handleUploadMedia(
+      ctx(uploadRequest(id, sampleFile(SAMPLE_PDF, 'trampa.jpg', 'image/jpeg')), { id }),
+    );
+
+    expect(response.status).toBe(422);
+    expect(await errorCode(response)).toBe('media_upload_rejected');
+    expect(bucket.objects.size).toBe(0);
+  });
+
+  it('si R2 falla, responde 502 y no queda fila', async () => {
+    const id = await newProperty();
+    bucket.failNextPut();
+
+    const response = await handleUploadMedia(
+      ctx(uploadRequest(id, sampleFile(SAMPLE_JPEG)), { id }),
+    );
+
+    expect(response.status).toBe(502);
+    expect(await errorCode(response)).toBe('media_upload_failed');
+
+    const listed = await handleGetMedia(ctx(jsonRequest('GET'), { id }));
+    const body = (await listed.json()) as { data: { ungrouped: unknown[] } };
+    expect(body.data.ungrouped).toHaveLength(0);
+  });
+
+  it('sin acceso administrativo no se puede subir', async () => {
+    const id = await newProperty();
+
+    const response = await handleUploadMedia(
+      ctx(uploadRequest(id, sampleFile(SAMPLE_JPEG)), { id }, false),
+    );
+
+    expect(response.status).toBe(403);
+    expect(bucket.objects.size).toBe(0);
+  });
+
+  it('una subida cross-origin se rechaza', async () => {
+    const id = await newProperty();
+
+    const form = new FormData();
+    form.set('file', sampleFile(SAMPLE_JPEG));
+    form.set('mediaKind', 'image');
+
+    const request = new Request(`${BASE}/api/admin/properties/${id}/media/upload`, {
+      method: 'POST',
+      headers: { origin: 'https://atacante.test' },
+      body: form,
+    });
+
+    const response = await handleUploadMedia(ctx(request, { id }));
+
+    expect(response.status).toBe(403);
+    expect(bucket.objects.size).toBe(0);
+  });
+
+  it('borrar el archivo retira tambien su objeto', async () => {
+    const id = await newProperty();
+
+    const created = await handleUploadMedia(
+      ctx(uploadRequest(id, sampleFile(SAMPLE_JPEG)), { id }),
+    );
+    const mediaId = String(await idOf(created));
+
+    expect(bucket.objects.size).toBe(1);
+
+    const removed = await handleDeleteMedia(ctx(jsonRequest('DELETE'), { id, mediaId }));
+
+    expect(removed.status).toBe(200);
+    const body = (await removed.json()) as { data: { objectRemoved: boolean } };
+    expect(body.data.objectRemoved).toBe(true);
+    expect(bucket.objects.size).toBe(0);
   });
 });

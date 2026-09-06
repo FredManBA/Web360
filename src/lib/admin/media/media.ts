@@ -163,8 +163,13 @@ async function checkGroupOwnership(
   return ok(null);
 }
 
-/** El archivo debe existir Y ser de esta propiedad. */
-async function loadMedia(
+/**
+ * El archivo debe existir Y ser de esta propiedad.
+ *
+ * Se exporta porque el borrado coordinado necesita conocer la clave del objeto
+ * ANTES de que la fila desaparezca.
+ */
+export async function loadMediaRow(
   db: AdminDatabase,
   propertyId: number,
   mediaId: number,
@@ -448,7 +453,7 @@ export async function setMediaRoles(
   mediaId: number,
   roles: MediaRolesInput,
 ): Promise<AdminResult<MediaRecord>> {
-  const found = await loadMedia(db, propertyId, mediaId);
+  const found = await loadMediaRow(db, propertyId, mediaId);
   if (!found.ok) return found;
 
   const conflict = checkRoleKind<MediaRecord>(found.data.mediaKind, roles);
@@ -461,7 +466,7 @@ export async function setMediaRoles(
   const [first, ...rest] = roleStatements(db, propertyId, mediaId, roles);
   if (first !== undefined) await db.batch([first, ...rest]);
 
-  const refreshed = await loadMedia(db, propertyId, mediaId);
+  const refreshed = await loadMediaRow(db, propertyId, mediaId);
   if (!refreshed.ok) return refreshed;
 
   return ok(toRecord(refreshed.data));
@@ -477,7 +482,7 @@ export async function updateMedia(
   mediaId: number,
   input: UpdateMediaInput,
 ): Promise<AdminResult<MediaRecord>> {
-  const found = await loadMedia(db, propertyId, mediaId);
+  const found = await loadMediaRow(db, propertyId, mediaId);
   if (!found.ok) return found;
 
   const current = found.data;
@@ -555,7 +560,7 @@ export async function updateMedia(
     return roles;
   }
 
-  const refreshed = await loadMedia(db, propertyId, mediaId);
+  const refreshed = await loadMediaRow(db, propertyId, mediaId);
   if (!refreshed.ok) return refreshed;
 
   return ok(toRecord(refreshed.data));
@@ -580,7 +585,7 @@ export async function deleteMedia(
   propertyId: number,
   mediaId: number,
 ): Promise<AdminResult<{ id: number }>> {
-  const found = await loadMedia(db, propertyId, mediaId);
+  const found = await loadMediaRow(db, propertyId, mediaId);
   if (!found.ok) return found;
 
   const usedByTour = await db

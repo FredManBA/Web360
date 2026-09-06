@@ -129,3 +129,40 @@ export function parseRouteId(raw: string | undefined): number | null {
   const value = Number(raw);
   return Number.isSafeInteger(value) && value > 0 ? value : null;
 }
+
+/* -------------------------------------------------------------------------- */
+/* Cuerpo multipart                                                           */
+/* -------------------------------------------------------------------------- */
+
+export type MultipartResult = { ok: true; form: FormData } | { ok: false; response: Response };
+
+/**
+ * Lee un formulario multipart.
+ *
+ * Es el unico cuerpo que no es JSON en toda la API administrativa, y existe
+ * porque subir bytes en JSON obligaria a codificarlos en base64: un tercio mas
+ * de peso y una copia extra en memoria del Worker.
+ */
+export async function readMultipartForm(request: Request): Promise<MultipartResult> {
+  const contentType = request.headers.get('content-type') ?? '';
+
+  if (!contentType.toLowerCase().includes('multipart/form-data')) {
+    return {
+      ok: false,
+      response: jsonError(
+        'unsupported_media_type',
+        'El archivo debe enviarse como multipart/form-data.',
+        415,
+      ),
+    };
+  }
+
+  try {
+    return { ok: true, form: await request.formData() };
+  } catch {
+    return {
+      ok: false,
+      response: jsonError('invalid_json', 'No se pudo leer el formulario.', 400),
+    };
+  }
+}

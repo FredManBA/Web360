@@ -84,6 +84,9 @@ const STATUS_BY_ERROR: Record<AdminErrorCode, number> = {
   // Choque con algo que ya existe, no con la forma de la peticion.
   media_object_key_taken: 409,
   media_in_use: 409,
+  media_upload_rejected: 422,
+  // El almacenamiento no respondio: no es culpa de la peticion.
+  media_upload_failed: 502,
 };
 
 export function jsonFromAdminError(error: AdminError): Response {

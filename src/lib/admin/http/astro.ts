@@ -47,6 +47,12 @@ export function toAdminContext(context: APIContext): AdminHttpContext {
     request: context.request,
     params: context.params,
     db: getDb(env),
+    /*
+     * El binding `MEDIA` ya estaba declarado en `wrangler.jsonc` desde la
+     * Fase 0; aqui simplemente se usa. `R2Bucket` cumple la forma minima que
+     * pide la capa de multimedia.
+     */
+    bucket: env.MEDIA,
     env: readAdminAuthEnv(),
   };
 }
