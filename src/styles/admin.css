@@ -968,3 +968,254 @@
     align-items: stretch;
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/* Multimedia                                                                 */
+/* -------------------------------------------------------------------------- */
+
+.editor-media {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  margin-top: var(--space-md);
+}
+
+.editor-media h2 {
+  margin: 0;
+}
+
+#admin-media {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.media-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius);
+  background: var(--admin-surface-muted);
+}
+
+.media-group-loose {
+  border-style: dashed;
+}
+
+.media-group-title {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.media-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.media-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-surface);
+}
+
+.media-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  align-items: center;
+}
+
+/*
+ * Sin miniatura todavia: no hay URL publica segura de los objetos de R2. Se
+ * identifica el tipo con una etiqueta corta, que ademas no depende de cargar
+ * nada por red.
+ */
+.media-kind {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 3rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-green-tint);
+  color: var(--admin-green);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.media-card-title {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.media-name {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.media-meta {
+  margin: 0;
+  color: var(--admin-text-soft);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.media-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.media-badge-hero {
+  border-color: var(--admin-green);
+  background: var(--admin-green-tint);
+  color: var(--admin-green);
+}
+
+.media-badge-cover {
+  border-color: var(--admin-accent);
+  background: var(--admin-accent-tint);
+  color: var(--admin-accent);
+}
+
+/* Formulario por tarjeta, nunca una tabla. Dos columnas como maximo. */
+.media-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-sm) var(--space-md);
+}
+
+.media-grid input[type='text'],
+.media-grid select {
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--admin-border-strong);
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  font: inherit;
+}
+
+.media-grid input[aria-invalid='true'] {
+  border-color: var(--admin-danger);
+  border-width: 2px;
+}
+
+.media-actions,
+.media-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  align-items: center;
+}
+
+.media-status-box {
+  margin-left: auto;
+}
+
+.media-upload,
+.media-youtube {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius);
+  background: var(--admin-surface);
+}
+
+.media-upload h3,
+.media-youtube h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+/* Arrastrar es un atajo: el selector nativo sigue siendo el camino accesible. */
+.media-dropzone {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border: 2px dashed var(--admin-border-strong);
+  border-radius: var(--admin-radius);
+  background: var(--admin-surface-muted);
+}
+
+.media-dropzone.is-dragging {
+  border-color: var(--admin-green);
+  background: var(--admin-green-tint);
+}
+
+.upload-queue-box {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.upload-queue {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.upload-item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  align-items: baseline;
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-surface-muted);
+  font-size: 0.9rem;
+}
+
+.upload-name {
+  flex: 1 1 10rem;
+  overflow-wrap: anywhere;
+}
+
+.upload-size,
+.upload-state {
+  color: var(--admin-text-soft);
+}
+
+.upload-item[data-status='done'] .upload-state {
+  color: var(--admin-green);
+  font-weight: 600;
+}
+
+.upload-item[data-status='error'] {
+  background: var(--admin-danger-tint);
+}
+
+.upload-item[data-status='error'] .upload-state {
+  color: var(--admin-danger);
+  font-weight: 600;
+}
+
+@media (max-width: 60rem) {
+  .media-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .media-status-box {
+    margin-left: 0;
+  }
+
+  .media-actions,
+  .media-toolbar {
+    align-items: stretch;
+  }
+}

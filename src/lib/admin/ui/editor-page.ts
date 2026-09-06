@@ -11,6 +11,7 @@
 
 import { bindingFor, FIELD_BINDINGS } from './editor-fields';
 import { initFeatureEditor } from './feature-editor';
+import { initMediaEditor } from './media-editor';
 import {
   areaPreview,
   fieldsToRaw,
@@ -236,7 +237,10 @@ export function initEditorPage(): void {
    * formulario solo los alejaria del campo que los provoca.
    */
   const belongsToFeatures = (field: string): boolean =>
-    field.startsWith('group:') || field.startsWith('feature:');
+    field.startsWith('group:') ||
+    field.startsWith('feature:') ||
+    field.startsWith('media-group:') ||
+    field.startsWith('media:');
 
   const showErrors = (errors: GroupFieldError[]): void => {
     for (const error of errors) {
@@ -633,7 +637,8 @@ export function initEditorPage(): void {
 
   /*
    * Una sola fuente de verdad: el coordinador ya vigila core, los dos idiomas
-   * y cada grupo y caracteristica registrados. Basta con `preventDefault()`:
+   * y cada grupo, caracteristica y archivo registrados. Basta con
+   * `preventDefault()`:
    * `returnValue` esta obsoleto.
    */
   window.addEventListener('beforeunload', (event) => {
@@ -648,7 +653,11 @@ export function initEditorPage(): void {
     const featuresBox = byId<HTMLElement>('editor-features');
     if (featuresBox !== null) featuresBox.hidden = false;
 
+    const mediaBox = byId<HTMLElement>('editor-media');
+    if (mediaBox !== null) mediaBox.hidden = false;
+
     // Sus entidades se registran como puertos del MISMO coordinador.
     initFeatureEditor(propertyId, coordinator);
+    initMediaEditor(propertyId, coordinator);
   });
 }
