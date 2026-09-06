@@ -68,6 +68,11 @@ const STATUS_BY_ERROR: Record<AdminErrorCode, number> = {
   property_type_not_found: 422,
   invalid_status_transition: 422,
   code_generation_failed: 500,
+
+  feature_group_not_found: 404,
+  feature_not_found: 404,
+  // Peticion entendible pero no procesable: el grupo no es de esa propiedad.
+  feature_group_property_mismatch: 422,
 };
 
 export function jsonFromAdminError(error: AdminError): Response {

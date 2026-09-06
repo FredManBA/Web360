@@ -29,7 +29,11 @@ export type AdminErrorCode =
   | 'slug_taken'
   | 'property_type_not_found'
   | 'invalid_status_transition'
-  | 'code_generation_failed';
+  | 'code_generation_failed'
+  | 'feature_group_not_found'
+  | 'feature_not_found'
+  // El grupo existe, pero es de otra propiedad: la base no puede impedirlo.
+  | 'feature_group_property_mismatch';
 
 export interface FieldIssue {
   /** Ruta del campo, p. ej. "publicLatitude" o "translations.es.slug". */
