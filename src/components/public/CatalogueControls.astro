@@ -1,0 +1,58 @@
+---
+import type { Locale } from '../../lib/domain/vocabularies';
+import { labelsFor } from '../../lib/public/labels';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const labels = labelsFor(locale);
+---
+
+{
+  /*
+  Llega oculto: sin JavaScript estos controles no harian nada, y un formulario
+  que no responde es peor que ninguno. El modulo del catalogo lo revela.
+*/
+}
+<section class="catalogue-controls" id="catalogue-controls" aria-label={labels.filters} hidden>
+  <div class="catalogue-field">
+    <label for="filter-type">{labels.filterType}</label>
+    <select id="filter-type">
+      <option value="">{labels.anyOption}</option>
+    </select>
+  </div>
+
+  <div class="catalogue-field">
+    <label for="filter-zone">{labels.filterLocation}</label>
+    <select id="filter-zone">
+      <option value="">{labels.anyOption}</option>
+    </select>
+  </div>
+
+  <div class="catalogue-field">
+    <label for="filter-price">{labels.filterPriceMax}</label>
+    <input type="number" id="filter-price" min="0" step="1000" inputmode="numeric" />
+  </div>
+
+  <div class="catalogue-field">
+    <label for="filter-surface">{labels.filterAreaMin}</label>
+    <input type="number" id="filter-surface" min="0" step="100" inputmode="numeric" />
+  </div>
+
+  <div class="catalogue-field">
+    <label for="filter-sort">{labels.sortBy}</label>
+    <select id="filter-sort">
+      <option value="newest">{labels.sortNewest}</option>
+      <option value="price-asc">{labels.sortPriceAsc}</option>
+      <option value="price-desc">{labels.sortPriceDesc}</option>
+      <option value="area-asc">{labels.sortAreaAsc}</option>
+      <option value="area-desc">{labels.sortAreaDesc}</option>
+    </select>
+  </div>
+
+  <button type="button" class="catalogue-clear" id="catalogue-clear" hidden>
+    {labels.clearFilters}
+  </button>
+</section>

@@ -1,0 +1,20 @@
+---
+import type { Locale } from '../../lib/domain/vocabularies';
+import { labelsFor } from '../../lib/public/labels';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const labels = labelsFor(locale);
+const year = new Date().getFullYear();
+---
+
+<footer class="site-footer">
+  <div class="site-footer-inner">
+    <p class="site-footer-brand">Loba</p>
+    <p class="site-footer-note">{labels.footerNote}</p>
+    <p class="site-footer-legal">© {year} Loba</p>
+  </div>
+</footer>

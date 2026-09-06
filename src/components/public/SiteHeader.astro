@@ -1,0 +1,81 @@
+---
+import type { Locale } from '../../lib/domain/vocabularies';
+import { labelsFor } from '../../lib/public/labels';
+import { languageOptions, navigationFor, type SectionId } from '../../lib/public/navigation';
+
+interface Props {
+  locale: Locale;
+  section?: SectionId;
+  alternateHref?: string | null;
+}
+
+const { locale, section, alternateHref = null } = Astro.props;
+
+const labels = labelsFor(locale);
+const items = navigationFor(locale);
+const languages = languageOptions(locale, alternateHref);
+const other = languages[1];
+---
+
+<a class="skip-link" href="#contenido">{labels.skipToContent}</a>
+
+<header class="site-header">
+  <div class="site-header-inner">
+    <a class="site-brand" href={`/${locale}/`}>
+      <span class="site-brand-mark" aria-hidden="true">L</span>
+      <span class="site-brand-name">Loba</span>
+    </a>
+
+    {
+      /*
+      El menu movil es un <details>: se abre y se cierra sin una linea de JS,
+      responde al teclado y funciona aunque el script no llegue nunca.
+    */
+    }
+    <details class="site-nav-toggle">
+      <summary aria-label={labels.menu}>
+        <span class="site-nav-toggle-bars" aria-hidden="true"></span>
+        <span class="site-nav-toggle-text">{labels.menu}</span>
+      </summary>
+
+      <nav class="site-nav" aria-label={labels.mainNavigation}>
+        <ul>
+          {
+            items.map((item) => (
+              <li>
+                {item.available ? (
+                  <a
+                    href={item.href}
+                    aria-current={item.id === section ? 'page' : undefined}
+                    class={item.id === section ? 'is-current' : undefined}
+                  >
+                    {item.label}
+                  </a>
+                ) : (
+                  /* Sin pagina todavia: se ve, pero no lleva a un 404. */
+                  <span class="site-nav-pending" aria-disabled="true">
+                    {item.label}
+                    <span class="site-nav-soon">{labels.comingSoon}</span>
+                  </span>
+                )}
+              </li>
+            ))
+          }
+        </ul>
+
+        {
+          other && (
+            <a
+              class="site-language"
+              href={other.href}
+              lang={other.locale}
+              data-locale={other.locale}
+            >
+              {other.label}
+            </a>
+          )
+        }
+      </nav>
+    </details>
+  </div>
+</header>

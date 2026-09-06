@@ -1,0 +1,44 @@
+---
+import '../styles/global.css';
+
+import SiteHeader from '../components/public/SiteHeader.astro';
+import SiteFooter from '../components/public/SiteFooter.astro';
+import type { Locale } from '../lib/domain/vocabularies';
+import type { SectionId } from '../lib/public/navigation';
+
+interface Props {
+  title: string;
+  locale: Locale;
+  description?: string;
+  /** Seccion activa en la navegacion. */
+  section?: SectionId;
+  /** Esta misma pagina en el otro idioma, si existe. */
+  alternateHref?: string | null;
+}
+
+const { title, locale, description, section, alternateHref = null } = Astro.props;
+---
+
+<!doctype html>
+<html lang={locale}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    {description && <meta name="description" content={description} />}
+    {
+      alternateHref && (
+        <link rel="alternate" hreflang={locale === 'es' ? 'en' : 'es'} href={alternateHref} />
+      )
+    }
+  </head>
+  <body>
+    <SiteHeader locale={locale} section={section} alternateHref={alternateHref} />
+
+    <main id="contenido">
+      <slot />
+    </main>
+
+    <SiteFooter locale={locale} />
+  </body>
+</html>

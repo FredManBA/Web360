@@ -28,6 +28,32 @@ export interface PublicLabels {
   watchOnYoutube: string;
   /** Se usa cuando la imagen no trae texto alternativo propio. */
   imageOf: (title: string) => string;
+
+  /* -- Shell ------------------------------------------------------------- */
+  skipToContent: string;
+  menu: string;
+  mainNavigation: string;
+  comingSoon: string;
+  footerNote: string;
+
+  /* -- Filtros ----------------------------------------------------------- */
+  filters: string;
+  filterType: string;
+  filterLocation: string;
+  filterPriceMax: string;
+  filterAreaMin: string;
+  sortBy: string;
+  sortNewest: string;
+  sortPriceAsc: string;
+  sortPriceDesc: string;
+  sortAreaAsc: string;
+  sortAreaDesc: string;
+  anyOption: string;
+  clearFilters: string;
+  results: (count: number) => string;
+  noMatches: string;
+  noMatchesHint: string;
+  showMore: string;
 }
 
 const ES: PublicLabels = {
@@ -48,6 +74,30 @@ const ES: PublicLabels = {
   documents: 'Documentos',
   watchOnYoutube: 'Ver el vídeo en YouTube',
   imageOf: (title) => `Fotografía de ${title}`,
+
+  skipToContent: 'Ir al contenido',
+  menu: 'Menú',
+  mainNavigation: 'Navegación principal',
+  comingSoon: 'Próximamente',
+  footerNote: 'Terrenos y propiedades en la costa de Costa Rica.',
+
+  filters: 'Filtros',
+  filterType: 'Tipo',
+  filterLocation: 'Zona',
+  filterPriceMax: 'Precio máximo',
+  filterAreaMin: 'Superficie mínima',
+  sortBy: 'Ordenar por',
+  sortNewest: 'Más recientes',
+  sortPriceAsc: 'Precio: de menor a mayor',
+  sortPriceDesc: 'Precio: de mayor a menor',
+  sortAreaAsc: 'Superficie: de menor a mayor',
+  sortAreaDesc: 'Superficie: de mayor a menor',
+  anyOption: 'Todas',
+  clearFilters: 'Limpiar filtros',
+  results: (count) => (count === 1 ? '1 propiedad' : `${count} propiedades`),
+  noMatches: 'Ninguna propiedad coincide con estos filtros.',
+  noMatchesHint: 'Prueba a ampliar el precio o la superficie, o quita algún filtro.',
+  showMore: 'Ver más',
 };
 
 const EN: PublicLabels = {
@@ -68,6 +118,30 @@ const EN: PublicLabels = {
   documents: 'Documents',
   watchOnYoutube: 'Watch the video on YouTube',
   imageOf: (title) => `Photograph of ${title}`,
+
+  skipToContent: 'Skip to content',
+  menu: 'Menu',
+  mainNavigation: 'Main navigation',
+  comingSoon: 'Coming soon',
+  footerNote: 'Land and properties on the coast of Costa Rica.',
+
+  filters: 'Filters',
+  filterType: 'Type',
+  filterLocation: 'Area',
+  filterPriceMax: 'Maximum price',
+  filterAreaMin: 'Minimum area',
+  sortBy: 'Sort by',
+  sortNewest: 'Most recent',
+  sortPriceAsc: 'Price: low to high',
+  sortPriceDesc: 'Price: high to low',
+  sortAreaAsc: 'Area: small to large',
+  sortAreaDesc: 'Area: large to small',
+  anyOption: 'All',
+  clearFilters: 'Clear filters',
+  results: (count) => (count === 1 ? '1 property' : `${count} properties`),
+  noMatches: 'No property matches these filters.',
+  noMatchesHint: 'Try widening the price or area, or remove a filter.',
+  showMore: 'Show more',
 };
 
 export function labelsFor(locale: Locale): PublicLabels {

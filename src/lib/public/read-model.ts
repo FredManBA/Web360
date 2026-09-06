@@ -600,6 +600,30 @@ export function catalogueOf(snapshot: PublicSnapshot, locale: Locale): PublicPro
   return snapshot.properties[locale];
 }
 
+/**
+ * La misma propiedad en el otro idioma.
+ *
+ * Se correlaciona por el CODIGO, que es publico y esta en las dos versiones.
+ * No hay ids en el snapshot y no hacen falta: el codigo ya identifica la
+ * propiedad de forma estable.
+ *
+ * Devuelve `null` cuando esa version no existe, y entonces el selector de
+ * idioma lleva al catalogo en vez de inventar una URL que daria 404.
+ */
+export function alternateHref(
+  snapshot: PublicSnapshot,
+  locale: Locale,
+  slug: string,
+): string | null {
+  const current = snapshot.properties[locale].find((property) => property.slug === slug);
+  if (current === undefined) return null;
+
+  const other: Locale = locale === 'es' ? 'en' : 'es';
+  const twin = snapshot.properties[other].find((property) => property.code === current.code);
+
+  return twin === undefined ? null : twin.href;
+}
+
 export function findBySlug(
   snapshot: PublicSnapshot,
   locale: Locale,

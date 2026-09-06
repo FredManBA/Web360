@@ -21,7 +21,22 @@ const cover =
   property.media.cover ?? property.media.items.find((item) => item.kind === 'image') ?? null;
 ---
 
-<article class="property-card">
+{
+  /*
+  Los datos de filtrado viajan en el propio HTML: asi no hace falta duplicar el
+  catalogo en un JSON aparte, y sin JavaScript la tarjeta se ve igual.
+*/
+}
+<article
+  class="property-card"
+  data-catalogue-item
+  data-slug={property.slug}
+  data-type={property.propertyType ?? ''}
+  data-zone={property.location.canton ?? ''}
+  data-price={property.price.amountMinor ?? ''}
+  data-currency={property.price.currencyCode ?? ''}
+  data-surface={property.area?.squareMeters ?? ''}
+>
   <a class="property-card-media" href={property.href} aria-hidden="true" tabindex="-1">
     {
       cover ? (

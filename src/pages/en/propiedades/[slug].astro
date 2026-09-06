@@ -1,7 +1,11 @@
 ---
 import PropertyDetail from '../../../components/public/PropertyDetail.astro';
-import BaseLayout from '../../../layouts/BaseLayout.astro';
-import { catalogueOf, type PublicPropertyDetail } from '../../../lib/public/read-model';
+import PublicLayout from '../../../layouts/PublicLayout.astro';
+import {
+  alternateHref,
+  catalogueOf,
+  type PublicPropertyDetail,
+} from '../../../lib/public/read-model';
 import { loadPublicSnapshot } from '../../../lib/public/snapshot';
 
 /*
@@ -14,20 +18,35 @@ export function getStaticPaths() {
 
   return catalogueOf(snapshot, 'en').map((property) => ({
     params: { slug: property.slug },
-    props: { property: property as PublicPropertyDetail },
+    props: {
+      property: property as PublicPropertyDetail,
+      // La misma ficha en el otro idioma, si esta traducida.
+      alternate: alternateHref(snapshot, 'en', property.slug),
+    },
   }));
 }
 
 const locale = 'en' as const;
-const { property } = Astro.props as { property: PublicPropertyDetail };
+const { property, alternate } = Astro.props as {
+  property: PublicPropertyDetail;
+  alternate: string | null;
+};
 ---
 
-<BaseLayout
-  lang={locale}
+<PublicLayout
+  locale={locale}
   title={property.title}
   description={property.marketingDescription ?? undefined}
+  section="properties"
+  alternateHref={alternate}
 >
-  <main class="public-page">
+  <div class="page">
     <PropertyDetail property={property} locale={locale} />
-  </main>
-</BaseLayout>
+  </div>
+</PublicLayout>
+
+<script>
+  import { initLanguagePreference } from '../../../lib/public/language-preference';
+
+  initLanguagePreference();
+</script>

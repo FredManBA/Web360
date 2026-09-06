@@ -244,8 +244,9 @@ describe('catalogo y ficha', () => {
     expect(read(CARD)).toContain('<article');
     expect(read(DETAIL_COMPONENT)).toContain('<h1>');
     expect(read(DETAIL_COMPONENT)).toContain('<section');
-    expect(read(CATALOGUE_ES)).toContain('<main');
-    expect(read(CATALOGUE_ES)).toContain('<ul class="property-list">');
+    // `<main>` lo pone el shell publico, no cada pagina.
+    expect(read('src/layouts/PublicLayout.astro')).toContain('<main');
+    expect(read(CATALOGUE_ES)).toContain('<ul class="property-list"');
   });
 
   it('ninguna plantilla publica pinta datos privados', () => {

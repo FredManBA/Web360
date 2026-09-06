@@ -1,23 +1,64 @@
 /*
- * CodeLoba - base global minima.
+ * CodeLoba - base del sitio publico.
  *
- * Fase 0: solo reset y valores estructurales.
- * Los colores finales, la tipografia definitiva y el sistema de diseno
- * se definiran en una fase posterior.
+ * Direccion visual: verde selva profundo sobre marfil, con arena y dorado
+ * como acento. Serif para los titulos, sans limpia para la interfaz, mucho
+ * aire y la fotografia por delante de la decoracion.
+ *
+ * Sin librerias: todo lo de aqui es CSS propio.
  */
 
 :root {
-  /* Espaciado y medidas estructurales (temporales). */
+  /* -- Color -------------------------------------------------------------- */
+
+  /* Verde selva: el color de la marca. */
+  --jungle: #10291f;
+  --jungle-deep: #0a1a14;
+  --jungle-soft: #1f4034;
+  --jungle-tint: #e8eeea;
+
+  /* Marfil: el papel sobre el que se apoya todo. */
+  --ivory: #faf7f0;
+  --ivory-warm: #f2ece0;
+  --surface: #ffffff;
+
+  /* Arena y dorado: acento, nunca fondo grande. */
+  --sand: #c9a86a;
+  --sand-deep: #9a7b46;
+  --sand-tint: #f6efe1;
+
+  --ink: #16211c;
+  --ink-soft: #55655c;
+  --line: #e2dbcc;
+
+  /* -- Espacio ------------------------------------------------------------ */
+
+  --space-2xs: 0.25rem;
   --space-xs: 0.5rem;
   --space-sm: 0.75rem;
   --space-md: 1rem;
   --space-lg: 2rem;
-  --content-width: 70rem;
+  --space-xl: 3.5rem;
+  --content-width: 76rem;
 
-  /* Tipografia del sistema, provisional. */
+  /* -- Tipografia --------------------------------------------------------- */
+
+  /*
+   * Familias del sistema: se ven bien desde el primer byte y no cuestan una
+   * peticion de red. Las tipografias definitivas, si las hay, entraran con la
+   * fase de marca.
+   */
+  --font-display: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Times New Roman', serif;
   --font-base: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 
-  color-scheme: light dark;
+  --radius: 4px;
+  --radius-lg: 10px;
+
+  /* Sombra apenas perceptible: el relieve lo dan el aire y las lineas. */
+  --shadow: 0 1px 2px rgb(16 41 31 / 6%), 0 8px 24px rgb(16 41 31 / 4%);
+
+  /* El sitio publico es claro a proposito, como el papel. */
+  color-scheme: light;
 }
 
 *,
@@ -36,8 +77,10 @@ html {
 
 body {
   min-height: 100vh;
+  background: var(--ivory);
+  color: var(--ink);
   font-family: var(--font-base);
-  line-height: 1.5;
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -59,10 +102,36 @@ select {
 
 h1,
 h2,
-h3,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+  line-height: 1.15;
+}
+
 h4 {
   text-wrap: balance;
   line-height: 1.2;
+}
+
+/* Un foco visible SIEMPRE, en todo el sitio. */
+:focus-visible {
+  outline: 2px solid var(--jungle-soft);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* Quien pide menos movimiento no recibe ninguno. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 p {
@@ -74,56 +143,421 @@ a {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Sitio publico                                                              */
+/* Shell publico                                                              */
 /* -------------------------------------------------------------------------- */
 
-/*
- * Estilo minimo y deliberado: solo lo necesario para que el catalogo y la
- * ficha se lean bien. El diseno definitivo llega en una fase posterior.
- */
+/* El primer enlace de la pagina, visible solo cuando recibe el foco. */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  z-index: 10;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--jungle);
+  color: var(--ivory);
+  text-decoration: none;
+}
 
-.public-page {
+.skip-link:focus-visible {
+  left: var(--space-md);
+  top: var(--space-md);
+}
+
+.site-header {
+  background: var(--jungle);
+  color: var(--ivory);
+}
+
+.site-header-inner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  align-items: center;
+  justify-content: space-between;
   max-width: var(--content-width);
   margin: 0 auto;
-  padding: var(--space-lg) var(--space-md);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-lg);
+  padding: var(--space-md);
 }
 
-.public-head {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
+.site-brand {
+  display: inline-flex;
+  gap: var(--space-sm);
+  align-items: center;
+  text-decoration: none;
 }
 
-.property-list {
+/*
+ * Marca provisional: una inicial dentro de un circulo de arena. Sin imagen que
+ * cargar y sin comprometer el logotipo definitivo.
+ */
+.site-brand-mark {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
-  gap: var(--space-md);
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 1px solid var(--sand);
+  border-radius: 50%;
+  color: var(--sand);
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.site-brand-name {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  letter-spacing: 0.08em;
+}
+
+.site-nav ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-lg);
+  align-items: center;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.property-card,
-.property-detail {
+.site-nav a,
+.site-nav-pending {
+  display: inline-block;
+  padding: var(--space-2xs) 0;
+  color: var(--ivory);
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+}
+
+/* Subrayado que crece desde la izquierda, sin mover nada de sitio. */
+.site-nav a {
+  position: relative;
+}
+
+.site-nav a::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 1px;
+  background: var(--sand);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 160ms ease;
+}
+
+.site-nav a:hover::after,
+.site-nav a.is-current::after {
+  transform: scaleX(1);
+}
+
+.site-nav-pending {
+  color: rgb(250 247 240 / 45%);
+  cursor: default;
+}
+
+.site-nav-soon {
+  margin-left: var(--space-xs);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.site-language {
+  color: var(--sand);
+  font-size: 0.9rem;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+}
+
+.site-language:hover {
+  text-decoration: underline;
+}
+
+/*
+ * Menu movil sin JavaScript: `<details>` abre y cierra por si solo, responde
+ * al teclado y funciona aunque el script nunca llegue.
+ */
+.site-nav-toggle summary {
+  display: none;
+}
+
+.site-nav-toggle > .site-nav {
+  display: flex;
+  gap: var(--space-lg);
+  align-items: center;
+}
+
+.site-footer {
+  margin-top: var(--space-xl);
+  background: var(--jungle-deep);
+  color: var(--ivory);
+}
+
+.site-footer-inner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: var(--space-lg) var(--space-md);
+}
+
+.site-footer-brand {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  letter-spacing: 0.08em;
+}
+
+.site-footer-note,
+.site-footer-legal {
+  color: rgb(250 247 240 / 65%);
+  font-size: 0.9rem;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Pagina                                                                     */
+/* -------------------------------------------------------------------------- */
+
+.page {
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: var(--space-xl) var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.page-head {
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
+  max-width: 46rem;
+}
+
+.page-head h1 {
+  font-size: clamp(2.25rem, 5vw, 3.25rem);
+}
+
+/*
+ * Trazo topografico bajo el titulo: dos curvas de nivel muy tenues. Es un
+ * gradiente, no una imagen, asi que no cuesta ninguna peticion.
+ */
+.page-head::after {
+  content: '';
+  width: 6rem;
+  height: 2px;
+  margin-top: var(--space-xs);
+  background: linear-gradient(90deg, var(--sand), transparent);
+}
+
+.page-lead {
+  color: var(--ink-soft);
+  font-size: 1.05rem;
+}
+
+.state-empty {
+  padding: var(--space-xl) var(--space-md);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--ivory-warm);
+  color: var(--ink-soft);
+  text-align: center;
+}
+
+.state-empty-hint {
+  margin-top: var(--space-2xs);
+  font-size: 0.9rem;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Catalogo                                                                   */
+/* -------------------------------------------------------------------------- */
+
+.catalogue {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.catalogue-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: var(--space-sm) var(--space-md);
+  align-items: end;
+  padding: var(--space-md);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.catalogue-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  min-width: 0;
+}
+
+.catalogue-field label {
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.catalogue-field select,
+.catalogue-field input {
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.catalogue-clear,
+.button-outline {
+  padding: 0.55rem 1.1rem;
+  border: 1px solid var(--jungle-soft);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--jungle-soft);
+  cursor: pointer;
+  font-size: 0.9rem;
+  letter-spacing: 0.03em;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.catalogue-clear:hover,
+.button-outline:hover {
+  background: var(--jungle-soft);
+  color: var(--ivory);
+}
+
+.catalogue-count {
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+.catalogue-more-row {
+  display: flex;
+  justify-content: center;
+}
+
+.property-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr));
+  gap: var(--space-lg) var(--space-md);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Tarjeta                                                                    */
+/* -------------------------------------------------------------------------- */
+
+.property-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  height: 100%;
+}
+
+.property-card-media {
+  position: relative;
+  display: block;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  margin-bottom: var(--space-xs);
+  border-radius: var(--radius-lg);
+  background: var(--ivory-warm);
+}
+
+.property-card-media .property-image {
+  transition: transform 320ms ease;
+}
+
+.property-card:hover .property-card-media .property-image,
+.property-card:focus-within .property-card-media .property-image {
+  /* Acercamiento minimo: da vida sin marear. */
+  transform: scale(1.03);
+}
+
+.property-card-placeholder {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(150deg, var(--ivory-warm), var(--sand-tint));
+}
+
+.property-card-placeholder-mark {
+  color: var(--sand-deep);
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  opacity: 0.55;
+}
+
+/* Distintivo comercial sobre la foto: solo aparece cuando dice algo. */
+.property-card-flag {
+  position: absolute;
+  inset: var(--space-xs) var(--space-xs) auto auto;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: rgb(16 41 31 / 88%);
+  color: var(--ivory);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .property-card-title {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: 1.3rem;
 }
 
-.property-card-meta,
-.property-detail-meta {
+.property-card-title a {
+  text-decoration: none;
+}
+
+.property-card-title a:hover {
+  text-decoration: underline;
+  text-decoration-color: var(--sand);
+  text-underline-offset: 4px;
+}
+
+.property-card-meta {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-sm);
   margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.property-card-place {
+  margin: 0;
+  color: var(--ink-soft);
+}
+
+.property-card-figures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  align-items: baseline;
+  margin-top: auto;
+  padding-top: var(--space-xs);
+}
+
+.property-card-price {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+}
+
+.property-card-area {
+  color: var(--ink-soft);
   font-size: 0.9rem;
 }
 
@@ -131,41 +565,93 @@ a {
   font-variant-numeric: tabular-nums;
 }
 
-.property-card-price,
-.property-detail-price {
-  margin: 0;
-  font-weight: 700;
-}
+/* -------------------------------------------------------------------------- */
+/* Ficha                                                                      */
+/* -------------------------------------------------------------------------- */
 
 .property-detail {
-  gap: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
 }
 
-.property-detail-head,
-.property-section,
-.property-media {
+.property-detail-head {
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
+  max-width: 46rem;
+}
+
+.property-detail-head h1 {
+  font-size: clamp(2rem, 4.5vw, 3rem);
+}
+
+.property-detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.property-detail-price {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+}
+
+.property-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  max-width: 46rem;
+}
+
+.property-section h2 {
+  font-size: 1.5rem;
+}
+
+.property-section h3 {
+  font-size: 1.1rem;
 }
 
 .property-feature-group dl {
   display: grid;
   grid-template-columns: minmax(8rem, max-content) 1fr;
-  gap: 0.25rem var(--space-md);
+  gap: 0.35rem var(--space-lg);
   margin: 0;
+  padding-top: var(--space-xs);
+  border-top: 1px solid var(--line);
 }
 
 .property-feature-group dt {
-  font-weight: 600;
+  color: var(--ink-soft);
 }
 
 .property-feature-group dd {
   margin: 0;
 }
 
+.property-tour-note {
+  color: var(--sand-deep);
+  font-size: 0.9rem;
+}
+
+.property-back a {
+  color: var(--jungle-soft);
+  text-underline-offset: 4px;
+}
+
+.property-video-list,
+.property-document-list {
+  margin: 0;
+  padding-left: var(--space-md);
+}
+
 /* -------------------------------------------------------------------------- */
-/* Multimedia publica                                                         */
+/* Galeria                                                                    */
 /* -------------------------------------------------------------------------- */
 
 /*
@@ -174,14 +660,13 @@ a {
  * proporcion del contenedor, no las dimensiones del archivo, que muchas veces
  * no se conocen.
  */
-.property-card-media,
 .property-lead,
 .property-gallery-list li {
   display: block;
   aspect-ratio: 3 / 2;
   overflow: hidden;
-  border-radius: 8px;
-  background: rgb(0 0 0 / 6%);
+  border-radius: var(--radius-lg);
+  background: var(--ivory-warm);
 }
 
 .property-image {
@@ -191,12 +676,6 @@ a {
   object-fit: cover;
 }
 
-.property-card-placeholder {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
 .property-gallery {
   display: flex;
   flex-direction: column;
@@ -204,27 +683,24 @@ a {
 }
 
 .property-lead {
-  margin: 0;
   position: relative;
+  margin: 0;
 }
 
 .property-lead figcaption,
 .property-gallery-list figcaption {
-  /*
-   * El pie va dentro del hueco reservado para no alterar la proporcion; se
-   * apoya en la parte baja de la imagen.
-   */
+  /* El pie va dentro del hueco reservado, para no alterar la proporcion. */
   position: absolute;
   inset: auto 0 0;
   padding: var(--space-xs) var(--space-sm);
-  background: rgb(0 0 0 / 55%);
-  color: #ffffff;
+  background: linear-gradient(transparent, rgb(10 26 20 / 82%));
+  color: var(--ivory);
   font-size: 0.85rem;
 }
 
 .property-gallery-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
   gap: var(--space-sm);
   margin: 0;
   padding: 0;
@@ -238,13 +714,67 @@ a {
   margin: 0;
 }
 
-.property-video-list,
-.property-document-list {
-  margin: 0;
-  padding-left: var(--space-md);
-}
+/* -------------------------------------------------------------------------- */
+/* Movil                                                                      */
+/* -------------------------------------------------------------------------- */
 
-@media (max-width: 40rem) {
+@media (max-width: 52rem) {
+  .site-header-inner {
+    align-items: flex-start;
+  }
+
+  .site-nav-toggle summary {
+    display: flex;
+    gap: var(--space-xs);
+    align-items: center;
+    padding: var(--space-2xs) var(--space-xs);
+    border: 1px solid rgb(250 247 240 / 30%);
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 0.85rem;
+    letter-spacing: 0.06em;
+    list-style: none;
+    text-transform: uppercase;
+  }
+
+  .site-nav-toggle summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .site-nav-toggle-bars {
+    display: block;
+    width: 1rem;
+    height: 2px;
+    background: currentcolor;
+    box-shadow:
+      0 5px currentcolor,
+      0 -5px currentcolor;
+  }
+
+  .site-nav-toggle > .site-nav {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-md);
+    padding: var(--space-md) 0 var(--space-xs);
+  }
+
+  .site-nav ul {
+    flex-direction: column;
+    gap: var(--space-sm);
+  }
+
+  .page {
+    padding: var(--space-lg) var(--space-md);
+  }
+
+  .property-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .catalogue-controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .property-feature-group dl {
     grid-template-columns: minmax(0, 1fr);
   }
