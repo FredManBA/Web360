@@ -71,7 +71,19 @@ export type AdminErrorCode =
   // El archivo no pasa las comprobaciones: tipo, contenido o tamano.
   | 'media_upload_rejected'
   // R2 no acepto la escritura; no se ha registrado nada.
-  | 'media_upload_failed';
+  | 'media_upload_failed'
+
+  // -- Recorrido 360 ---------------------------------------------------------
+  | 'tour_node_not_found'
+  | 'tour_link_not_found'
+  // Un nodo solo puede apoyarse en un panorama.
+  | 'tour_media_not_panorama'
+  | 'tour_media_property_mismatch'
+  // Ese panorama ya sostiene otro nodo: el esquema admite uno solo.
+  | 'tour_media_in_use'
+  // Enlace imposible: a si mismo, o entre nodos de propiedades distintas.
+  | 'tour_link_invalid'
+  | 'tour_link_duplicate';
 
 export interface FieldIssue {
   /** Ruta del campo, p. ej. "publicLatitude" o "translations.es.slug". */

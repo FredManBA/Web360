@@ -87,6 +87,15 @@ const STATUS_BY_ERROR: Record<AdminErrorCode, number> = {
   media_upload_rejected: 422,
   // El almacenamiento no respondio: no es culpa de la peticion.
   media_upload_failed: 502,
+
+  tour_node_not_found: 404,
+  tour_link_not_found: 404,
+  tour_media_not_panorama: 422,
+  tour_media_property_mismatch: 422,
+  // Choque con algo que ya existe, no con la forma de la peticion.
+  tour_media_in_use: 409,
+  tour_link_invalid: 422,
+  tour_link_duplicate: 409,
 };
 
 export function jsonFromAdminError(error: AdminError): Response {
