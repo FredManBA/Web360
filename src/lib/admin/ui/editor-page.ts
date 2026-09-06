@@ -10,6 +10,7 @@
  */
 
 import { bindingFor, FIELD_BINDINGS } from './editor-fields';
+import { initFeatureEditor, type FeatureEditorHandle } from './feature-editor';
 import {
   areaPreview,
   fieldsToRaw,
@@ -117,6 +118,12 @@ export function initEditorPage(): void {
   };
   let publicationStatus: PublicationStatus = 'draft';
   let coordinator: SaveCoordinator | null = null;
+  /*
+   * Las caracteristicas llevan por ahora su propio guardado, fuera del
+   * coordinador. La integracion se limita a sumar su trabajo pendiente al
+   * aviso de salida; la Fase 3C-3 las unificara.
+   */
+  let features: FeatureEditorHandle | null = null;
 
   /* ---------------------------------------------------------------------- */
   /* Lectura y escritura del formulario                                     */
@@ -475,7 +482,8 @@ export function initEditorPage(): void {
       </div>`;
   };
 
-  const load = async (): Promise<void> => {
+  /** Devuelve si la propiedad quedo cargada, para decidir el resto del arranque. */
+  const load = async (): Promise<boolean> => {
     showState('Cargando propiedad…', false);
 
     let types: PropertyTypePayload[] = [];
@@ -515,7 +523,7 @@ export function initEditorPage(): void {
 
     if (loadState !== 'ready' || payload?.property === undefined) {
       showState(loadStateMessage(loadState) ?? 'No pudimos cargar la propiedad.', true);
-      return;
+      return false;
     }
 
     const property = payload.property;
@@ -549,6 +557,7 @@ export function initEditorPage(): void {
     clearErrors();
     refreshConditionalUi();
     setSaveState('saved');
+    return true;
   };
 
   /* ---------------------------------------------------------------------- */
@@ -622,9 +631,21 @@ export function initEditorPage(): void {
    * `preventDefault()`: `returnValue` esta obsoleto.
    */
   window.addEventListener('beforeunload', (event) => {
-    if (coordinator?.snapshot().hasPendingWork !== true) return;
+    const corePending = coordinator?.snapshot().hasPendingWork === true;
+    const featuresPending = features?.hasPendingWork() === true;
+
+    if (!corePending && !featuresPending) return;
     event.preventDefault();
   });
 
-  void load();
+  void load().then((loaded) => {
+    // Sin propiedad no hay caracteristicas que editar: la seccion sigue oculta.
+    if (!loaded) return;
+
+    const featuresBox = byId<HTMLElement>('editor-features');
+    if (featuresBox !== null) featuresBox.hidden = false;
+
+    // Vive fuera del coordinador: un fallo suyo no rompe el resto del editor.
+    features = initFeatureEditor(propertyId);
+  });
 }

@@ -835,3 +835,115 @@
     align-items: stretch;
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/* Caracteristicas                                                            */
+/* -------------------------------------------------------------------------- */
+
+.editor-features {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  margin-top: var(--space-md);
+}
+
+.editor-features h2 {
+  margin: 0;
+}
+
+#admin-features {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.feature-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius);
+  background: var(--admin-surface-muted);
+}
+
+.feature-group-loose {
+  border-style: dashed;
+}
+
+.feature-group-title {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.feature-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.feature-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-surface);
+}
+
+/*
+ * Formulario por tarjeta, nunca una tabla: editar en celdas es incomodo con
+ * teclado y se rompe en movil. Dos columnas como maximo.
+ */
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-sm) var(--space-md);
+}
+
+.feature-grid input[type='text'],
+.feature-grid select {
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--admin-border-strong);
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  font: inherit;
+}
+
+.feature-grid input[aria-invalid='true'] {
+  border-color: var(--admin-danger);
+  border-width: 2px;
+}
+
+.feature-actions,
+.feature-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  align-items: center;
+}
+
+.feature-status-box {
+  margin-left: auto;
+}
+
+.admin-button-quiet {
+  color: var(--admin-danger);
+}
+
+.admin-button-quiet:hover {
+  background: var(--admin-danger-tint);
+}
+
+@media (max-width: 60rem) {
+  .feature-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .feature-status-box {
+    margin-left: 0;
+  }
+}
