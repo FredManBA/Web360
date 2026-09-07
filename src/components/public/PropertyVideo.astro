@@ -1,0 +1,110 @@
+---
+/**
+ * Video de la ficha.
+ *
+ * Dos origenes y dos tratamientos distintos:
+ *
+ * - lo que esta en R2 se reproduce con `<video>` del navegador. `preload` solo
+ *   pide los metadatos: el archivo entero no se descarga hasta que alguien le
+ *   da al play;
+ * - lo de YouTube se muestra como portada con un boton. El `iframe` de YouTube
+ *   pesa cientos de kilobytes y trae sus propias peticiones, y ponerlo en la
+ *   pagina cobraria ese peso a todo el que pasa por la ficha aunque no mire el
+ *   video. Se inserta al pulsar, y solo entonces.
+ *
+ * Nunca arranca solo con sonido: en R2 no hay `autoplay`, y en YouTube el
+ * `autoplay` es la respuesta a una pulsacion, que es lo que espera quien acaba
+ * de pulsar.
+ */
+import type { Locale } from '../../lib/domain/vocabularies';
+import { labelsFor } from '../../lib/public/labels';
+import type { PublicMediaItem } from '../../lib/public/read-model';
+
+interface Props {
+  videos: PublicMediaItem[];
+  locale: Locale;
+  propertyTitle: string;
+}
+
+const { videos, locale, propertyTitle } = Astro.props;
+const labels = labelsFor(locale);
+
+/*
+ * `youtube-nocookie` en vez del dominio normal: no cambia lo que se ve y evita
+ * las cookies de seguimiento mientras nadie reproduzca nada.
+ */
+const embedBase = 'https://www.youtube-nocookie.com/embed/';
+
+/** Portada del video, servida por el propio YouTube. */
+const coverOf = (videoId: string): string => `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+---
+
+<section class="property-section property-videos" aria-labelledby="video-title">
+  <h2 id="video-title">{labels.video}</h2>
+
+  <ul class="video-list">
+    {
+      videos.map((video) => (
+        <li class="video-item">
+          {video.youtubeVideoId === null ? (
+            <video
+              class="video-frame"
+              src={video.url ?? undefined}
+              controls
+              preload="metadata"
+              playsinline
+              aria-label={video.title ?? labels.videoOf(propertyTitle)}
+            />
+          ) : (
+            <div
+              class="video-facade"
+              data-video-facade
+              data-video-id={video.youtubeVideoId}
+              data-embed={`${embedBase}${video.youtubeVideoId}`}
+              data-title={video.title ?? labels.video}
+            >
+              {/*
+                La portada tambien es diferida: mientras la ficha no se baje
+                hasta aqui, no se pide nada a un tercero.
+              */}
+              <img
+                class="video-cover"
+                src={coverOf(video.youtubeVideoId)}
+                alt={labels.videoCover(video.title ?? propertyTitle)}
+                loading="lazy"
+                decoding="async"
+              />
+
+              <button type="button" class="video-play" data-video-play>
+                <span class="video-play-mark" aria-hidden="true" />
+                <span class="visually-hidden">{labels.playVideo}</span>
+              </button>
+            </div>
+          )}
+
+          {video.title && <p class="video-caption">{video.title}</p>}
+        </li>
+      ))
+    }
+  </ul>
+
+  <noscript>
+    <ul class="property-link-list">
+      {
+        videos
+          .filter((video) => video.youtubeVideoId !== null)
+          .map((video) => (
+            <li>
+              <a
+                href={`https://www.youtube.com/watch?v=${video.youtubeVideoId}`}
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                {video.title ?? labels.watchOnYoutube}
+              </a>
+            </li>
+          ))
+      }
+    </ul>
+  </noscript>
+</section>

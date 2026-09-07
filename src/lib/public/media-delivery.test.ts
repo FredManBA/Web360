@@ -20,6 +20,7 @@ import { createPropertyDraft } from '../admin/properties/create-property';
 import { updateProperty } from '../admin/properties/update-property';
 import { upsertPropertyTranslation } from '../admin/properties/update-property-translation';
 import { applySeed, createTestDatabase } from '../admin/test-database';
+import { createTourNode } from '../admin/tour/nodes';
 import { uploadMedia } from '../admin/media/upload';
 import { SAMPLE_JPEG, SAMPLE_PDF, toArrayBuffer } from '../admin/media/test-files';
 import type { AdminBatchDatabase } from '../admin/types';
@@ -323,5 +324,77 @@ describe('no se puede pedir un objeto arbitrario', () => {
 
     // Sigue siendo un borrador.
     expect((await serve(mediaId)).status).toBe(404);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Panoramas del recorrido                                                    */
+/* -------------------------------------------------------------------------- */
+
+describe('los panoramas del recorrido pasan por la misma puerta', () => {
+  /** Un panorama de verdad, subido como lo hace el panel. */
+  async function uploadPanorama(propertyId: number): Promise<number> {
+    const result = await uploadMedia(db, bucket, propertyId, {
+      mediaKind: 'panorama',
+      fileName: 'entrada.jpg',
+      declaredMimeType: 'image/jpeg',
+      bytes: toArrayBuffer(SAMPLE_JPEG),
+    });
+
+    if (!result.ok) throw new Error('setup: panorama');
+    return result.data.id;
+  }
+
+  it('el de una propiedad publicada se sirve', async () => {
+    const propertyId = await newProperty();
+    const mediaId = await uploadPanorama(propertyId);
+
+    await upsertPropertyTranslation(db, propertyId, {
+      locale: 'es',
+      slug: 'lote-publicado',
+      title: 'Lote publicado',
+    });
+    await setStatus(propertyId, 'published');
+
+    const response = await serve(mediaId);
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('cache-control')).toBe(PUBLIC_MEDIA_CACHE_CONTROL);
+  });
+
+  it('el de un borrador no, aunque tenga un punto del recorrido colgado', async () => {
+    const propertyId = await newProperty();
+    const mediaId = await uploadPanorama(propertyId);
+
+    const node = await createTourNode(db, propertyId, { propertyMediaId: mediaId });
+    if (!node.ok) throw new Error('setup: punto');
+
+    // Montar el recorrido no publica nada: la propiedad sigue en borrador.
+    expect((await serve(mediaId)).status).toBe(404);
+  });
+
+  it('el de una vendida y oculta tampoco', async () => {
+    const propertyId = await newProperty();
+    const mediaId = await uploadPanorama(propertyId);
+
+    await upsertPropertyTranslation(db, propertyId, {
+      locale: 'es',
+      slug: 'lote-vendido',
+      title: 'Lote vendido',
+    });
+    await setStatus(propertyId, 'published', 'sold');
+
+    expect((await serve(mediaId)).status).toBe(404);
+  });
+
+  it('probar numeros cercanos no descubre el panorama de otra propiedad', async () => {
+    const hidden = await newProperty();
+    const secret = await uploadPanorama(hidden);
+
+    const { mediaId } = await publishedWithImage();
+
+    // La imagen publicada si sale; el panorama del borrador, no.
+    expect((await serve(mediaId)).status).toBe(200);
+    expect((await serve(secret)).status).toBe(404);
   });
 });

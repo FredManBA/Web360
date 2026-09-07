@@ -11,7 +11,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { properties, propertyTranslations } from '../../db/schema';
+import { properties, propertyTourNodes, propertyTranslations } from '../../db/schema';
 import { createFeatureGroup } from '../admin/features/feature-groups';
 import { createFeature } from '../admin/features/features';
 import { createMedia } from '../admin/media/media';
@@ -19,7 +19,8 @@ import { createPropertyDraft } from '../admin/properties/create-property';
 import { updateProperty } from '../admin/properties/update-property';
 import { upsertPropertyTranslation } from '../admin/properties/update-property-translation';
 import { applySeed, createTestDatabase } from '../admin/test-database';
-import { createTourNode } from '../admin/tour/nodes';
+import { createTourLink } from '../admin/tour/links';
+import { createTourNode, setStartNode, type CreateTourNodeInput } from '../admin/tour/nodes';
 import type { AdminBatchDatabase } from '../admin/types';
 import type { CommercialStatus, PublicationStatus } from '../domain/vocabularies';
 import {
@@ -400,6 +401,248 @@ describe('precio publicado', () => {
 });
 
 /* -------------------------------------------------------------------------- */
+/* Recorrido 360                                                              */
+/* -------------------------------------------------------------------------- */
+
+describe('el recorrido publicado', () => {
+  /** Un panorama nuevo de la propiedad, listo para colgarle un punto. */
+  async function panorama(propertyId: number, name: string): Promise<number> {
+    const created = await createMedia(db, propertyId, {
+      mediaKind: 'panorama',
+      sourceProvider: 'r2',
+      objectKey: `propiedades/${propertyId}/panorama/${name}.jpg`,
+    });
+    if (!created.ok) throw new Error('setup: panorama');
+
+    return created.data.id;
+  }
+
+  async function node(
+    propertyId: number,
+    mediaId: number,
+    input: Partial<CreateTourNodeInput> = {},
+  ): Promise<number> {
+    const created = await createTourNode(db, propertyId, {
+      propertyMediaId: mediaId,
+      ...input,
+    });
+    if (!created.ok) throw new Error('setup: punto');
+
+    return created.data.id;
+  }
+
+  it('una propiedad sin puntos no publica recorrido', async () => {
+    const propertyId = await publishedProperty();
+    await panorama(propertyId, 'suelto');
+
+    const property = findBySlug(await snapshot(), 'es', 'lote-nosara');
+
+    // Hay un panorama, pero nadie ha montado el recorrido con el.
+    expect(property?.tour).toBeNull();
+    expect(property?.media.hasTour).toBe(false);
+  });
+
+  it('publica los puntos en su orden, con su panorama', async () => {
+    const propertyId = await publishedProperty();
+
+    await node(propertyId, await panorama(propertyId, 'entrada'), {
+      nameEs: 'Entrada',
+      sortOrder: 0,
+    });
+    const second = await panorama(propertyId, 'mirador');
+    await node(propertyId, second, { nameEs: 'Mirador', sortOrder: 1 });
+
+    const tour = findBySlug(await snapshot(), 'es', 'lote-nosara')?.tour;
+
+    expect(tour?.nodes.map((item) => item.name)).toEqual(['Entrada', 'Mirador']);
+    // La ruta publica de 4B, no la clave del objeto.
+    expect(tour?.nodes[1]?.url).toBe(`/media/${second}`);
+  });
+
+  it('empieza por el punto inicial marcado', async () => {
+    const propertyId = await publishedProperty();
+
+    await node(propertyId, await panorama(propertyId, 'entrada'), { nameEs: 'Entrada' });
+    const miradorId = await node(propertyId, await panorama(propertyId, 'mirador'), {
+      nameEs: 'Mirador',
+    });
+
+    const marked = await setStartNode(db, propertyId, miradorId, true);
+    if (!marked.ok) throw new Error('setup: inicio');
+
+    const tour = findBySlug(await snapshot(), 'es', 'lote-nosara')?.tour;
+
+    // La clave es la posicion dentro del recorrido: el segundo punto.
+    expect(tour?.start).toBe('2');
+    expect(tour?.nodes.find((item) => item.key === tour.start)?.name).toBe('Mirador');
+  });
+
+  it('sin punto inicial marcado abre por el primero', async () => {
+    const propertyId = await publishedProperty();
+
+    await node(propertyId, await panorama(propertyId, 'entrada'), { nameEs: 'Entrada' });
+    await node(propertyId, await panorama(propertyId, 'mirador'), { nameEs: 'Mirador' });
+
+    expect(findBySlug(await snapshot(), 'es', 'lote-nosara')?.tour?.start).toBe('1');
+  });
+
+  it('los saltos apuntan a la clave del destino, con su posicion', async () => {
+    const propertyId = await publishedProperty();
+
+    const entrada = await node(propertyId, await panorama(propertyId, 'entrada'), {
+      nameEs: 'Entrada',
+    });
+    const mirador = await node(propertyId, await panorama(propertyId, 'mirador'), {
+      nameEs: 'Mirador',
+    });
+
+    const link = await createTourLink(db, propertyId, {
+      fromNodeId: entrada,
+      toNodeId: mirador,
+      yaw: 1.25,
+      pitch: -0.4,
+    });
+    if (!link.ok) throw new Error('setup: salto');
+
+    const tour = findBySlug(await snapshot(), 'es', 'lote-nosara')?.tour;
+
+    expect(tour?.nodes[0]?.links).toEqual([{ to: '2', yaw: 1.25, pitch: -0.4 }]);
+    // El salto es dirigido: el destino no gana uno de vuelta por su cuenta.
+    expect(tour?.nodes[1]?.links).toEqual([]);
+  });
+
+  it('publica la camara inicial solo cuando esta ajustada', async () => {
+    const propertyId = await publishedProperty();
+
+    await node(propertyId, await panorama(propertyId, 'entrada'), {
+      initialYaw: 0.5,
+      initialPitch: 0.1,
+      initialFov: 70,
+    });
+    await node(propertyId, await panorama(propertyId, 'mirador'), {});
+
+    const tour = findBySlug(await snapshot(), 'es', 'lote-nosara')?.tour;
+
+    expect(tour?.nodes[0]?.initialView).toEqual({ yaw: 0.5, pitch: 0.1, fov: 70 });
+    expect(tour?.nodes[1]?.initialView).toBeNull();
+  });
+
+  it('cada idioma trae sus nombres, y el que falta queda vacio', async () => {
+    const propertyId = await publishedProperty();
+    await translate(propertyId, 'en', { slug: 'ocean-view-lot', title: 'Ocean view lot' });
+
+    await node(propertyId, await panorama(propertyId, 'entrada'), {
+      nameEs: 'Entrada',
+      nameEn: 'Entrance',
+    });
+    // Este solo tiene nombre en espanol.
+    await node(propertyId, await panorama(propertyId, 'mirador'), { nameEs: 'Mirador' });
+
+    const data = await snapshot();
+
+    expect(findBySlug(data, 'es', 'lote-nosara')?.tour?.nodes.map((item) => item.name)).toEqual([
+      'Entrada',
+      'Mirador',
+    ]);
+    // En ingles no se inventa el nombre ni se copia del otro idioma.
+    expect(findBySlug(data, 'en', 'ocean-view-lot')?.tour?.nodes.map((item) => item.name)).toEqual([
+      'Entrance',
+      null,
+    ]);
+  });
+
+  it('el recorrido de una propiedad no publicada no existe', async () => {
+    const propertyId = await publishedProperty();
+    await node(propertyId, await panorama(propertyId, 'entrada'), { nameEs: 'Entrada' });
+
+    await setStatus(propertyId, 'draft');
+
+    const data = await snapshot();
+
+    expect(catalogueOf(data, 'es')).toHaveLength(0);
+    expect(JSON.stringify(data)).not.toContain('Entrada');
+  });
+
+  it('el recorrido de una vendida y oculta tampoco', async () => {
+    const propertyId = await publishedProperty();
+    await node(propertyId, await panorama(propertyId, 'entrada'), { nameEs: 'Entrada' });
+
+    await setStatus(propertyId, 'published', 'sold');
+
+    expect(JSON.stringify(await snapshot())).not.toContain('Entrada');
+  });
+
+  /*
+   * Los dos casos que la base no puede impedir. La clave foranea garantiza que
+   * el archivo existe, pero no que sea de esta propiedad ni que sea un
+   * panorama: eso lo comprueba el read model, y por eso se prueba insertando
+   * la fila a mano, que es la unica forma de llegar ahi.
+   */
+  it('descarta un punto cuyo panorama es de otra propiedad', async () => {
+    const otherId = await newProperty();
+    const ajeno = await panorama(otherId, 'ajeno');
+
+    const propertyId = await publishedProperty();
+    await db.insert(propertyTourNodes).values({ propertyId, propertyMediaId: ajeno });
+
+    const property = findBySlug(await snapshot(), 'es', 'lote-nosara');
+
+    expect(property?.tour).toBeNull();
+    expect(property?.media.hasTour).toBe(false);
+  });
+
+  it('descarta un punto colgado de un archivo que no es panorama', async () => {
+    const propertyId = await publishedProperty();
+
+    const photo = await createMedia(db, propertyId, {
+      mediaKind: 'image',
+      sourceProvider: 'r2',
+      objectKey: 'propiedades/1/image/foto.jpg',
+    });
+    if (!photo.ok) throw new Error('setup: foto');
+
+    await db.insert(propertyTourNodes).values({ propertyId, propertyMediaId: photo.data.id });
+
+    expect(findBySlug(await snapshot(), 'es', 'lote-nosara')?.tour).toBeNull();
+  });
+
+  it('no lleva claves de R2 ni ids de la base', async () => {
+    /*
+     * Otra propiedad con su recorrido, para que los ids de los puntos no
+     * empiecen en 1: si coincidieran con las claves publicas, la comprobacion
+     * de abajo pasaria sola y no demostraria nada.
+     */
+    const decoy = await newProperty();
+    await node(decoy, await panorama(decoy, 'otra-a'));
+    await node(decoy, await panorama(decoy, 'otra-b'));
+
+    const propertyId = await publishedProperty();
+
+    const entrada = await node(propertyId, await panorama(propertyId, 'entrada'), {
+      nameEs: 'Entrada',
+    });
+    const mirador = await node(propertyId, await panorama(propertyId, 'mirador'), {
+      nameEs: 'Mirador',
+    });
+    await createTourLink(db, propertyId, { fromNodeId: entrada, toNodeId: mirador });
+
+    const tour = findBySlug(await snapshot(), 'es', 'lote-nosara')?.tour;
+    const json = JSON.stringify(tour);
+
+    // Las claves son la posicion dentro del recorrido, no el numero de fila.
+    expect(entrada).toBeGreaterThan(2);
+    expect(tour?.nodes.map((item) => item.key)).toEqual(['1', '2']);
+    expect(json).not.toContain(`"to":"${mirador}"`);
+
+    expect(json).not.toContain('objectKey');
+    expect(json).not.toContain('panorama/entrada.jpg');
+    expect(Object.keys(tour?.nodes[0] ?? {}).sort()).toEqual(
+      ['initialView', 'key', 'links', 'name', 'url'].sort(),
+    );
+  });
+});
+
+/* -------------------------------------------------------------------------- */
 /* Nada privado                                                               */
 /* -------------------------------------------------------------------------- */
 
@@ -543,6 +786,7 @@ describe('el snapshot no contiene nada privado', () => {
         'slug',
         'technicalDescription',
         'title',
+        'tour',
       ].sort(),
     );
   });

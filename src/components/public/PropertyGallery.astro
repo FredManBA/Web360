@@ -1,0 +1,88 @@
+---
+/**
+ * Galeria de la ficha, y a la vez su portada.
+ *
+ * Sin JavaScript se ven TODAS las fotografias, una detras de otra: es una
+ * pagina de fotos y sigue siendo util tal cual. Con JavaScript se convierte en
+ * una galeria de una foto a la vez, con flechas, teclado y gesto.
+ *
+ * Las que no se ven de entrada llevan `loading="lazy"` y quedan ocultas, asi
+ * que el navegador no las descarga hasta que alguien las pide. Como todavia no
+ * hay variantes web (WebP/AVIF), eso es lo que mas ahorra.
+ */
+import PropertyImage from './PropertyImage.astro';
+import type { Locale } from '../../lib/domain/vocabularies';
+import { labelsFor } from '../../lib/public/labels';
+import type { PublicMediaItem } from '../../lib/public/read-model';
+
+interface Props {
+  images: PublicMediaItem[];
+  locale: Locale;
+  propertyTitle: string;
+  /** Ancla del recorrido, si la propiedad tiene uno. */
+  tourHref?: string | null;
+}
+
+const { images, locale, propertyTitle, tourHref = null } = Astro.props;
+const labels = labelsFor(locale);
+
+/*
+ * Plantilla del contador, con el hueco del numero marcado. Es el mismo truco
+ * que usa el recuento del catalogo: el idioma lo pone la plantilla y el numero
+ * lo pone el navegador.
+ */
+const positionTemplate = labels.photoPosition(0, images.length).replace('0', '{n}');
+---
+
+<section class="gallery" id="galeria" aria-label={labels.photographs} data-gallery>
+  <ul class="gallery-stage" id="gallery-stage">
+    {
+      images.map((image, index) => (
+        <li class="gallery-slide" data-gallery-slide>
+          <figure>
+            <PropertyImage
+              image={image}
+              locale={locale}
+              propertyTitle={propertyTitle}
+              priority={index === 0}
+            />
+            {image.caption && <figcaption>{image.caption}</figcaption>}
+          </figure>
+        </li>
+      ))
+    }
+  </ul>
+
+  {
+    tourHref && (
+      <a class="gallery-tour-badge" href={tourHref}>
+        <span aria-hidden="true">360°</span>
+        <span class="visually-hidden">{labels.tourOpen}</span>
+      </a>
+    )
+  }
+
+  {
+    /*
+    Los controles llegan ocultos: sin JavaScript no harian nada, y un boton que
+    no responde es peor que ningun boton.
+  */
+  }
+  <div class="gallery-controls" id="gallery-controls" hidden>
+    <button type="button" id="gallery-prev" class="gallery-arrow" aria-label={labels.previousPhoto}>
+      <span aria-hidden="true">←</span>
+    </button>
+
+    <p
+      class="gallery-position"
+      id="gallery-position"
+      data-template={positionTemplate}
+      aria-live="polite"
+    >
+    </p>
+
+    <button type="button" id="gallery-next" class="gallery-arrow" aria-label={labels.nextPhoto}>
+      <span aria-hidden="true">→</span>
+    </button>
+  </div>
+</section>

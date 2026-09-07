@@ -64,12 +64,45 @@ describe('navegacion', () => {
     expect(header).toContain("class={item.id === section ? 'is-current' : undefined}");
   });
 
+  it('en escritorio el menu se ve entero, aunque el `<details>` este cerrado', () => {
+    const css = read(CSS);
+
+    /*
+     * El navegador esconde el contenido de un `<details>` cerrado con
+     * `content-visibility`, y ningun `display` de dentro lo anula: sin esto,
+     * la navegacion de escritorio no se ve.
+     */
+    expect(css).toContain('.site-nav-toggle::details-content');
+    expect(css).toContain('content-visibility: visible');
+    // Y en movil vuelve a cerrarse, que es donde el menu sirve de algo.
+    expect(css).toContain('.site-nav-toggle:not([open])::details-content');
+  });
+
   it('lo que no existe se muestra pero no lleva a un 404', () => {
     const header = read(HEADER);
 
     expect(header).toContain('site-nav-pending');
     expect(header).toContain('aria-disabled="true"');
     expect(header).toContain('labels.comingSoon');
+  });
+});
+
+describe('recuento de resultados', () => {
+  it('el singular no se arma con la plantilla del plural', () => {
+    // "1 propiedades" se ve en cuanto queda una sola tarjeta.
+    for (const page of [CATALOGUE_ES, CATALOGUE_EN]) {
+      expect(read(page)).toContain('data-template-one={labels.results(1)}');
+    }
+
+    expect(read(PAGE_MODULE)).toContain('view.total === 1');
+    expect(read(PAGE_MODULE)).toContain('dataset.templateOne');
+  });
+
+  it('cada idioma tiene su singular y su plural', () => {
+    expect(labelsFor('es').results(1)).toBe('1 propiedad');
+    expect(labelsFor('es').results(4)).toBe('4 propiedades');
+    expect(labelsFor('en').results(1)).toBe('1 property');
+    expect(labelsFor('en').results(4)).toBe('4 properties');
   });
 });
 

@@ -2,7 +2,7 @@
  * Seccion del recorrido 360 del editor.
  *
  * Solo cableado de DOM: el estado vive en `tour-editor-state.ts`, las llamadas
- * en `tour-api.ts` y el visor en `panorama-viewer.ts`.
+ * en `tour-api.ts` y el visor en `viewer/panorama-viewer.ts`.
  *
  * Que pasa por el coordinador de guardado y que no:
  *
@@ -16,7 +16,7 @@
  * seccion sigue siendo utilizable.
  */
 
-import { createPanoramaViewer, type PanoramaViewer } from './panorama-viewer';
+import { createPanoramaViewer, type PanoramaViewer } from '../../viewer/panorama-viewer';
 import { createTourApi, panoramaUrl, type TourApi } from './tour-api';
 import {
   addLink,

@@ -54,6 +54,35 @@ export interface PublicLabels {
   noMatches: string;
   noMatchesHint: string;
   showMore: string;
+
+  /* -- Ficha ------------------------------------------------------------- */
+  price: string;
+  overview: string;
+  video: string;
+  photographs: string;
+  mapComingSoon: string;
+  contactComingSoon: string;
+  /** Navegacion de la galeria. */
+  previousPhoto: string;
+  nextPhoto: string;
+  photoPosition: (index: number, total: number) => string;
+  playVideo: string;
+  videoCover: (title: string) => string;
+  /** Se usa cuando el video no trae titulo propio. */
+  videoOf: (title: string) => string;
+
+  /* -- Recorrido 360 ----------------------------------------------------- */
+  tourTitle: string;
+  tourLead: string;
+  tourOpen: string;
+  tourClose: string;
+  tourPoints: string;
+  tourPointCount: (count: number) => string;
+  tourPointName: (position: number) => string;
+  tourGoTo: (name: string) => string;
+  tourCurrentPoint: string;
+  tourUnavailable: string;
+  tourLoading: string;
 }
 
 const ES: PublicLabels = {
@@ -98,6 +127,32 @@ const ES: PublicLabels = {
   noMatches: 'Ninguna propiedad coincide con estos filtros.',
   noMatchesHint: 'Prueba a ampliar el precio o la superficie, o quita algún filtro.',
   showMore: 'Ver más',
+
+  price: 'Precio',
+  overview: 'Resumen',
+  video: 'Vídeo',
+  photographs: 'Fotografías',
+  mapComingSoon: 'El mapa de la zona llegará en breve.',
+  contactComingSoon: 'El formulario de contacto llegará en breve.',
+  previousPhoto: 'Fotografía anterior',
+  nextPhoto: 'Fotografía siguiente',
+  photoPosition: (index, total) => `Fotografía ${index} de ${total}`,
+  playVideo: 'Reproducir el vídeo',
+  videoCover: (title) => `Portada del vídeo ${title}`,
+  videoOf: (title) => `Vídeo de ${title}`,
+
+  tourTitle: 'Recorrido 360°',
+  tourLead: 'Camina por la propiedad desde donde estés.',
+  tourOpen: 'Abrir el recorrido 360°',
+  tourClose: 'Cerrar el recorrido',
+  tourPoints: 'Puntos del recorrido',
+  tourPointCount: (count) => (count === 1 ? '1 punto' : `${count} puntos`),
+  tourPointName: (position) => `Punto ${position}`,
+  tourGoTo: (name) => `Ir a ${name}`,
+  tourCurrentPoint: 'Punto actual',
+  tourUnavailable:
+    'No se pudo abrir el visor 360° en este navegador. Puedes ver cada panorama por separado.',
+  tourLoading: 'Cargando el recorrido…',
 };
 
 const EN: PublicLabels = {
@@ -142,6 +197,32 @@ const EN: PublicLabels = {
   noMatches: 'No property matches these filters.',
   noMatchesHint: 'Try widening the price or area, or remove a filter.',
   showMore: 'Show more',
+
+  price: 'Price',
+  overview: 'Overview',
+  video: 'Video',
+  photographs: 'Photographs',
+  mapComingSoon: 'The area map is coming soon.',
+  contactComingSoon: 'The contact form is coming soon.',
+  previousPhoto: 'Previous photograph',
+  nextPhoto: 'Next photograph',
+  photoPosition: (index, total) => `Photograph ${index} of ${total}`,
+  playVideo: 'Play the video',
+  videoCover: (title) => `Cover of the video ${title}`,
+  videoOf: (title) => `Video of ${title}`,
+
+  tourTitle: '360° tour',
+  tourLead: 'Walk the property from wherever you are.',
+  tourOpen: 'Open the 360° tour',
+  tourClose: 'Close the tour',
+  tourPoints: 'Tour points',
+  tourPointCount: (count) => (count === 1 ? '1 point' : `${count} points`),
+  tourPointName: (position) => `Point ${position}`,
+  tourGoTo: (name) => `Go to ${name}`,
+  tourCurrentPoint: 'Current point',
+  tourUnavailable:
+    'The 360° viewer could not be opened in this browser. You can still view each panorama on its own.',
+  tourLoading: 'Loading the tour…',
 };
 
 export function labelsFor(locale: Locale): PublicLabels {

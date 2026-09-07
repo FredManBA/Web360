@@ -43,6 +43,7 @@ const properties = catalogueOf(snapshot, locale);
             id="catalogue-count"
             role="status"
             data-template={labels.results(0).replace('0', '{n}')}
+            data-template-one={labels.results(1)}
           >
             {labels.results(properties.length)}
           </p>

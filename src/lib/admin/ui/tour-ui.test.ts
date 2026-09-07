@@ -47,7 +47,7 @@ function read(relative: string): string {
 }
 
 const TOUR_SCRIPT = 'src/lib/admin/ui/tour-editor.ts';
-const VIEWER_SCRIPT = 'src/lib/admin/ui/panorama-viewer.ts';
+const VIEWER_SCRIPT = 'src/lib/viewer/panorama-viewer.ts';
 const EDITOR_SCRIPT = 'src/lib/admin/ui/editor-page.ts';
 const EDITOR_PAGE = 'src/pages/admin/propiedades/[id].astro';
 const ADMIN_CSS = 'src/styles/admin.css';

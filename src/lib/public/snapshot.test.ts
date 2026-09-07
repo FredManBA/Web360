@@ -193,13 +193,15 @@ describe('catalogo y ficha', () => {
     expect(detail).toContain('property.features.map');
   });
 
-  it('la ficha muestra la galeria y avisa del recorrido 360', () => {
+  it('la ficha muestra la galeria y da paso al recorrido 360', () => {
     const detail = read(DETAIL_COMPONENT);
 
     expect(detail).toContain('property.media.items');
     expect(detail).toContain('property.media.hero');
-    expect(detail).toContain('property.media.hasTour');
     expect(detail).toContain('labels.noImages');
+    // Desde 4D el recorrido es una seccion propia, no un aviso de texto.
+    expect(detail).toContain('<PropertyTour');
+    expect(detail).toContain('property.tour');
   });
 
   it('la ficha sirve las imagenes por la ruta publica, nunca por la del admin', () => {
@@ -225,11 +227,15 @@ describe('catalogo y ficha', () => {
     expect(detail).toContain('images.filter((image) => image !== lead)');
   });
 
-  it('el video de YouTube se enlaza, no se incrusta', () => {
+  it('el video de YouTube no se incrusta al cargar la ficha', () => {
     const detail = read(DETAIL_COMPONENT);
+    const video = read('src/components/public/PropertyVideo.astro');
 
-    expect(detail).toContain('youtube.com/watch');
+    // Ni la ficha ni la plantilla del video traen el iframe en el HTML.
     expect(detail).not.toContain('<iframe');
+    expect(video).not.toContain('<iframe');
+    // Sin JavaScript queda el enlace de siempre.
+    expect(video).toContain('youtube.com/watch');
   });
 
   it('las imagenes cargan de forma diferida salvo la principal', () => {

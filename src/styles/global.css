@@ -93,6 +93,18 @@ svg {
   max-width: 100%;
 }
 
+/*
+ * `hidden` gana siempre.
+ *
+ * La regla del navegador para `[hidden]` es la mas debil de todas, asi que
+ * cualquier `display` propio la anula sin avisar y el elemento sigue a la
+ * vista. Como aqui hay JavaScript que esconde cosas poniendo `hidden`
+ * —galeria, catalogo, controles—, se zanja de una vez.
+ */
+[hidden] {
+  display: none !important;
+}
+
 input,
 button,
 textarea,
@@ -275,6 +287,13 @@ a {
 /*
  * Menu movil sin JavaScript: `<details>` abre y cierra por si solo, responde
  * al teclado y funciona aunque el script nunca llegue.
+ *
+ * En escritorio no hay nada que desplegar y el menu se ve entero. Para eso no
+ * basta con darle `display` al `<nav>`: el navegador esconde el contenido de
+ * un `<details>` cerrado con `content-visibility`, que ningun `display` de
+ * dentro anula. Se le devuelve la visibilidad por las dos vias, la moderna
+ * (`::details-content`) y la anterior, y el menu movil vuelve a cerrarse en su
+ * media query.
  */
 .site-nav-toggle summary {
   display: none;
@@ -284,6 +303,12 @@ a {
   display: flex;
   gap: var(--space-lg);
   align-items: center;
+  content-visibility: visible;
+}
+
+.site-nav-toggle::details-content {
+  content-visibility: visible;
+  block-size: auto;
 }
 
 .site-footer {
@@ -569,6 +594,17 @@ a {
 /* Ficha                                                                      */
 /* -------------------------------------------------------------------------- */
 
+/* Solo para lectores de pantalla: lo que se oye pero no se ve. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .property-detail {
   display: flex;
   flex-direction: column;
@@ -597,9 +633,35 @@ a {
   text-transform: uppercase;
 }
 
-.property-detail-price {
+/*
+ * Precio, superficie y ubicacion en una franja. Es lo primero que se busca al
+ * llegar a una ficha, asi que va junto y sin nada que le compita al lado.
+ */
+.property-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-lg) var(--space-xl);
+  margin: 0;
+  padding: var(--space-md) 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.property-fact dt {
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.property-fact dd {
+  margin: 0;
   font-family: var(--font-display);
-  font-size: 1.6rem;
+  font-size: 1.35rem;
+}
+
+.property-fact-price dd {
+  font-size: 1.75rem;
 }
 
 .property-section {
@@ -609,12 +671,29 @@ a {
   max-width: 46rem;
 }
 
+.property-section-wide {
+  max-width: none;
+}
+
 .property-section h2 {
   font-size: 1.5rem;
 }
 
 .property-section h3 {
-  font-size: 1.1rem;
+  font-size: 1.05rem;
+}
+
+/* Las descripciones se leen: medida corta y algo mas de aire entre lineas. */
+.property-prose {
+  max-width: 38rem;
+  line-height: 1.75;
+  white-space: pre-line;
+}
+
+.property-feature-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: var(--space-lg);
 }
 
 .property-feature-group dl {
@@ -634,20 +713,37 @@ a {
   margin: 0;
 }
 
-.property-tour-note {
-  color: var(--sand-deep);
+.property-link-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.property-link-list a {
+  color: var(--jungle-soft);
+  text-underline-offset: 4px;
+}
+
+/* Lo que aun no existe se dice bajito y no se disfraza de contenido. */
+.property-pending {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm) var(--space-lg);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--line);
+}
+
+.property-pending-note {
+  color: var(--ink-soft);
   font-size: 0.9rem;
 }
 
 .property-back a {
   color: var(--jungle-soft);
   text-underline-offset: 4px;
-}
-
-.property-video-list,
-.property-document-list {
-  margin: 0;
-  padding-left: var(--space-md);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -660,13 +756,47 @@ a {
  * proporcion del contenedor, no las dimensiones del archivo, que muchas veces
  * no se conocen.
  */
-.property-lead,
-.property-gallery-list li {
+.gallery {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.gallery-stage {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: var(--space-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/*
+ * Con JavaScript la galeria pasa a ser una foto grande cada vez. Sin el, la
+ * regla de arriba deja la cuadricula con todas: las dos vistas son utiles.
+ */
+.gallery[data-interactive] .gallery-stage {
+  display: block;
+}
+
+.gallery-slide {
   display: block;
   aspect-ratio: 3 / 2;
   overflow: hidden;
   border-radius: var(--radius-lg);
   background: var(--ivory-warm);
+}
+
+.gallery[data-interactive] .gallery-slide {
+  aspect-ratio: 16 / 10;
+}
+
+.gallery-slide figure {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  margin: 0;
 }
 
 .property-image {
@@ -676,19 +806,7 @@ a {
   object-fit: cover;
 }
 
-.property-gallery {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
-}
-
-.property-lead {
-  position: relative;
-  margin: 0;
-}
-
-.property-lead figcaption,
-.property-gallery-list figcaption {
+.gallery-slide figcaption {
   /* El pie va dentro del hueco reservado, para no alterar la proporcion. */
   position: absolute;
   inset: auto 0 0;
@@ -698,20 +816,300 @@ a {
   font-size: 0.85rem;
 }
 
-.property-gallery-list {
+.gallery-controls {
+  display: flex;
+  gap: var(--space-md);
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.gallery-arrow {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--jungle);
+  cursor: pointer;
+  font-size: 1.1rem;
+  transition: border-color 0.2s ease;
+}
+
+.gallery-arrow:hover {
+  border-color: var(--jungle-soft);
+}
+
+.gallery-position {
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+/* Distintivo de recorrido sobre la foto: el acceso mas directo al 360. */
+.gallery-tour-badge {
+  position: absolute;
+  top: var(--space-md);
+  right: var(--space-md);
+  padding: var(--space-xs) var(--space-md);
+  border: 1px solid rgb(250 247 240 / 45%);
+  border-radius: 999px;
+  background: rgb(10 26 20 / 62%);
+  color: var(--ivory);
+  font-size: 0.85rem;
+  letter-spacing: 0.12em;
+  text-decoration: none;
+  backdrop-filter: blur(4px);
+}
+
+.gallery-tour-badge:hover {
+  border-color: var(--sand);
+  color: var(--sand);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Recorrido 360                                                              */
+/* -------------------------------------------------------------------------- */
+
+.property-tour {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: var(--space-lg);
+  border-radius: var(--radius-lg);
+  background: var(--jungle);
+  color: var(--ivory);
+}
+
+.property-tour h2 {
+  font-size: 1.6rem;
+}
+
+.property-tour h3 {
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.property-tour-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2xs) var(--space-md);
+  align-items: baseline;
+}
+
+.property-tour-head h2 {
+  /* El titulo ocupa toda la linea; la frase y el recuento van debajo. */
+  flex-basis: 100%;
+}
+
+.property-tour-lead {
+  color: rgb(250 247 240 / 78%);
+}
+
+.property-tour-count {
+  color: var(--sand);
+}
+
+.tour-frame {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--jungle-deep);
+}
+
+.tour-poster {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Apagada, para que el boton mande sobre la foto. */
+  opacity: 0.55;
+}
+
+.tour-viewer {
+  position: absolute;
+  inset: 0;
+}
+
+.tour-open {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  border: 0;
+  background: none;
+  color: var(--ivory);
+  cursor: pointer;
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+}
+
+.tour-open[disabled] {
+  cursor: progress;
+}
+
+.tour-open-mark {
+  display: grid;
+  place-items: center;
+  width: 4.5rem;
+  height: 4.5rem;
+  border: 1px solid var(--sand);
+  border-radius: 50%;
+  color: var(--sand);
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  transition: transform 0.25s ease;
+}
+
+.tour-open:hover .tour-open-mark {
+  transform: scale(1.06);
+}
+
+.tour-status {
+  color: var(--sand);
+  font-size: 0.9rem;
+}
+
+.tour-nav {
+  display: flex;
+  flex-direction: column;
   gap: var(--space-sm);
+}
+
+.tour-current {
+  color: var(--sand);
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tour-nav-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.property-gallery-list figure {
-  position: relative;
+.tour-jump,
+.tour-close {
+  padding: var(--space-2xs) var(--space-md);
+  border: 1px solid rgb(250 247 240 / 32%);
+  border-radius: 999px;
+  background: none;
+  color: var(--ivory);
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.tour-jump:hover,
+.tour-close:hover {
+  border-color: var(--sand);
+  color: var(--sand);
+}
+
+.tour-close {
+  align-self: flex-start;
+}
+
+.tour-points a {
+  color: rgb(250 247 240 / 80%);
+  text-underline-offset: 4px;
+}
+
+.tour-points a:hover {
+  color: var(--sand);
+}
+
+/* Marca de un salto dentro del panorama, compartida con el editor. */
+.property-tour .tour-hotspot {
+  display: block;
   width: 100%;
   height: 100%;
+  border: 2px solid var(--ivory);
+  border-radius: 50%;
+  background: rgb(201 168 106 / 75%);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Video                                                                      */
+/* -------------------------------------------------------------------------- */
+
+.video-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
   margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.video-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+}
+
+.video-facade {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background: var(--jungle-deep);
+}
+
+.video-cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.video-frame {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--jungle-deep);
+}
+
+.video-play {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  border: 0;
+  background: rgb(10 26 20 / 25%);
+  cursor: pointer;
+}
+
+/* Triangulo de play dibujado con bordes: ni icono ni peticion extra. */
+.video-play-mark {
+  width: 0;
+  height: 0;
+  margin-left: 0.35rem;
+  border-top: 0.9rem solid transparent;
+  border-bottom: 0.9rem solid transparent;
+  border-left: 1.5rem solid var(--ivory);
+  filter: drop-shadow(0 2px 6px rgb(10 26 20 / 55%));
+  transition: transform 0.2s ease;
+}
+
+.video-play:hover .video-play-mark {
+  transform: scale(1.12);
+}
+
+.video-caption {
+  color: var(--ink-soft);
+  font-size: 0.9rem;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -758,6 +1156,16 @@ a {
     padding: var(--space-md) 0 var(--space-xs);
   }
 
+  /* Aqui el menu si se despliega, asi que cerrado vuelve a esconderse. */
+  .site-nav-toggle:not([open]) > .site-nav {
+    content-visibility: hidden;
+  }
+
+  .site-nav-toggle:not([open])::details-content {
+    content-visibility: hidden;
+    block-size: 0;
+  }
+
   .site-nav ul {
     flex-direction: column;
     gap: var(--space-sm);
@@ -783,7 +1191,33 @@ a {
     margin-bottom: var(--space-xs);
   }
 
-  .property-gallery-list {
+  .gallery-stage {
     grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  }
+
+  /* En movil la foto manda: mas alta y sin cuadricula alrededor. */
+  .gallery[data-interactive] .gallery-slide {
+    aspect-ratio: 4 / 3;
+  }
+
+  .gallery-controls {
+    justify-content: space-between;
+  }
+
+  .property-facts {
+    gap: var(--space-md) var(--space-lg);
+  }
+
+  .property-feature-groups {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .property-tour {
+    padding: var(--space-md);
+  }
+
+  /* El marco del visor pierde el 16/9: en vertical se queda demasiado bajo. */
+  .tour-frame {
+    aspect-ratio: 4 / 3;
   }
 }

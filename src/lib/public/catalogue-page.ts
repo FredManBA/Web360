@@ -176,7 +176,14 @@ export function initCataloguePage(): void {
     });
 
     if (count !== null) {
-      count.textContent = count.dataset.template?.replace('{n}', String(view.total)) ?? '';
+      /*
+       * El singular tiene su propia frase: "1 propiedades" es un descuido que
+       * se ve en cuanto queda una sola tarjeta, y no se arregla con plantilla.
+       */
+      count.textContent =
+        view.total === 1
+          ? (count.dataset.templateOne ?? '')
+          : (count.dataset.template?.replace('{n}', String(view.total)) ?? '');
     }
 
     if (empty !== null) empty.hidden = view.total > 0;

@@ -13,8 +13,10 @@
  * - estados editoriales (`publicationStatus`, `publishedAt`), fechas internas
  *   y cualquier id de la base;
  * - reviews, tokens y contactos;
- * - claves de objeto de R2: no hay entrega publica todavia, asi que
- *   publicarlas seria filtrar la ruta de un bucket privado sin ganar nada.
+ * - claves de objeto de R2: el archivo se publica como ruta (`/media/N`), y
+ *   la clave la resuelve el Worker leyendo la base;
+ * - los ids de los puntos del recorrido: dentro del tour se referencian por
+ *   una clave propia, no por su numero de fila.
  *
  * Se separa a proposito de `admin/`: alli se lee para editar y hace falta
  * todo; aqui se lee para publicar y hace falta lo minimo.
@@ -32,6 +34,8 @@ import {
   propertyMediaGroupTranslations,
   propertyMediaGroups,
   propertyMediaTranslations,
+  propertyTourLinks,
+  propertyTourNodeTranslations,
   propertyTourNodes,
   propertyTranslations,
   propertyTypeTranslations,
@@ -128,6 +132,48 @@ export interface PublicFeatureGroup {
   items: PublicFeature[];
 }
 
+/* -------------------------------------------------------------------------- */
+/* Recorrido 360                                                              */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * El recorrido, tal como lo ve un visitante.
+ *
+ * Es una representacion cerrada sobre si misma: los nodos se referencian entre
+ * ellos por una CLAVE que solo existe dentro de este recorrido —su posicion en
+ * la lista, empezando por 1—, nunca por el id de la base. Asi el visor puede
+ * navegar sin que el sitio publique numeros de fila.
+ *
+ * El panorama viaja como ruta publica (`/media/N`), igual que el resto de la
+ * multimedia: la clave del objeto en R2 no sale de la base.
+ */
+export interface PublicTourLink {
+  /** Clave del punto al que lleva este salto. */
+  to: string;
+  /** Donde se pinta el salto dentro del panorama de origen. */
+  yaw: number;
+  pitch: number;
+}
+
+export interface PublicTourNode {
+  /** Identifica el punto DENTRO de este recorrido. No es un id de la base. */
+  key: string;
+  /** Nombre en el idioma de la ficha; `null` si no se tradujo. */
+  name: string | null;
+  /** Ruta publica del panorama. */
+  url: string;
+  /** Camara con la que abre el punto; `null` si no se ajusto. */
+  initialView: { yaw: number; pitch: number; fov: number | null } | null;
+  /** Saltos que salen de este punto, en su orden. */
+  links: PublicTourLink[];
+}
+
+export interface PublicTour {
+  /** Clave del punto por el que empieza el recorrido. */
+  start: string;
+  nodes: PublicTourNode[];
+}
+
 /** Lo que necesita una tarjeta del catalogo. */
 export interface PublicPropertyCard {
   code: string;
@@ -155,6 +201,8 @@ export interface PublicPropertyDetail extends PublicPropertyCard {
   marketingDescription: string | null;
   technicalDescription: string | null;
   features: PublicFeatureGroup[];
+  /** `null` cuando la propiedad no tiene recorrido publicable. */
+  tour: PublicTour | null;
 }
 
 export interface PublicSnapshot {
@@ -386,9 +434,43 @@ export async function buildPublicSnapshot(
     })
     .from(propertyMediaGroupTranslations);
 
+  /*
+   * Recorrido: nodos, sus nombres y los saltos que salen de cada uno. Se traen
+   * enteros y se cruzan en memoria, como el resto del snapshot.
+   */
   const tourNodes = await db
-    .select({ propertyId: propertyTourNodes.propertyId })
-    .from(propertyTourNodes);
+    .select({
+      id: propertyTourNodes.id,
+      propertyId: propertyTourNodes.propertyId,
+      propertyMediaId: propertyTourNodes.propertyMediaId,
+      sortOrder: propertyTourNodes.sortOrder,
+      isStart: propertyTourNodes.isStart,
+      initialYaw: propertyTourNodes.initialYaw,
+      initialPitch: propertyTourNodes.initialPitch,
+      initialFov: propertyTourNodes.initialFov,
+    })
+    .from(propertyTourNodes)
+    .orderBy(asc(propertyTourNodes.sortOrder), asc(propertyTourNodes.id));
+
+  const tourNodeNames = await db
+    .select({
+      nodeId: propertyTourNodeTranslations.propertyTourNodeId,
+      locale: propertyTourNodeTranslations.locale,
+      name: propertyTourNodeTranslations.name,
+    })
+    .from(propertyTourNodeTranslations);
+
+  const tourLinks = await db
+    .select({
+      id: propertyTourLinks.id,
+      fromNodeId: propertyTourLinks.fromNodeId,
+      toNodeId: propertyTourLinks.toNodeId,
+      yaw: propertyTourLinks.yaw,
+      pitch: propertyTourLinks.pitch,
+      sortOrder: propertyTourLinks.sortOrder,
+    })
+    .from(propertyTourLinks)
+    .orderBy(asc(propertyTourLinks.sortOrder), asc(propertyTourLinks.id));
 
   /* -- Indices en memoria -------------------------------------------------- */
 
@@ -436,11 +518,76 @@ export async function buildPublicSnapshot(
   const mediaGroupOrder = new Map<number, number>();
   mediaGroups.forEach((group, index) => mediaGroupOrder.set(group.id, index));
 
-  const withTour = new Set(
-    tourNodes.filter((row) => visibleIds.has(row.propertyId)).map((row) => row.propertyId),
-  );
+  const tourNodeNameOf = new Map<string, string | null>();
+  for (const row of tourNodeNames) tourNodeNameOf.set(`${row.nodeId}:${row.locale}`, row.name);
+
+  /** Los archivos, por id, para resolver el panorama de cada punto. */
+  const mediaById = new Map(media.map((row) => [row.id, row]));
 
   /* -- Montaje por idioma -------------------------------------------------- */
+
+  /**
+   * Recorrido publicable de una propiedad.
+   *
+   * Un punto solo entra si su panorama existe, pertenece a ESTA propiedad y es
+   * de verdad un panorama. La base garantiza la clave foranea, pero no que el
+   * archivo sea del mismo dueno ni de la clase correcta, asi que se comprueba
+   * aqui: publicar un punto roto seria peor que no publicar el recorrido.
+   *
+   * Los saltos que apuntan a un punto descartado se caen con el: un hotspot
+   * que no lleva a ninguna parte no ayuda a nadie.
+   */
+  const tourFor = (propertyId: number, locale: Locale): PublicTour | null => {
+    const usable = tourNodes.filter((node) => {
+      if (node.propertyId !== propertyId) return false;
+
+      const panorama = mediaById.get(node.propertyMediaId);
+      return (
+        panorama !== undefined &&
+        panorama.propertyId === propertyId &&
+        panorama.mediaKind === 'panorama' &&
+        panorama.sourceProvider !== 'youtube'
+      );
+    });
+
+    if (usable.length === 0) return null;
+
+    // La clave es la posicion dentro del recorrido, no el id de la fila.
+    const keyOf = new Map<number, string>();
+    usable.forEach((node, index) => keyOf.set(node.id, String(index + 1)));
+
+    const nodes: PublicTourNode[] = usable.map((node) => {
+      const name = tourNodeNameOf.get(`${node.id}:${locale}`)?.trim();
+
+      const links: PublicTourLink[] = tourLinks.flatMap((link) => {
+        if (link.fromNodeId !== node.id) return [];
+
+        const to = keyOf.get(link.toNodeId);
+        if (to === undefined) return [];
+
+        return [{ to, yaw: link.yaw, pitch: link.pitch }];
+      });
+
+      return {
+        key: keyOf.get(node.id) ?? '1',
+        name: name === undefined || name.length === 0 ? null : name,
+        url: publicMediaUrl(node.propertyMediaId),
+        initialView:
+          node.initialYaw === null || node.initialPitch === null
+            ? null
+            : { yaw: node.initialYaw, pitch: node.initialPitch, fov: node.initialFov },
+        links,
+      };
+    });
+
+    /*
+     * Sin punto inicial marcado se empieza por el primero: el recorrido tiene
+     * que abrir en algun sitio, y el orden del editor es el que manda.
+     */
+    const start = usable.find((node) => node.isStart) ?? usable[0];
+
+    return { start: start === undefined ? '1' : (keyOf.get(start.id) ?? '1'), nodes };
+  };
 
   /**
    * Multimedia publicable de una propiedad en un idioma.
@@ -449,7 +596,7 @@ export async function buildPublicSnapshot(
    * como se ve en el editor. Un archivo sin textos en este idioma se publica
    * igualmente: la foto sirve aunque no tenga pie.
    */
-  const mediaFor = (propertyId: number, locale: Locale): PublicMediaSummary => {
+  const mediaFor = (propertyId: number, locale: Locale, hasTour: boolean): PublicMediaSummary => {
     const rows = media.filter((row) => row.propertyId === propertyId);
 
     const items: PublicMediaItem[] = rows
@@ -488,7 +635,7 @@ export async function buildPublicSnapshot(
 
     return {
       counts: mediaCounts.get(propertyId) ?? emptyCounts(),
-      hasTour: withTour.has(propertyId),
+      hasTour,
       cover: items.find((item) => item.isCatalogCover) ?? null,
       hero: items.find((item) => item.isHero) ?? null,
       items,
@@ -541,6 +688,8 @@ export async function buildPublicSnapshot(
       const loose = inGroup(null);
       if (loose.length > 0) groups.push({ name: null, items: loose });
 
+      const tour = tourFor(row.id, locale);
+
       const area =
         row.areaSquareMeters === null
           ? null
@@ -573,13 +722,14 @@ export async function buildPublicSnapshot(
         commercialStatus: publishedCommercialStatus(row.commercialStatus),
         isFeatured: row.isFeatured,
 
-        media: mediaFor(row.id, locale),
+        media: mediaFor(row.id, locale, tour !== null),
 
         href: propertyHref(locale, slug),
 
         marketingDescription: translation?.marketingDescription?.trim() ?? null,
         technicalDescription: translation?.technicalDescription?.trim() ?? null,
         features: groups,
+        tour,
       });
     }
 

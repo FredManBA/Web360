@@ -1,5 +1,17 @@
 ---
-import PropertyImage from './PropertyImage.astro';
+/**
+ * Ficha publica de una propiedad.
+ *
+ * El orden esta pensado para quien mira, no para quien administra: primero la
+ * fotografia a pantalla completa, despues lo que decide una visita —precio,
+ * superficie, donde esta—, y solo entonces el detalle. El recorrido 360 va
+ * arriba del todo porque es lo que distingue a este sitio.
+ *
+ * Nada de esto pide nada al servidor: todo sale del snapshot publico.
+ */
+import PropertyGallery from './PropertyGallery.astro';
+import PropertyTour from './PropertyTour.astro';
+import PropertyVideo from './PropertyVideo.astro';
 import type { Locale } from '../../lib/domain/vocabularies';
 import { commercialStatusLabel, labelsFor, locationLine } from '../../lib/public/labels';
 import { catalogueHref, type PublicPropertyDetail } from '../../lib/public/read-model';
@@ -16,29 +28,44 @@ const place = locationLine(property.location);
 const images = property.media.items.filter((item) => item.kind === 'image');
 
 /*
- * La que encabeza: la marcada como hero si es imagen, y si no la primera.
- *
- * Se busca DENTRO de `images` en vez de usar `media.hero` directamente. El
+ * La que abre la galeria: la marcada como portada si es imagen, y si no la
+ * primera. Se busca DENTRO de `images` en vez de usar `media.hero`: el
  * snapshot viaja serializado, asi que `hero` y su gemelo en `items` son dos
- * objetos distintos; compararlos por referencia pintaria la imagen dos veces.
+ * objetos distintos y compararlos por referencia pintaria la foto dos veces.
  */
 const heroUrl = property.media.hero?.kind === 'image' ? property.media.hero.url : null;
 const lead = images.find((image) => image.url === heroUrl) ?? images[0] ?? null;
-const rest = images.filter((image) => image !== lead);
 
-const videos = property.media.items.filter(
-  (item) => item.kind === 'video' && item.youtubeVideoId !== null,
-);
+// La portada abre la galeria, para que la primera foto sea la que se eligio.
+const ordered = lead === null ? images : [lead, ...images.filter((image) => image !== lead)];
+
+const videos = property.media.items.filter((item) => item.kind === 'video');
 const documents = property.media.items.filter((item) => item.kind === 'document');
+
+const tour = property.tour;
 ---
 
 <article class="property-detail">
+  {
+    ordered.length > 0 ? (
+      <PropertyGallery
+        images={ordered}
+        locale={locale}
+        propertyTitle={property.title}
+        tourHref={tour === null ? null : '#recorrido'}
+      />
+    ) : (
+      <p class="state-empty">{labels.noImages}</p>
+    )
+  }
+
   <header class="property-detail-head">
     <p class="property-code">{labels.code} {property.code}</p>
     <h1>{property.title}</h1>
 
     <p class="property-detail-meta">
       {property.propertyType && <span>{property.propertyType}</span>}
+      {place && <span>{place}</span>}
       {
         property.commercialStatus && (
           <span class="property-status">
@@ -47,109 +74,89 @@ const documents = property.media.items.filter((item) => item.kind === 'document'
         )
       }
     </p>
-
-    <p class="property-detail-price">{property.price.text}</p>
   </header>
 
-  <section class="property-gallery" aria-label={labels.gallery}>
+  {/* Lo que decide una visita, junto y sin ruido alrededor. */}
+  <dl class="property-facts" aria-label={labels.overview}>
+    <div class="property-fact property-fact-price">
+      <dt>{labels.price}</dt>
+      <dd>{property.price.text}</dd>
+    </div>
+
     {
-      lead ? (
-        <figure class="property-lead">
-          <PropertyImage
-            image={lead}
-            locale={locale}
-            propertyTitle={property.title}
-            priority={true}
-          />
-          {lead.caption && <figcaption>{lead.caption}</figcaption>}
-        </figure>
-      ) : (
-        <p class="admin-muted">{labels.noImages}</p>
+      property.area && (
+        <div class="property-fact">
+          <dt>{labels.area}</dt>
+          <dd>{property.area.text}</dd>
+        </div>
       )
     }
 
     {
-      rest.length > 0 && (
-        <ul class="property-gallery-list">
-          {rest.map((image) => (
-            <li>
-              <figure>
-                <PropertyImage image={image} locale={locale} propertyTitle={property.title} />
-                {image.caption && <figcaption>{image.caption}</figcaption>}
-              </figure>
-            </li>
-          ))}
-        </ul>
+      place && (
+        <div class="property-fact">
+          <dt>{labels.location}</dt>
+          <dd>{place}</dd>
+        </div>
       )
     }
+  </dl>
 
-    {property.media.hasTour && <p class="property-tour-note">{labels.tourAvailable}</p>}
-  </section>
+  {
+    tour && (
+      <PropertyTour
+        tour={tour}
+        locale={locale}
+        posterUrl={lead?.url ?? null}
+        posterAlt={labels.imageOf(property.title)}
+      />
+    )
+  }
 
   {
     property.marketingDescription && (
       <section class="property-section">
         <h2>{labels.description}</h2>
-        <p>{property.marketingDescription}</p>
+        <p class="property-prose">{property.marketingDescription}</p>
       </section>
     )
   }
 
-  <section class="property-section">
-    <h2>{labels.location}</h2>
-    {place ? <p>{place}</p> : <p>—</p>}
-    {
-      property.area && (
-        <p>
-          {labels.area}: {property.area.text}
-        </p>
-      )
-    }
-  </section>
-
   {
     property.features.length > 0 && (
-      <section class="property-section">
+      <section class="property-section property-section-wide">
         <h2>{labels.features}</h2>
-        {property.features.map((group) => (
-          <div class="property-feature-group">
-            {group.name && <h3>{group.name}</h3>}
-            <dl>
-              {group.items.map((item) => (
-                <>
-                  <dt>{item.label}</dt>
-                  <dd>{item.value ?? '—'}</dd>
-                </>
-              ))}
-            </dl>
-          </div>
-        ))}
+
+        <div class="property-feature-groups">
+          {property.features.map((group) => (
+            <div class="property-feature-group">
+              {group.name && <h3>{group.name}</h3>}
+              <dl>
+                {group.items.map((item) => (
+                  <>
+                    <dt>{item.label}</dt>
+                    <dd>{item.value ?? '—'}</dd>
+                  </>
+                ))}
+              </dl>
+            </div>
+          ))}
+        </div>
       </section>
     )
   }
 
   {
     videos.length > 0 && (
+      <PropertyVideo videos={videos} locale={locale} propertyTitle={property.title} />
+    )
+  }
+
+  {
+    property.technicalDescription && (
       <section class="property-section">
-        <h2>{labels.gallery}</h2>
-        {/*
-          Enlace, no iframe: incrustar YouTube trae varios cientos de kB y sus
-          cookies a una pagina que puede no verse nunca. La reproduccion sin
-          salir del sitio llega con la fase visual.
-        */}
-        <ul class="property-video-list">
-          {videos.map((video) => (
-            <li>
-              <a
-                href={`https://www.youtube.com/watch?v=${video.youtubeVideoId}`}
-                rel="noopener noreferrer"
-                target="_blank"
-              >
-                {video.title ?? labels.watchOnYoutube}
-              </a>
-            </li>
-          ))}
-        </ul>
+        <h2>{labels.technical}</h2>
+        <p class="property-prose">{property.technicalDescription}</p>
       </section>
     )
   }
@@ -158,7 +165,7 @@ const documents = property.media.items.filter((item) => item.kind === 'document'
     documents.length > 0 && (
       <section class="property-section">
         <h2>{labels.documents}</h2>
-        <ul class="property-document-list">
+        <ul class="property-link-list">
           {documents.map((document) => (
             <li>
               <a href={document.url ?? '#'}>
@@ -172,13 +179,15 @@ const documents = property.media.items.filter((item) => item.kind === 'document'
   }
 
   {
-    property.technicalDescription && (
-      <section class="property-section">
-        <h2>{labels.technical}</h2>
-        <p>{property.technicalDescription}</p>
-      </section>
-    )
+    /*
+    Huecos de lo que viene. Se anuncian en voz baja: sirven para que la ficha
+    no parezca terminada donde no lo esta, sin prometer una fecha.
+  */
   }
+  <div class="property-pending">
+    <p class="property-pending-note">{labels.mapComingSoon}</p>
+    <p class="property-pending-note">{labels.contactComingSoon}</p>
+  </div>
 
   <p class="property-back">
     <a href={catalogueHref(locale)}>← {labels.backToCatalogue}</a>

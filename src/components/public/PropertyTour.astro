@@ -1,0 +1,114 @@
+---
+/**
+ * Recorrido 360 publico.
+ *
+ * El visor (Photo Sphere Viewer y Three) pesa varios cientos de kilobytes y no
+ * se carga al abrir la ficha: llega solo cuando alguien pulsa el boton. Quien
+ * pasa por la pagina y no entra al recorrido no paga nada por el.
+ *
+ * Y hay camino cuando el visor no es una opcion:
+ *
+ * - sin JavaScript, el marco entero no aparece y queda la lista de puntos, con
+ *   un enlace al panorama de cada uno;
+ * - si el visor no arranca —sin WebGL, navegador viejo, red caida— se dice por
+ *   que y la lista sigue ahi.
+ *
+ * Los datos del recorrido viajan incrustados en la propia pagina: es lo que ya
+ * publica el snapshot, no hay una peticion mas y no aparece ni una clave de R2
+ * ni un id de la base.
+ */
+import type { Locale } from '../../lib/domain/vocabularies';
+import { labelsFor } from '../../lib/public/labels';
+import type { PublicTour } from '../../lib/public/read-model';
+import { nodeLabel } from '../../lib/public/tour';
+
+interface Props {
+  tour: PublicTour;
+  locale: Locale;
+  /** Imagen con la que se presenta el recorrido antes de abrirlo. */
+  posterUrl?: string | null;
+  posterAlt?: string;
+}
+
+const { tour, locale, posterUrl = null, posterAlt = '' } = Astro.props;
+const labels = labelsFor(locale);
+
+const naming = { pointName: labels.tourPointName };
+const points = tour.nodes.map((node) => ({ url: node.url, label: nodeLabel(tour, node, naming) }));
+
+/*
+ * `<` escapado: el JSON va dentro de un `<script>` y una cadena que contuviera
+ * `</script>` cerraria la etiqueta antes de tiempo.
+ */
+const tourJson = JSON.stringify(tour).replace(/</g, '\\u003c');
+
+/*
+ * Los pocos textos que el visor necesita, con el hueco marcado donde va el
+ * nombre o el numero. Viajan aparte para que el modulo del navegador no tenga
+ * que importar la tabla de textos entera del sitio.
+ */
+const tourLabels = JSON.stringify({
+  point: labels.tourPointName(0).replace('0', '{n}'),
+  goTo: labels.tourGoTo('{name}'),
+  current: labels.tourCurrentPoint,
+  unavailable: labels.tourUnavailable,
+  loading: labels.tourLoading,
+});
+---
+
+<section class="property-tour" id="recorrido" aria-labelledby="tour-title">
+  <div class="property-tour-head">
+    <h2 id="tour-title">{labels.tourTitle}</h2>
+    <p class="property-tour-lead">{labels.tourLead}</p>
+    <p class="property-tour-count">{labels.tourPointCount(points.length)}</p>
+  </div>
+
+  {/* El marco solo aparece si hay JavaScript: sin el no habria nada que abrir. */}
+  <div class="tour-frame" id="tour-frame" hidden>
+    {
+      posterUrl && (
+        <img class="tour-poster" id="tour-poster" src={posterUrl} alt={posterAlt} loading="lazy" />
+      )
+    }
+
+    <div class="tour-viewer" id="tour-viewer" hidden></div>
+
+    <button type="button" class="tour-open" id="tour-open">
+      <span class="tour-open-mark" aria-hidden="true">360°</span>
+      <span>{labels.tourOpen}</span>
+    </button>
+  </div>
+
+  <p class="tour-status" id="tour-status" role="status" hidden></p>
+
+  <div class="tour-nav" id="tour-nav" hidden>
+    <p class="tour-current" id="tour-current" aria-live="polite"></p>
+
+    {
+      /*
+      Los saltos tambien como botones, no solo como marcas dentro del
+      panorama: una marca flotante no la alcanza quien navega con teclado ni la
+      anuncia un lector de pantalla.
+    */
+    }
+    <ul class="tour-nav-list" id="tour-nav-list"></ul>
+
+    <button type="button" class="tour-close" id="tour-close">{labels.tourClose}</button>
+  </div>
+
+  <div class="tour-points" id="tour-points">
+    <h3>{labels.tourPoints}</h3>
+    <ul class="property-link-list">
+      {
+        points.map((point) => (
+          <li>
+            <a href={point.url}>{point.label}</a>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+
+  <script is:inline type="application/json" id="tour-data" set:html={tourJson} />
+  <script is:inline type="application/json" id="tour-labels" set:html={tourLabels} />
+</section>
