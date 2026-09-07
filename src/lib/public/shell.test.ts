@@ -44,17 +44,19 @@ describe('navegacion', () => {
     expect(navigationFor('en').map((item) => item.label)).toEqual(['Properties', 'Map', 'Contact']);
   });
 
-  it('solo Propiedades enlaza: las otras dos aun no existen', () => {
+  it('Propiedades y Mapa enlazan; Contacto todavia no existe', () => {
     const items = navigationFor('es');
 
     expect(items[0]?.available).toBe(true);
-    expect(items[1]?.available).toBe(false);
+    expect(items[1]?.available).toBe(true);
     expect(items[2]?.available).toBe(false);
   });
 
   it('cada idioma apunta a su propio arbol', () => {
     expect(navigationFor('es')[0]?.href).toBe('/es/propiedades');
     expect(navigationFor('en')[0]?.href).toBe('/en/propiedades');
+    expect(navigationFor('es')[1]?.href).toBe('/es/mapa');
+    expect(navigationFor('en')[1]?.href).toBe('/en/map');
   });
 
   it('la seccion activa se marca en el HTML', () => {

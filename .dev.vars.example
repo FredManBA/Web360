@@ -33,8 +33,8 @@ CF_ACCESS_AUD=
 # Clave de envio de emails de contacto (Resend) - fase de formularios
 # RESEND_API_KEY=""
 
-# Token publico de Mapbox - fase de mapa
-# PUBLIC_MAPBOX_TOKEN=""
+# El token publico de Mapbox NO va aqui: lo necesita el BUILD, no el Worker.
+# Vive en `.env` (ver `.env.example`) como PUBLIC_MAPBOX_TOKEN.
 
 # Credenciales del panel de administracion - fase de autenticacion
 # ADMIN_SESSION_SECRET=""

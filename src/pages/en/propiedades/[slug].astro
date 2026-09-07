@@ -48,7 +48,9 @@ const { property, alternate } = Astro.props as {
 <script>
   import { initPropertyDetail } from '../../../lib/public/detail-page';
   import { initLanguagePreference } from '../../../lib/public/language-preference';
+  import { initPropertyMap } from '../../../lib/public/map-page';
 
   initLanguagePreference();
   initPropertyDetail();
+  initPropertyMap();
 </script>

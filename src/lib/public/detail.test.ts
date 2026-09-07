@@ -221,10 +221,11 @@ describe('la ficha', () => {
     expect(read(DETAIL)).toContain('property.commercialStatus &&');
   });
 
-  it('deja hueco anunciado para el mapa y el contacto', () => {
+  it('deja hueco anunciado para el contacto, que aun no existe', () => {
     const detail = read(DETAIL);
 
-    expect(detail).toContain('labels.mapComingSoon');
+    // El mapa dejo de ser un hueco en 4E: ahora es una seccion de verdad.
+    expect(detail).toContain('<PropertyMap');
     expect(detail).toContain('labels.contactComingSoon');
   });
 

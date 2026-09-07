@@ -1,0 +1,142 @@
+---
+/**
+ * Pagina de mapa: el mapa y su listado.
+ *
+ * El listado NO es un adorno del mapa, es la version que siempre funciona.
+ * Viene entero en el HTML, se recorre con el tabulador y cada propiedad
+ * enlaza a su ficha; sin JavaScript, sin token o sin WebGL, la pagina sigue
+ * sirviendo para lo mismo. El mapa anade el "donde".
+ *
+ * Las dos rutas —`/es/mapa` y `/en/map`— usan este mismo componente, que es
+ * donde vive todo lo que comparten.
+ */
+import PropertyImage from './PropertyImage.astro';
+import type { Locale } from '../../lib/domain/vocabularies';
+import { labelsFor, locationLine } from '../../lib/public/labels';
+import { mapPointsOf } from '../../lib/public/map';
+import type { PublicPropertyCard } from '../../lib/public/read-model';
+
+interface Props {
+  properties: PublicPropertyCard[];
+  locale: Locale;
+}
+
+const { properties, locale } = Astro.props;
+const labels = labelsFor(locale);
+
+/*
+ * Solo entran las que tienen coordenada PUBLICA utilizable. Las demas siguen
+ * en el catalogo: no se sitúan "por aproximacion" ni se esconden del sitio.
+ */
+const points = mapPointsOf(properties, (property) => locationLine(property.location));
+const placed = new Map(points.map((point) => [point.slug, point]));
+
+/*
+ * El token publico de Mapbox se inyecta en el build desde el entorno. Sin el
+ * no se pinta el contenedor: el build tiene que seguir siendo posible, y la
+ * pagina util, sin token.
+ */
+const token = import.meta.env.PUBLIC_MAPBOX_TOKEN ?? '';
+
+const pointsJson = JSON.stringify(points).replace(/</g, '\\u003c');
+const mapLabels = JSON.stringify({
+  zoomIn: labels.zoomIn,
+  zoomOut: labels.zoomOut,
+  resetNorth: labels.resetNorth,
+  approximate: labels.approximateLocation,
+  openProperty: labels.openProperty,
+});
+---
+
+<div class="page">
+  <header class="page-head">
+    <h1>{labels.mapTitle}</h1>
+    <p class="page-lead">{labels.mapDescription}</p>
+  </header>
+
+  {
+    points.length === 0 ? (
+      <div class="state-empty">
+        <p>{labels.mapEmpty}</p>
+        <p class="state-empty-hint">{labels.mapEmptyHint}</p>
+      </div>
+    ) : (
+      <div class="map-explorer" id="map-explorer">
+        {/* Oculto hasta que el mapa exista: nunca se deja una caja vacia. */}
+        <div class="map-canvas" id="map-canvas" data-token={token} hidden />
+
+        <p class="map-unavailable" id="map-unavailable" role="status" hidden>
+          {labels.mapUnavailable}
+        </p>
+
+        <section class="map-list-panel" aria-labelledby="map-list-title">
+          <div class="map-list-head">
+            <h2 id="map-list-title">{labels.mapListTitle}</h2>
+            <p class="map-count">{labels.mapCount(points.length)}</p>
+          </div>
+
+          <ul class="map-list" id="map-list">
+            {properties.map((property) => {
+              const point = placed.get(property.slug);
+              if (point === undefined) return null;
+
+              const cover = property.media.cover ?? property.media.hero;
+              const image = cover?.kind === 'image' ? cover : null;
+
+              return (
+                <li class="map-item" data-map-item data-slug={property.slug}>
+                  {/* Sin foto no se reserva la columna de la foto. */}
+                  <article class={image === null ? 'map-item-plain' : undefined}>
+                    {image && (
+                      <div class="map-item-media">
+                        <PropertyImage
+                          image={image}
+                          locale={locale}
+                          propertyTitle={property.title}
+                        />
+                      </div>
+                    )}
+
+                    <div class="map-item-body">
+                      <h3 class="map-item-title">
+                        <a href={property.href}>{property.title}</a>
+                      </h3>
+
+                      {point.place && <p class="map-item-place">{point.place}</p>}
+
+                      <p class="map-item-facts">
+                        <span class="map-item-price">{point.priceText}</span>
+                        {point.areaText && <span class="map-item-area">{point.areaText}</span>}
+                      </p>
+
+                      {point.precision === 'approximate' && (
+                        <p class="map-item-approximate">{labels.approximateLocation}</p>
+                      )}
+
+                      {/*
+                        Solo sirve con mapa, asi que llega oculto y lo destapa
+                        el script. Un boton que no hace nada es peor que ninguno.
+                      */}
+                      <button
+                        type="button"
+                        class="map-item-focus"
+                        data-map-focus
+                        aria-pressed="false"
+                        hidden
+                      >
+                        {labels.showOnMap}
+                      </button>
+                    </div>
+                  </article>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+
+        <script is:inline type="application/json" id="map-data" set:html={pointsJson} />
+        <script is:inline type="application/json" id="map-labels" set:html={mapLabels} />
+      </div>
+    )
+  }
+</div>

@@ -1,0 +1,36 @@
+---
+import MapExplorer from '../../components/public/MapExplorer.astro';
+import PublicLayout from '../../layouts/PublicLayout.astro';
+import { labelsFor } from '../../lib/public/labels';
+import { mapHref } from '../../lib/public/navigation';
+import { catalogueOf } from '../../lib/public/read-model';
+import { loadPublicSnapshot } from '../../lib/public/snapshot';
+
+/*
+ * Pagina estatica, como el catalogo: las propiedades salen del snapshot que se
+ * construye en el build, y en tiempo de ejecucion no se consulta nada. Que una
+ * propiedad este aqui ya lo decidio `isPubliclyVisible` al construirlo.
+ */
+const locale = 'en' as const;
+const labels = labelsFor(locale);
+
+const properties = catalogueOf(loadPublicSnapshot(), locale);
+---
+
+<PublicLayout
+  locale={locale}
+  title={labels.mapTitle}
+  description={labels.mapDescription}
+  section="map"
+  alternateHref={mapHref('es')}
+>
+  <MapExplorer properties={properties} locale={locale} />
+</PublicLayout>
+
+<script>
+  import { initLanguagePreference } from '../../lib/public/language-preference';
+  import { initMapPage } from '../../lib/public/map-page';
+
+  initLanguagePreference();
+  initMapPage();
+</script>

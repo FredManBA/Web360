@@ -60,7 +60,6 @@ export interface PublicLabels {
   overview: string;
   video: string;
   photographs: string;
-  mapComingSoon: string;
   contactComingSoon: string;
   /** Navegacion de la galeria. */
   previousPhoto: string;
@@ -83,6 +82,25 @@ export interface PublicLabels {
   tourCurrentPoint: string;
   tourUnavailable: string;
   tourLoading: string;
+
+  /* -- Mapa -------------------------------------------------------------- */
+  mapTitle: string;
+  mapDescription: string;
+  mapEmpty: string;
+  mapEmptyHint: string;
+  /** Sin token o con Mapbox caido: el listado sigue sirviendo. */
+  mapUnavailable: string;
+  mapListTitle: string;
+  mapCount: (count: number) => string;
+  showOnMap: string;
+  openProperty: string;
+  locationOnMap: string;
+  approximateLocation: string;
+  approximateLocationNote: string;
+  noMapLocation: string;
+  zoomIn: string;
+  zoomOut: string;
+  resetNorth: string;
 }
 
 const ES: PublicLabels = {
@@ -132,7 +150,6 @@ const ES: PublicLabels = {
   overview: 'Resumen',
   video: 'Vídeo',
   photographs: 'Fotografías',
-  mapComingSoon: 'El mapa de la zona llegará en breve.',
   contactComingSoon: 'El formulario de contacto llegará en breve.',
   previousPhoto: 'Fotografía anterior',
   nextPhoto: 'Fotografía siguiente',
@@ -153,6 +170,25 @@ const ES: PublicLabels = {
   tourUnavailable:
     'No se pudo abrir el visor 360° en este navegador. Puedes ver cada panorama por separado.',
   tourLoading: 'Cargando el recorrido…',
+
+  mapTitle: 'Mapa',
+  mapDescription: 'Dónde está cada propiedad en la costa de Costa Rica.',
+  mapEmpty: 'Todavía no hay propiedades situadas en el mapa.',
+  mapEmptyHint: 'Mientras tanto puedes verlas todas en Propiedades.',
+  mapUnavailable:
+    'El mapa no está disponible en este momento. El listado de abajo lleva a cada propiedad.',
+  mapListTitle: 'Propiedades en el mapa',
+  mapCount: (count) => (count === 1 ? '1 propiedad situada' : `${count} propiedades situadas`),
+  showOnMap: 'Ver en el mapa',
+  openProperty: 'Ver la propiedad',
+  locationOnMap: 'Ubicación',
+  approximateLocation: 'Ubicación aproximada',
+  approximateLocationNote:
+    'La posición en el mapa es aproximada; la ubicación exacta se comparte al visitar.',
+  noMapLocation: 'Esta propiedad todavía no está situada en el mapa.',
+  zoomIn: 'Acercar',
+  zoomOut: 'Alejar',
+  resetNorth: 'Orientar al norte',
 };
 
 const EN: PublicLabels = {
@@ -202,7 +238,6 @@ const EN: PublicLabels = {
   overview: 'Overview',
   video: 'Video',
   photographs: 'Photographs',
-  mapComingSoon: 'The area map is coming soon.',
   contactComingSoon: 'The contact form is coming soon.',
   previousPhoto: 'Previous photograph',
   nextPhoto: 'Next photograph',
@@ -223,6 +258,24 @@ const EN: PublicLabels = {
   tourUnavailable:
     'The 360° viewer could not be opened in this browser. You can still view each panorama on its own.',
   tourLoading: 'Loading the tour…',
+
+  mapTitle: 'Map',
+  mapDescription: 'Where each property sits on the coast of Costa Rica.',
+  mapEmpty: 'No properties are placed on the map yet.',
+  mapEmptyHint: 'In the meantime you can see them all under Properties.',
+  mapUnavailable: 'The map is unavailable right now. The list below links to every property.',
+  mapListTitle: 'Properties on the map',
+  mapCount: (count) => (count === 1 ? '1 property placed' : `${count} properties placed`),
+  showOnMap: 'Show on the map',
+  openProperty: 'View the property',
+  locationOnMap: 'Location',
+  approximateLocation: 'Approximate location',
+  approximateLocationNote:
+    'The position on the map is approximate; the exact location is shared on a visit.',
+  noMapLocation: 'This property is not placed on the map yet.',
+  zoomIn: 'Zoom in',
+  zoomOut: 'Zoom out',
+  resetNorth: 'Reset north',
 };
 
 export function labelsFor(locale: Locale): PublicLabels {

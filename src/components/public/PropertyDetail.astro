@@ -10,6 +10,7 @@
  * Nada de esto pide nada al servidor: todo sale del snapshot publico.
  */
 import PropertyGallery from './PropertyGallery.astro';
+import PropertyMap from './PropertyMap.astro';
 import PropertyTour from './PropertyTour.astro';
 import PropertyVideo from './PropertyVideo.astro';
 import type { Locale } from '../../lib/domain/vocabularies';
@@ -178,14 +179,15 @@ const tour = property.tour;
     )
   }
 
+  <PropertyMap property={property} locale={locale} />
+
   {
     /*
-    Huecos de lo que viene. Se anuncian en voz baja: sirven para que la ficha
-    no parezca terminada donde no lo esta, sin prometer una fecha.
+    Hueco de lo que viene. Se anuncia en voz baja: sirve para que la ficha no
+    parezca terminada donde no lo esta, sin prometer una fecha.
   */
   }
   <div class="property-pending">
-    <p class="property-pending-note">{labels.mapComingSoon}</p>
     <p class="property-pending-note">{labels.contactComingSoon}</p>
   </div>
 

@@ -1,0 +1,86 @@
+---
+/**
+ * Mapa de una ficha.
+ *
+ * Es un extra deliberado: la ubicacion en texto va SIEMPRE encima del mapa y
+ * no depende de el. Si no hay token, si Mapbox no carga o si no hay
+ * JavaScript, la persona sigue sabiendo donde esta la propiedad.
+ *
+ * Privacidad: se pinta `location.coordinates`, que es la coordenada publica
+ * del read model. La privada no existe a este lado —no esta en el tipo— y
+ * aqui no se calcula ningun desplazamiento: si la precision es aproximada, la
+ * coordenada desplazada la escribio una persona en el panel.
+ */
+import type { Locale } from '../../lib/domain/vocabularies';
+import { labelsFor, locationLine } from '../../lib/public/labels';
+import { mapPointsOf } from '../../lib/public/map';
+import type { PublicPropertyDetail } from '../../lib/public/read-model';
+
+interface Props {
+  property: PublicPropertyDetail;
+  locale: Locale;
+}
+
+const { property, locale } = Astro.props;
+const labels = labelsFor(locale);
+
+const place = locationLine(property.location);
+const approximate = property.location.precision === 'approximate';
+
+const points = mapPointsOf([property], () => place);
+const point = points[0] ?? null;
+
+/*
+ * El token publico de Mapbox se inyecta en el build desde el entorno. Si no
+ * hay, no se pinta el contenedor y la seccion se queda en texto: el build
+ * tiene que seguir siendo posible sin token.
+ */
+const token = import.meta.env.PUBLIC_MAPBOX_TOKEN ?? '';
+
+const pointsJson = JSON.stringify(points).replace(/</g, '\\u003c');
+const mapLabels = JSON.stringify({
+  zoomIn: labels.zoomIn,
+  zoomOut: labels.zoomOut,
+  resetNorth: labels.resetNorth,
+  approximate: labels.approximateLocation,
+  openProperty: labels.openProperty,
+});
+---
+
+<section class="property-section property-location" aria-labelledby="ubicacion-title">
+  <h2 id="ubicacion-title">{labels.locationOnMap}</h2>
+
+  {/* Primero el texto, y siempre. El mapa viene despues y puede no venir. */}
+  <p class="property-location-line">{place ?? '—'}</p>
+
+  {
+    approximate && (
+      <p class="property-location-note">
+        <span class="property-location-badge">{labels.approximateLocation}</span>
+        {labels.approximateLocationNote}
+      </p>
+    )
+  }
+
+  {
+    point === null ? (
+      <p class="property-location-empty">{labels.noMapLocation}</p>
+    ) : (
+      token !== '' && (
+        <>
+          {/* Oculto hasta que el mapa exista de verdad: nunca una caja rota. */}
+          <div
+            class="property-map"
+            id="property-map"
+            data-token={token}
+            data-precision={point.precision}
+            hidden
+          />
+
+          <script is:inline type="application/json" id="property-map-data" set:html={pointsJson} />
+          <script is:inline type="application/json" id="property-map-labels" set:html={mapLabels} />
+        </>
+      )
+    )
+  }
+</section>

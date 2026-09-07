@@ -23,6 +23,7 @@ import { createTourLink } from '../admin/tour/links';
 import { createTourNode, setStartNode, type CreateTourNodeInput } from '../admin/tour/nodes';
 import type { AdminBatchDatabase } from '../admin/types';
 import type { CommercialStatus, PublicationStatus } from '../domain/vocabularies';
+import { mapPointsOf } from './map';
 import {
   buildPublicSnapshot,
   catalogueHref,
@@ -639,6 +640,94 @@ describe('el recorrido publicado', () => {
     expect(Object.keys(tour?.nodes[0] ?? {}).sort()).toEqual(
       ['initialView', 'key', 'links', 'name', 'url'].sort(),
     );
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Mapa publico                                                               */
+/* -------------------------------------------------------------------------- */
+
+describe('el mapa publico', () => {
+  /** Los puntos que el mapa pintaria a partir del snapshot. */
+  async function points(locale: 'es' | 'en' = 'es') {
+    return mapPointsOf(catalogueOf(await snapshot(), locale), () => null);
+  }
+
+  it('situa una propiedad publicada con coordenada publica', async () => {
+    await publishedProperty();
+
+    const placed = await points();
+
+    expect(placed).toHaveLength(1);
+    // La publica era 9.951 / -85.653; la privada, 9.9512 / -85.6531.
+    expect(placed[0]?.latitude).toBe(9.951);
+    expect(placed[0]?.longitude).toBe(-85.653);
+  });
+
+  it('una en borrador no llega ni al snapshot ni al mapa', async () => {
+    const propertyId = await publishedProperty();
+    await setStatus(propertyId, 'draft');
+
+    expect(await points()).toEqual([]);
+  });
+
+  it('una vendida y oculta tampoco se situa', async () => {
+    const propertyId = await publishedProperty();
+    await setStatus(propertyId, 'published', 'sold');
+
+    expect(await points()).toEqual([]);
+  });
+
+  it('una publicada SIN coordenada publica no se situa, aunque tenga privada', async () => {
+    const propertyId = await newProperty();
+
+    await updateProperty(db, propertyId, {
+      // Solo la privada: es justo el caso que no debe filtrarse.
+      privateLatitude: 9.9512,
+      privateLongitude: -85.6531,
+      province: 'Guanacaste',
+      canton: 'Nicoya',
+    });
+
+    await translate(propertyId, 'es', { slug: 'sin-coordenada', title: 'Sin coordenada' });
+    await setStatus(propertyId, 'published');
+
+    const data = await snapshot();
+
+    // Sigue en el catalogo; simplemente no esta en el mapa.
+    expect(catalogueOf(data, 'es')).toHaveLength(1);
+    expect(findBySlug(data, 'es', 'sin-coordenada')?.location.coordinates).toBeNull();
+    expect(mapPointsOf(catalogueOf(data, 'es'), () => null)).toEqual([]);
+  });
+
+  it('la precision viaja tal cual esta guardada', async () => {
+    const propertyId = await publishedProperty();
+    await updateProperty(db, propertyId, { locationPrecision: 'approximate' });
+
+    expect((await points())[0]?.precision).toBe('approximate');
+  });
+
+  it('el mapa se llena en los dos idiomas, cada uno con sus textos', async () => {
+    const propertyId = await publishedProperty();
+    await translate(propertyId, 'en', { slug: 'ocean-view-lot', title: 'Ocean view lot' });
+
+    expect((await points('es'))[0]?.title).toBe('Lote con vista al mar');
+    expect((await points('es'))[0]?.href).toBe('/es/propiedades/lote-nosara');
+    expect((await points('en'))[0]?.title).toBe('Ocean view lot');
+    expect((await points('en'))[0]?.href).toBe('/en/propiedades/ocean-view-lot');
+  });
+
+  it('lo que se pinta no lleva ni el rastro de la coordenada privada', async () => {
+    const propertyId = await publishedProperty();
+    await updateProperty(db, propertyId, { locationPrecision: 'approximate' });
+
+    const json = JSON.stringify(await points());
+
+    expect(json).not.toContain('privateLatitude');
+    expect(json).not.toContain('privateLongitude');
+    // Ni el valor concreto, que es lo unico que de verdad importa.
+    expect(json).not.toContain('9.9512');
+    expect(json).not.toContain('-85.6531');
   });
 });
 

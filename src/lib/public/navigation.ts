@@ -2,9 +2,9 @@
  * Navegacion del sitio publico.
  *
  * Las rutas son arboles independientes por idioma, asi que cada enlace se
- * construye con su locale. Mapa y Contacto todavia no existen: se declaran
- * aqui para que el menu este completo desde el principio y la fase que las
- * cree solo tenga que anadir la pagina.
+ * construye con su locale. Contacto todavia no existe: se declara aqui para
+ * que el menu este completo desde el principio y la fase que lo cree solo
+ * tenga que anadir la pagina.
  */
 
 import type { Locale } from '../domain/vocabularies';
@@ -29,10 +29,20 @@ const LABELS: Record<Locale, Record<SectionId, string>> = {
   en: { properties: 'Properties', map: 'Map', contact: 'Contact' },
 };
 
+/** El mapa tiene arbol propio por idioma, como el catalogo. */
+const MAP_HREF: Record<Locale, string> = {
+  es: '/es/mapa',
+  en: '/en/map',
+};
+
+export function mapHref(locale: Locale): string {
+  return MAP_HREF[locale];
+}
+
 /** Rutas de las secciones que aun no existen, por idioma. */
-const PENDING_HREF: Record<Locale, Record<'map' | 'contact', string>> = {
-  es: { map: '/es/mapa', contact: '/es/contacto' },
-  en: { map: '/en/map', contact: '/en/contact' },
+const PENDING_HREF: Record<Locale, Record<'contact', string>> = {
+  es: { contact: '/es/contacto' },
+  en: { contact: '/en/contact' },
 };
 
 export function navigationFor(locale: Locale): NavigationItem[] {
@@ -40,7 +50,7 @@ export function navigationFor(locale: Locale): NavigationItem[] {
 
   return [
     { id: 'properties', label: labels.properties, href: catalogueHref(locale), available: true },
-    { id: 'map', label: labels.map, href: PENDING_HREF[locale].map, available: false },
+    { id: 'map', label: labels.map, href: mapHref(locale), available: true },
     { id: 'contact', label: labels.contact, href: PENDING_HREF[locale].contact, available: false },
   ];
 }

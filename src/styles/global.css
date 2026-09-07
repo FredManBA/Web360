@@ -1113,6 +1113,305 @@ a {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Mapa                                                                       */
+/* -------------------------------------------------------------------------- */
+
+/*
+ * La pagina de mapa: el mapa manda en pantalla, pero el listado es la version
+ * que siempre funciona. En escritorio van lado a lado; en movil, uno debajo
+ * del otro, con el mapa arriba.
+ */
+.map-explorer {
+  display: grid;
+  gap: var(--space-md);
+  align-items: start;
+}
+
+/*
+ * Dos columnas SOLO cuando el mapa existe de verdad; la marca la pone el
+ * script al crearlo. Sin mapa —sin JavaScript, sin token, sin WebGL— el
+ * listado ocupa la pagina entera en vez de dejar media pantalla en blanco.
+ */
+.map-explorer.has-map {
+  grid-template-columns: minmax(0, 1.7fr) minmax(19rem, 1fr);
+}
+
+.map-canvas {
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--ivory-warm);
+}
+
+.map-unavailable {
+  grid-column: 1 / -1;
+  padding: var(--space-sm) var(--space-md);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  background: var(--ivory-warm);
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+.map-list-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  /* El listado acompana al mapa sin obligar a bajar toda la pagina. */
+  max-height: min(70vh, 40rem);
+  overflow-y: auto;
+}
+
+.map-list-head h2 {
+  font-size: 1.15rem;
+}
+
+.map-count {
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+}
+
+.map-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.map-item article {
+  display: grid;
+  grid-template-columns: 5rem minmax(0, 1fr);
+  gap: var(--space-sm);
+  padding: var(--space-xs);
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+/*
+ * Una propiedad sin fotografia no deja el hueco de la fotografia vacio: el
+ * texto ocupa la tarjeta entera en vez de estrujarse en la columna estrecha.
+ */
+.map-item article.map-item-plain {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* La propiedad elegida en el mapa se reconoce tambien en el listado. */
+.map-item.is-current article {
+  border-color: var(--sand);
+  background: var(--sand-tint);
+}
+
+.map-item-media {
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--ivory-warm);
+}
+
+.map-item-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.map-item-title {
+  font-size: 1rem;
+}
+
+.map-item-title a {
+  text-decoration: none;
+  text-underline-offset: 3px;
+}
+
+.map-item-title a:hover {
+  text-decoration: underline;
+}
+
+.map-item-place {
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+}
+
+.map-item-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  font-size: 0.9rem;
+}
+
+.map-item-price {
+  font-family: var(--font-display);
+}
+
+.map-item-area {
+  color: var(--ink-soft);
+}
+
+.map-item-approximate,
+.property-location-badge {
+  color: var(--sand-deep);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.map-item-focus {
+  align-self: flex-start;
+  margin-top: var(--space-2xs);
+  padding: 0.15rem var(--space-sm);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: none;
+  color: var(--jungle-soft);
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.map-item-focus:hover,
+.map-item-focus[aria-pressed='true'] {
+  border-color: var(--jungle-soft);
+  background: var(--jungle-tint);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Marcadores                                                                 */
+/* -------------------------------------------------------------------------- */
+
+/*
+ * Un marcador es un boton de verdad: se alcanza con el tabulador y se activa
+ * con Intro. La chincheta llena es una ubicacion exacta; el anillo abierto,
+ * una aproximada, y por eso no tiene punta ni punto central: no senala un
+ * sitio concreto porque no lo hay.
+ */
+.map-pin {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.map-pin-mark {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid var(--ivory);
+  border-radius: 50%;
+  background: var(--jungle);
+  box-shadow: 0 1px 4px rgb(10 26 20 / 45%);
+  transition: transform 0.15s ease;
+}
+
+.map-pin:hover .map-pin-mark,
+.map-pin:focus-visible .map-pin-mark {
+  transform: scale(1.2);
+}
+
+.map-pin--approximate .map-pin-mark {
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 2px dashed var(--sand-deep);
+  background: rgb(201 168 106 / 30%);
+  box-shadow: none;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Ficha flotante del marcador                                                */
+/* -------------------------------------------------------------------------- */
+
+.map-popup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-family: var(--font-base);
+}
+
+.map-popup-image {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  margin-bottom: var(--space-2xs);
+  border-radius: var(--radius);
+  object-fit: cover;
+}
+
+.map-popup-title {
+  font-size: 1rem;
+}
+
+.map-popup-place {
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+}
+
+.map-popup-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  font-size: 0.9rem;
+}
+
+.map-popup-price {
+  font-family: var(--font-display);
+}
+
+.map-popup-area {
+  color: var(--ink-soft);
+}
+
+.map-popup-approximate {
+  color: var(--sand-deep);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.map-popup-link {
+  margin-top: var(--space-2xs);
+  color: var(--jungle-soft);
+  font-size: 0.9rem;
+  text-underline-offset: 3px;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Ubicacion en la ficha                                                      */
+/* -------------------------------------------------------------------------- */
+
+.property-location-line {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+}
+
+.property-location-note {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  align-items: baseline;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+.property-location-empty {
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+.property-map {
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--ivory-warm);
+}
+
+/* -------------------------------------------------------------------------- */
 /* Movil                                                                      */
 /* -------------------------------------------------------------------------- */
 
@@ -1218,6 +1517,33 @@ a {
 
   /* El marco del visor pierde el 16/9: en vertical se queda demasiado bajo. */
   .tour-frame {
+    aspect-ratio: 4 / 3;
+  }
+
+  /* En movil el mapa va arriba y el listado debajo, no en dos columnas. */
+  .map-explorer.has-map {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .map-canvas {
+    aspect-ratio: 1 / 1;
+  }
+
+  .map-list-panel {
+    max-height: none;
+    overflow-y: visible;
+  }
+
+  /*
+   * En un mapa pequeno la ficha flotante no cabe con fotografia: se sale del
+   * contenedor y se corta. La foto se queda solo en la tarjeta del listado,
+   * que esta justo debajo y se ve entera.
+   */
+  .map-popup-image {
+    display: none;
+  }
+
+  .property-map {
     aspect-ratio: 4 / 3;
   }
 }
