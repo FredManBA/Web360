@@ -1,0 +1,54 @@
+---
+import ContactChannels from '../../components/public/ContactChannels.astro';
+import ContactForm from '../../components/public/ContactForm.astro';
+import PublicLayout from '../../layouts/PublicLayout.astro';
+import { hasChannels } from '../../lib/public/contact';
+import { labelsFor } from '../../lib/public/labels';
+import { contactHref } from '../../lib/public/navigation';
+import { loadPublicSnapshot } from '../../lib/public/snapshot';
+
+/*
+ * Pagina estatica: los canales salen del snapshot del build, igual que el
+ * catalogo. Lo unico que se ejecuta en el servidor es el envio del
+ * formulario, que va a su propio endpoint.
+ */
+const locale = 'es' as const;
+const labels = labelsFor(locale);
+
+const channels = loadPublicSnapshot().contact;
+---
+
+<PublicLayout
+  locale={locale}
+  title={labels.contactTitle}
+  description={labels.contactDescription}
+  section="contact"
+  alternateHref={contactHref('en')}
+>
+  <div class="page">
+    <header class="page-head">
+      <h1>{labels.contactTitle}</h1>
+      <p class="page-lead">{labels.contactDescription}</p>
+    </header>
+
+    <div class="contact-layout">
+      <ContactForm locale={locale} />
+
+      {
+        hasChannels(channels) ? (
+          <ContactChannels channels={channels} locale={locale} />
+        ) : (
+          <p class="contact-empty">{labels.contactNoChannels}</p>
+        )
+      }
+    </div>
+  </div>
+</PublicLayout>
+
+<script>
+  import { initContactForm } from '../../lib/public/contact-form';
+  import { initLanguagePreference } from '../../lib/public/language-preference';
+
+  initLanguagePreference();
+  initContactForm();
+</script>

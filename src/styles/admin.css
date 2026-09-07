@@ -1423,3 +1423,85 @@
     height: min(50vh, 22rem);
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/* Consultas                                                                  */
+/* -------------------------------------------------------------------------- */
+
+.contact-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--admin-space-sm, 0.75rem);
+}
+
+.contact-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--admin-line, #dfe3e0);
+  border-radius: 6px;
+  background: #fff;
+}
+
+/* Lo que aun no se ha atendido se ve antes que lo demas. */
+.contact-row[data-status='new'] {
+  border-left: 3px solid #9a7b46;
+}
+
+.contact-row-head {
+  display: flex;
+  gap: 0.75rem;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.contact-row-head h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.contact-badge {
+  padding: 0.1rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.contact-badge-new {
+  background: #f6efe1;
+  color: #9a7b46;
+}
+
+.contact-badge-reviewed {
+  background: #e8eeea;
+  color: #1f4034;
+}
+
+.contact-row-meta,
+.contact-row-property,
+.contact-row-message {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.contact-row-meta {
+  color: #55655c;
+}
+
+.contact-row-property {
+  color: #9a7b46;
+}
+
+.contact-row-message {
+  padding-top: 0.35rem;
+  color: #16211c;
+}
+
+.contact-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding-top: 0.5rem;
+}

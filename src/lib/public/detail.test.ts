@@ -221,12 +221,13 @@ describe('la ficha', () => {
     expect(read(DETAIL)).toContain('property.commercialStatus &&');
   });
 
-  it('deja hueco anunciado para el contacto, que aun no existe', () => {
+  it('mapa y contacto son secciones de verdad, no huecos anunciados', () => {
     const detail = read(DETAIL);
 
-    // El mapa dejo de ser un hueco en 4E: ahora es una seccion de verdad.
+    // El mapa dejo de ser un hueco en 4E; el contacto, en 4F.
     expect(detail).toContain('<PropertyMap');
-    expect(detail).toContain('labels.contactComingSoon');
+    expect(detail).toContain('<PropertyContact');
+    expect(detail).not.toContain('ComingSoon');
   });
 
   it('no sale nada del panel ni del bucket', () => {

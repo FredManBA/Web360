@@ -1,0 +1,65 @@
+---
+/**
+ * Contacto desde una ficha.
+ *
+ * Sustituye al hueco «El formulario de contacto llegará en breve».
+ *
+ * WhatsApp va primero cuando esta configurado, porque es como se pregunta por
+ * una propiedad en Costa Rica, y abre con el mensaje ya escrito: codigo y
+ * nombre de la propiedad, para que quien atiende sepa de cual se habla sin
+ * pedir nada. Abrirlo NO guarda ninguna consulta; eso solo pasa al enviar el
+ * formulario.
+ *
+ * El formulario viene con la propiedad puesta: nadie tiene que copiar un
+ * codigo a mano.
+ */
+import ContactChannels from './ContactChannels.astro';
+import ContactForm from './ContactForm.astro';
+import type { Locale } from '../../lib/domain/vocabularies';
+import { whatsappHref } from '../../lib/public/contact';
+import { labelsFor } from '../../lib/public/labels';
+import type { PublicContactChannels, PublicPropertyDetail } from '../../lib/public/read-model';
+
+interface Props {
+  property: PublicPropertyDetail;
+  channels: PublicContactChannels;
+  locale: Locale;
+  /** URL absoluta de la ficha, para meterla en el mensaje de WhatsApp. */
+  pageUrl?: string | null;
+}
+
+const { property, channels, locale, pageUrl = null } = Astro.props;
+const labels = labelsFor(locale);
+
+const subject = { code: property.code, title: property.title, href: pageUrl };
+const whatsapp = whatsappHref(channels.whatsapp, locale, subject);
+---
+
+<section class="property-contact" id="contacto" aria-labelledby="contacto-title">
+  <div class="property-contact-head">
+    <h2 id="contacto-title">{labels.contactAbout(property.title)}</h2>
+    <p class="property-contact-lead">{labels.contactAboutLead}</p>
+  </div>
+
+  {
+    whatsapp && (
+      <a class="whatsapp-cta" href={whatsapp} rel="noopener noreferrer" target="_blank">
+        <span class="whatsapp-cta-mark" aria-hidden="true" />
+        <span>{labels.contactWhatsapp}</span>
+      </a>
+    )
+  }
+
+  {/* WhatsApp ya tiene su boton arriba: no se repite en la lista. */}
+  <ContactChannels
+    channels={whatsapp === null ? channels : { ...channels, whatsapp: null }}
+    locale={locale}
+    subject={subject}
+    compact={true}
+  />
+
+  <ContactForm
+    locale={locale}
+    property={{ slug: property.slug, code: property.code, title: property.title }}
+  />
+</section>

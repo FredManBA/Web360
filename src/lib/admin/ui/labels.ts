@@ -5,7 +5,12 @@
  * nunca al usuario.
  */
 
-import type { CommercialStatus, PublicationStatus } from '../../domain/vocabularies';
+import type {
+  CommercialStatus,
+  ContactMethod,
+  ContactStatus,
+  PublicationStatus,
+} from '../../domain/vocabularies';
 
 export const PUBLICATION_STATUS_LABELS: Record<PublicationStatus, string> = {
   draft: 'Borrador',
@@ -20,6 +25,20 @@ export const COMMERCIAL_STATUS_LABELS: Record<CommercialStatus, string> = {
   offer_received: 'Con oferta',
   reserved: 'Reservada',
   sold: 'Vendida',
+};
+
+export const CONTACT_METHOD_LABELS: Record<ContactMethod, string> = {
+  email: 'Correo',
+  whatsapp: 'WhatsApp',
+  phone: 'Teléfono',
+  social: 'Redes',
+  other: 'Otro',
+};
+
+/** Bandeja de entrada, no un pipeline: solo pendiente y atendida. */
+export const CONTACT_STATUS_LABELS: Record<ContactStatus, string> = {
+  new: 'Sin atender',
+  reviewed: 'Atendida',
 };
 
 export function publicationStatusLabel(status: PublicationStatus): string {

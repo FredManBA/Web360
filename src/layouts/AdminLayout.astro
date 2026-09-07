@@ -11,7 +11,10 @@ const { title, description } = Astro.props;
 const currentPath = Astro.url.pathname;
 
 /** Solo se listan las secciones que existen de verdad. */
-const sections = [{ href: '/admin/propiedades', label: 'Propiedades' }];
+const sections = [
+  { href: '/admin/propiedades', label: 'Propiedades' },
+  { href: '/admin/contactos', label: 'Consultas' },
+];
 ---
 
 <!doctype html>

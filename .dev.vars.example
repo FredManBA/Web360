@@ -30,8 +30,18 @@ CF_ACCESS_AUD=
 # Entorno logico de la aplicacion (development | production)
 # APP_ENV="development"
 
-# Clave de envio de emails de contacto (Resend) - fase de formularios
-# RESEND_API_KEY=""
+# Aviso de consultas nuevas por email (Resend). Sin estas dos, el formulario
+# publico sigue funcionando y la consulta se guarda igual: solo no se envia el
+# aviso, y queda registrado en el log del Worker.
+#
+#   RESEND_API_KEY:      clave de la API de Resend (empieza por `re_`)
+#   CONTACT_FROM_EMAIL:  remitente verificado en Resend
+#
+# El DESTINATARIO no va aqui: sale de la configuracion del sitio
+# (`site_settings.notifications_email`), porque lo cambia quien lleva el
+# negocio, no un despliegue.
+RESEND_API_KEY=
+CONTACT_FROM_EMAIL=
 
 # El token publico de Mapbox NO va aqui: lo necesita el BUILD, no el Worker.
 # Vive en `.env` (ver `.env.example`) como PUBLIC_MAPBOX_TOKEN.

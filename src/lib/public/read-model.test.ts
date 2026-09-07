@@ -11,7 +11,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { properties, propertyTourNodes, propertyTranslations } from '../../db/schema';
+import { properties, propertyTourNodes, propertyTranslations, siteSettings } from '../../db/schema';
 import { createFeatureGroup } from '../admin/features/feature-groups';
 import { createFeature } from '../admin/features/features';
 import { createMedia } from '../admin/media/media';
@@ -23,6 +23,7 @@ import { createTourLink } from '../admin/tour/links';
 import { createTourNode, setStartNode, type CreateTourNodeInput } from '../admin/tour/nodes';
 import type { AdminBatchDatabase } from '../admin/types';
 import type { CommercialStatus, PublicationStatus } from '../domain/vocabularies';
+import { createLead } from '../contacts/lead';
 import { mapPointsOf } from './map';
 import {
   buildPublicSnapshot,
@@ -839,12 +840,59 @@ describe('el snapshot no contiene nada privado', () => {
     expect(panorama?.youtubeVideoId).toBeNull();
   });
 
-  it('no lleva nada de revisiones, tokens ni contactos', async () => {
+  it('no lleva nada de revisiones ni tokens', async () => {
     const json = JSON.stringify(await fullSnapshot());
 
-    for (const forbidden of ['token', 'Token', 'review', 'Review', 'contact', 'Contact']) {
+    for (const forbidden of ['token', 'Token', 'review', 'Review']) {
       expect(json).not.toContain(forbidden);
     }
+  });
+
+  /*
+   * Desde 4F el snapshot SI lleva una seccion `contact`, pero con los canales
+   * publicos del negocio, no con las consultas de nadie. Estos dos tests
+   * separan una cosa de la otra, que es lo que el antiguo "no contiene la
+   * palabra contact" no distinguia.
+   */
+  it('publica los canales del negocio, y no sus buzones internos', async () => {
+    await db.insert(siteSettings).values({
+      id: 1,
+      businessName: 'Loba',
+      phone: '+506 2222 2222',
+      whatsapp: '+506 8888 8888',
+      email: 'hola@codeloba.test',
+      // Los dos internos: uno para revisar borradores, otro para los avisos.
+      reviewerEmail: 'revision-interna@codeloba.test',
+      notificationsEmail: 'avisos-internos@codeloba.test',
+    });
+
+    const json = JSON.stringify(await snapshot());
+
+    expect(json).toContain('hola@codeloba.test');
+    expect(json).toContain('+506 8888 8888');
+
+    expect(json).not.toContain('revision-interna@codeloba.test');
+    expect(json).not.toContain('avisos-internos@codeloba.test');
+    expect(json).not.toContain('reviewerEmail');
+    expect(json).not.toContain('notificationsEmail');
+  });
+
+  it('no lleva ninguna consulta recibida', async () => {
+    await createLead(db, {
+      name: 'Ana Rojas',
+      method: 'email',
+      contactValue: 'ana@example.com',
+      message: 'Mensaje privado de una persona.',
+      locale: 'es',
+      consent: true,
+    });
+
+    const json = JSON.stringify(await fullSnapshot());
+
+    // Quien escribe a la web no aparece en el sitio publico, faltaria mas.
+    expect(json).not.toContain('Ana Rojas');
+    expect(json).not.toContain('ana@example.com');
+    expect(json).not.toContain('Mensaje privado');
   });
 
   it('no lleva propiedades sin publicar', async () => {

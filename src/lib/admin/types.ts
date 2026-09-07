@@ -83,7 +83,10 @@ export type AdminErrorCode =
   | 'tour_media_in_use'
   // Enlace imposible: a si mismo, o entre nodos de propiedades distintas.
   | 'tour_link_invalid'
-  | 'tour_link_duplicate';
+  | 'tour_link_duplicate'
+
+  // -- Consultas -------------------------------------------------------------
+  | 'contact_not_found';
 
 export interface FieldIssue {
   /** Ruta del campo, p. ej. "publicLatitude" o "translations.es.slug". */

@@ -2,9 +2,9 @@
  * Navegacion del sitio publico.
  *
  * Las rutas son arboles independientes por idioma, asi que cada enlace se
- * construye con su locale. Contacto todavia no existe: se declara aqui para
- * que el menu este completo desde el principio y la fase que lo cree solo
- * tenga que anadir la pagina.
+ * construye con su locale. Desde 4F las tres secciones existen; `available`
+ * se queda porque es la forma de anunciar una seccion futura sin llevar a un
+ * 404, y volvera a hacer falta.
  */
 
 import type { Locale } from '../domain/vocabularies';
@@ -39,11 +39,15 @@ export function mapHref(locale: Locale): string {
   return MAP_HREF[locale];
 }
 
-/** Rutas de las secciones que aun no existen, por idioma. */
-const PENDING_HREF: Record<Locale, Record<'contact', string>> = {
-  es: { contact: '/es/contacto' },
-  en: { contact: '/en/contact' },
+/** Contacto, tambien con arbol propio por idioma. */
+const CONTACT_HREF: Record<Locale, string> = {
+  es: '/es/contacto',
+  en: '/en/contact',
 };
+
+export function contactHref(locale: Locale): string {
+  return CONTACT_HREF[locale];
+}
 
 export function navigationFor(locale: Locale): NavigationItem[] {
   const labels = LABELS[locale];
@@ -51,7 +55,7 @@ export function navigationFor(locale: Locale): NavigationItem[] {
   return [
     { id: 'properties', label: labels.properties, href: catalogueHref(locale), available: true },
     { id: 'map', label: labels.map, href: mapHref(locale), available: true },
-    { id: 'contact', label: labels.contact, href: PENDING_HREF[locale].contact, available: false },
+    { id: 'contact', label: labels.contact, href: contactHref(locale), available: true },
   ];
 }
 

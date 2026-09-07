@@ -379,12 +379,11 @@ describe('la pagina de mapa', () => {
     expect(read(MAP_EN)).toContain("mapHref('es')");
   });
 
-  it('el menu ya lleva al mapa, y Contacto sigue pendiente', () => {
+  it('el menu ya lleva al mapa', () => {
     const items = navigationFor('es');
 
     expect(items[1]?.available).toBe(true);
     expect(items[1]?.href).toBe('/es/mapa');
-    expect(items[2]?.available).toBe(false);
   });
 
   it('sigue siendo estatica: el snapshot del build, no una consulta', () => {
@@ -484,8 +483,6 @@ describe('el mapa de la ficha', () => {
 
     expect(detail).toContain('<PropertyMap');
     expect(detail).not.toContain('mapComingSoon');
-    // El de contacto sigue anunciado, que esa fase no ha llegado.
-    expect(detail).toContain('contactComingSoon');
   });
 
   it('la ubicacion en texto va siempre, con mapa o sin el', () => {

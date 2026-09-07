@@ -96,6 +96,8 @@ const STATUS_BY_ERROR: Record<AdminErrorCode, number> = {
   tour_media_in_use: 409,
   tour_link_invalid: 422,
   tour_link_duplicate: 409,
+
+  contact_not_found: 404,
 };
 
 export function jsonFromAdminError(error: AdminError): Response {

@@ -1412,6 +1412,288 @@ a {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Contacto                                                                   */
+/* -------------------------------------------------------------------------- */
+
+.contact-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(16rem, 1fr);
+  gap: var(--space-xl);
+  align-items: start;
+}
+
+.contact-empty {
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+/* -- Canales --------------------------------------------------------------- */
+
+.contact-channels {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.contact-channels-title {
+  font-size: 1.15rem;
+}
+
+.channel-list,
+.channel-social ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.channel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  text-decoration: none;
+  transition: border-color 0.2s ease;
+}
+
+.channel:hover {
+  border-color: var(--jungle-soft);
+}
+
+.channel-kind {
+  color: var(--ink-soft);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.channel-value {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+}
+
+.channel-social h3 {
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.channel-social ul {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  margin-top: var(--space-2xs);
+}
+
+.channel-social a {
+  color: var(--jungle-soft);
+  font-size: 0.9rem;
+  text-underline-offset: 4px;
+}
+
+/* -- Formulario ------------------------------------------------------------ */
+
+.contact-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  max-width: 34rem;
+}
+
+.contact-form-title {
+  font-size: 1.5rem;
+}
+
+.contact-form-about {
+  padding: var(--space-xs) var(--space-sm);
+  border-left: 2px solid var(--sand);
+  background: var(--sand-tint);
+  font-size: 0.9rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.field > label,
+.field legend {
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/*
+ * El "(obligatorio)" se separa por CSS y no por un espacio en la plantilla:
+ * Astro se come el espacio entre una expresion y la etiqueta siguiente, y la
+ * etiqueta acababa leyendose "NOMBRE(obligatorio)".
+ */
+.field-required,
+.field-optional {
+  margin-left: 0.35em;
+  text-transform: none;
+}
+
+.field input,
+.field textarea {
+  padding: var(--space-xs) var(--space-sm);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: inherit;
+}
+
+.field input:focus-visible,
+.field textarea:focus-visible {
+  border-color: var(--jungle-soft);
+}
+
+.field textarea {
+  resize: vertical;
+}
+
+.choice {
+  display: flex;
+  gap: var(--space-xs);
+  align-items: baseline;
+  font-size: 0.95rem;
+}
+
+.choice input {
+  /* El objetivo tactil no baja de lo que pide WCAG 2.2. */
+  width: 1.15rem;
+  height: 1.15rem;
+  accent-color: var(--jungle);
+}
+
+.choice-consent {
+  max-width: 30rem;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+/*
+ * La trampa antispam. Fuera de la pantalla y no `display: none`: hay robots
+ * que ignoran lo que esta oculto con `display`, y este campo solo sirve si lo
+ * encuentran. Para una persona no existe: ni se ve, ni se tabula, ni se lee.
+ */
+.honeypot {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.contact-submit {
+  align-self: flex-start;
+  padding: var(--space-xs) var(--space-lg);
+  border: 1px solid var(--jungle);
+  border-radius: 999px;
+  background: var(--jungle);
+  color: var(--ivory);
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background 0.2s ease;
+}
+
+.contact-submit:hover {
+  background: var(--jungle-soft);
+}
+
+.contact-submit[disabled] {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+.contact-status {
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+}
+
+.contact-status[data-kind='ok'] {
+  background: var(--jungle-tint);
+  color: var(--jungle);
+}
+
+.contact-status[data-kind='error'] {
+  background: var(--sand-tint);
+  color: var(--sand-deep);
+}
+
+/* Enviado: queda la confirmacion, no el formulario que invita a repetir. */
+.contact-form[data-sent='true'] .field,
+.contact-form[data-sent='true'] .choice,
+.contact-form[data-sent='true'] .contact-submit {
+  display: none;
+}
+
+/* -- Contacto en la ficha -------------------------------------------------- */
+
+.property-contact {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding-top: var(--space-lg);
+  border-top: 1px solid var(--line);
+}
+
+.property-contact-head h2 {
+  font-size: 1.5rem;
+}
+
+.property-contact-lead {
+  color: var(--ink-soft);
+}
+
+/* WhatsApp es el canal que de verdad se usa aqui, y se nota. */
+.whatsapp-cta {
+  display: inline-flex;
+  gap: var(--space-xs);
+  align-items: center;
+  align-self: flex-start;
+  padding: var(--space-xs) var(--space-lg);
+  border-radius: 999px;
+  background: var(--jungle);
+  color: var(--ivory);
+  font-size: 1rem;
+  text-decoration: none;
+  transition: background 0.2s ease;
+}
+
+.whatsapp-cta:hover {
+  background: var(--jungle-soft);
+}
+
+/* Auricular dibujado con bordes: ni icono ni peticion extra. */
+.whatsapp-cta-mark {
+  width: 0.85rem;
+  height: 0.85rem;
+  border: 2px solid var(--sand);
+  border-radius: 50% 50% 50% 0;
+}
+
+.contact-channels-compact .channel {
+  padding: var(--space-xs) var(--space-sm);
+}
+
+.contact-channels-compact .channel-list {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+/* -------------------------------------------------------------------------- */
 /* Movil                                                                      */
 /* -------------------------------------------------------------------------- */
 
@@ -1545,5 +1827,15 @@ a {
 
   .property-map {
     aspect-ratio: 4 / 3;
+  }
+
+  /* En movil el formulario va primero y los canales debajo. */
+  .contact-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-lg);
+  }
+
+  .contact-channels-compact .channel-list {
+    flex-direction: column;
   }
 }

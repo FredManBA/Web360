@@ -1,0 +1,146 @@
+---
+/**
+ * Formulario de contacto, el mismo en la pagina general y en una ficha.
+ *
+ * Es un `<form>` de verdad, con `action` y `method`: el navegador sabe
+ * enviarlo. El script lo intercepta para responder sin recargar, pero si no
+ * llega, el formulario sigue siendo un formulario.
+ *
+ * Cuando sale de una ficha, la propiedad viaja en un campo oculto con su
+ * SLUG —nunca un id— y se le dice a la persona cual esta consultando, en vez
+ * de pedirle que copie un codigo.
+ */
+import type { Locale } from '../../lib/domain/vocabularies';
+import { labelsFor } from '../../lib/public/labels';
+
+interface Props {
+  locale: Locale;
+  /** Propiedad consultada, cuando el formulario sale de su ficha. */
+  property?: { slug: string; code: string; title: string } | null;
+}
+
+const { locale, property = null } = Astro.props;
+const labels = labelsFor(locale);
+
+const methods = [
+  { value: 'email', label: labels.formMethodEmail, placeholder: labels.formValueEmail },
+  { value: 'whatsapp', label: labels.formMethodWhatsapp, placeholder: labels.formValueWhatsapp },
+  { value: 'phone', label: labels.formMethodPhone, placeholder: labels.formValuePhone },
+];
+
+const errorTexts = JSON.stringify({
+  invalid_request: labels.errorInvalid,
+  property_not_available: labels.errorPropertyGone,
+  too_fast: labels.errorTooFast,
+  server_error: labels.errorServer,
+  sending: labels.formSending,
+  submit: labels.formSubmit,
+  sent: labels.formSent,
+  values: {
+    email: labels.formValueEmail,
+    whatsapp: labels.formValueWhatsapp,
+    phone: labels.formValuePhone,
+  },
+});
+---
+
+<form
+  class="contact-form"
+  id="contact-form"
+  method="post"
+  action="/api/contact"
+  data-locale={locale}
+  data-property-slug={property?.slug}
+>
+  <h2 class="contact-form-title">{labels.formTitle}</h2>
+
+  {
+    property && (
+      <p class="contact-form-about">
+        {labels.formAbout} <strong>{property.code}</strong> — {property.title}
+      </p>
+    )
+  }
+
+  <div class="field">
+    <label for="contact-name">
+      {labels.formName}
+      <span class="field-required">({labels.formRequired})</span>
+    </label>
+    <input id="contact-name" name="name" type="text" required maxlength="120" autocomplete="name" />
+  </div>
+
+  <fieldset class="field">
+    <legend>{labels.formMethod}</legend>
+
+    {
+      methods.map((method, index) => (
+        <label class="choice">
+          <input
+            type="radio"
+            name="method"
+            value={method.value}
+            checked={index === 0}
+            data-placeholder={method.placeholder}
+          />
+          {method.label}
+        </label>
+      ))
+    }
+  </fieldset>
+
+  <div class="field">
+    <label for="contact-value">
+      <span id="contact-value-label">{labels.formValueEmail}</span>
+      <span class="field-required">({labels.formRequired})</span>
+    </label>
+    <input
+      id="contact-value"
+      name="contactValue"
+      type="text"
+      required
+      maxlength="200"
+      autocomplete="email"
+    />
+  </div>
+
+  <div class="field">
+    <label for="contact-message">
+      {labels.formMessage}
+      <span class="field-optional">({labels.formMessageOptional})</span>
+    </label>
+    <textarea id="contact-message" name="message" rows="4" maxlength="2000"></textarea>
+  </div>
+
+  <label class="choice choice-consent">
+    <input id="contact-consent" name="consent" type="checkbox" required />
+    {labels.formConsent}
+  </label>
+
+  {
+    /*
+    La trampa. No es `display: none` sin mas: tambien queda fuera del
+    tabulador y se anuncia como oculta, para que ningun lector de pantalla la
+    ofrezca a una persona.
+  */
+  }
+  <div class="honeypot" aria-hidden="true">
+    <label for="contact-website">{labels.formHoneypot}</label>
+    <input id="contact-website" name="website" type="text" tabindex="-1" autocomplete="off" />
+  </div>
+
+  <button type="submit" class="contact-submit" id="contact-submit">{labels.formSubmit}</button>
+
+  {/* El resultado se anuncia: quien no ve la pantalla tambien se entera. */}
+  <p
+    class="contact-status"
+    id="contact-status"
+    role="status"
+    aria-live="polite"
+    tabindex="-1"
+    hidden
+  >
+  </p>
+
+  <script is:inline type="application/json" id="contact-texts" set:html={errorTexts} />
+</form>

@@ -13,7 +13,7 @@ import { describe, expect, it } from 'vitest';
 
 import { labelsFor } from './labels';
 import { LANGUAGE_STORAGE_KEY, languageOptions, navigationFor } from './navigation';
-import { alternateHref, catalogueOf, type PublicSnapshot } from './read-model';
+import { alternateHref, catalogueOf, EMPTY_CONTACT, type PublicSnapshot } from './read-model';
 
 function read(relative: string): string {
   return readFileSync(path.resolve(process.cwd(), relative), 'utf8');
@@ -44,12 +44,10 @@ describe('navegacion', () => {
     expect(navigationFor('en').map((item) => item.label)).toEqual(['Properties', 'Map', 'Contact']);
   });
 
-  it('Propiedades y Mapa enlazan; Contacto todavia no existe', () => {
+  it('las tres secciones enlazan: desde 4F ya existen todas', () => {
     const items = navigationFor('es');
 
-    expect(items[0]?.available).toBe(true);
-    expect(items[1]?.available).toBe(true);
-    expect(items[2]?.available).toBe(false);
+    expect(items.every((item) => item.available)).toBe(true);
   });
 
   it('cada idioma apunta a su propio arbol', () => {
@@ -176,6 +174,7 @@ describe('la misma ficha en el otro idioma', () => {
         es: es.map((slug, index) => build(slug, `LOBA-00${index + 1}`)),
         en: en.map((slug, index) => build(slug, `LOBA-00${index + 1}`)),
       },
+      contact: EMPTY_CONTACT,
     };
   }
 
@@ -215,6 +214,12 @@ describe('todo el texto publico esta en los dos idiomas', () => {
 
     expect(Object.keys(es).sort()).toEqual(Object.keys(en).sort());
 
+    /*
+     * Lo que de verdad se escribe igual en los dos idiomas. Son nombres
+     * propios, no textos sin traducir: traducir "WhatsApp" seria un error.
+     */
+    const sameInBoth = new Set(['code', 'contactWhatsapp']);
+
     for (const key of Object.keys(es) as (keyof typeof es)[]) {
       const spanish = es[key];
       const english = en[key];
@@ -223,7 +228,7 @@ describe('todo el texto publico esta en los dos idiomas', () => {
         expect(spanish.length).toBeGreaterThan(0);
         expect(english.length).toBeGreaterThan(0);
         // Y no es el mismo texto copiado de un idioma al otro.
-        if (key !== 'code') expect(spanish).not.toBe(english);
+        if (!sameInBoth.has(key)) expect(spanish).not.toBe(english);
       }
     }
   });

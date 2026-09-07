@@ -39,6 +39,8 @@ import {
   propertyTourNodes,
   propertyTranslations,
   propertyTypeTranslations,
+  siteSettings,
+  siteSocialLinks,
 } from '../../db/schema';
 import { formatArea } from '../domain/area';
 import { getPublicCoordinates } from '../domain/location';
@@ -205,15 +207,55 @@ export interface PublicPropertyDetail extends PublicPropertyCard {
   tour: PublicTour | null;
 }
 
+/* -------------------------------------------------------------------------- */
+/* Canales de contacto                                                        */
+/* -------------------------------------------------------------------------- */
+
+export interface PublicSocialLink {
+  platform: string;
+  url: string;
+}
+
+/**
+ * Como contactar con el negocio.
+ *
+ * Sale de `site_settings`, no de constantes en el codigo: el telefono lo
+ * cambia quien lleva el negocio, no una fase de desarrollo.
+ *
+ * Se publica SOLO lo que es un canal publico. `reviewerEmail` y
+ * `notificationsEmail` son direcciones internas —una para revisar borradores,
+ * otra para recibir los avisos— y no se seleccionan siquiera: publicarlas
+ * seria regalar dos buzones al primer robot que lea el HTML.
+ */
+export interface PublicContactChannels {
+  businessName: string | null;
+  phone: string | null;
+  whatsapp: string | null;
+  email: string | null;
+  address: string | null;
+  social: PublicSocialLink[];
+}
+
+export const EMPTY_CONTACT: PublicContactChannels = {
+  businessName: null,
+  phone: null,
+  whatsapp: null,
+  email: null,
+  address: null,
+  social: [],
+};
+
 export interface PublicSnapshot {
   /** Cuando se genero, para poder saber si una build va con datos viejos. */
   generatedAt: string;
   properties: Record<Locale, PublicPropertyDetail[]>;
+  contact: PublicContactChannels;
 }
 
 export const EMPTY_SNAPSHOT: PublicSnapshot = {
   generatedAt: '1970-01-01T00:00:00.000Z',
   properties: { es: [], en: [] },
+  contact: EMPTY_CONTACT,
 };
 
 /* -------------------------------------------------------------------------- */
@@ -331,6 +373,8 @@ export async function buildPublicSnapshot(
     .from(properties)
     .orderBy(asc(properties.id));
 
+  const contact = await readContactChannels(db);
+
   const visible = propertyRows.filter((row) =>
     isPubliclyVisible({
       publicationStatus: row.publicationStatus,
@@ -340,7 +384,7 @@ export async function buildPublicSnapshot(
   );
 
   if (visible.length === 0) {
-    return { generatedAt: now.toISOString(), properties: { es: [], en: [] } };
+    return { generatedAt: now.toISOString(), properties: { es: [], en: [] }, contact };
   }
 
   const visibleIds = new Set(visible.map((row) => row.id));
@@ -739,6 +783,61 @@ export async function buildPublicSnapshot(
   return {
     generatedAt: now.toISOString(),
     properties: { es: buildFor('es'), en: buildFor('en') },
+    contact,
+  };
+}
+
+/**
+ * Canales de contacto publicables.
+ *
+ * Las columnas internas —`reviewerEmail`, `notificationsEmail`— NO se
+ * seleccionan, igual que no se seleccionan las coordenadas privadas de una
+ * propiedad: lo que no se lee no puede filtrarse por descuido.
+ */
+async function readContactChannels(db: AdminDatabase): Promise<PublicContactChannels> {
+  const rows = await db
+    .select({
+      businessName: siteSettings.businessName,
+      phone: siteSettings.phone,
+      whatsapp: siteSettings.whatsapp,
+      email: siteSettings.email,
+      address: siteSettings.address,
+    })
+    .from(siteSettings)
+    .orderBy(asc(siteSettings.id))
+    .limit(1);
+
+  const links = await db
+    .select({
+      platform: siteSocialLinks.platform,
+      url: siteSocialLinks.url,
+      isActive: siteSocialLinks.isActive,
+      sortOrder: siteSocialLinks.sortOrder,
+      id: siteSocialLinks.id,
+    })
+    .from(siteSocialLinks)
+    .orderBy(asc(siteSocialLinks.sortOrder), asc(siteSocialLinks.id));
+
+  const settings = rows[0];
+  const clean = (value: string | null | undefined): string | null => {
+    const trimmed = value?.trim();
+    return trimmed === undefined || trimmed.length === 0 ? null : trimmed;
+  };
+
+  return {
+    businessName: clean(settings?.businessName),
+    phone: clean(settings?.phone),
+    whatsapp: clean(settings?.whatsapp),
+    email: clean(settings?.email),
+    address: clean(settings?.address),
+    // Una red desactivada no se publica: es la forma de quitarla sin borrarla.
+    social: links
+      .filter((link) => link.isActive)
+      .flatMap((link) => {
+        const platform = clean(link.platform);
+        const url = clean(link.url);
+        return platform === null || url === null ? [] : [{ platform, url }];
+      }),
   };
 }
 

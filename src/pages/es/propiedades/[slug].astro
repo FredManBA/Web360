@@ -27,6 +27,7 @@ export function getStaticPaths() {
 }
 
 const locale = 'es' as const;
+const channels = loadPublicSnapshot().contact;
 const { property, alternate } = Astro.props as {
   property: PublicPropertyDetail;
   alternate: string | null;
@@ -41,16 +42,18 @@ const { property, alternate } = Astro.props as {
   alternateHref={alternate}
 >
   <div class="page">
-    <PropertyDetail property={property} locale={locale} />
+    <PropertyDetail property={property} locale={locale} channels={channels} />
   </div>
 </PublicLayout>
 
 <script>
   import { initPropertyDetail } from '../../../lib/public/detail-page';
   import { initLanguagePreference } from '../../../lib/public/language-preference';
+  import { initContactForm } from '../../../lib/public/contact-form';
   import { initPropertyMap } from '../../../lib/public/map-page';
 
   initLanguagePreference();
+  initContactForm();
   initPropertyDetail();
   initPropertyMap();
 </script>

@@ -1,0 +1,44 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { CONTACT_STATUSES } from '../../lib/domain/vocabularies';
+import { CONTACT_STATUS_LABELS } from '../../lib/admin/ui/labels';
+
+export const prerender = false;
+
+/*
+ * El shell se renderiza en el servidor; las consultas las carga el navegador
+ * contra `/api/admin/contacts`, para no saltarse la capa HTTP.
+ */
+---
+
+<AdminLayout title="Consultas" description="Quién ha escrito y por dónde quiere que le respondas.">
+  <form class="admin-filters" id="contacts-filters">
+    <div class="admin-field">
+      <label for="contacts-filter">Estado</label>
+      <select id="contacts-filter" name="status">
+        <option value="">Todas</option>
+        {
+          CONTACT_STATUSES.map((status) => (
+            <option value={status}>{CONTACT_STATUS_LABELS[status]}</option>
+          ))
+        }
+      </select>
+    </div>
+  </form>
+
+  <div class="admin-listing-bar">
+    <p class="admin-count" id="contacts-count" aria-live="polite"></p>
+  </div>
+
+  <p class="editor-error" id="contacts-error" role="alert" hidden></p>
+
+  <div class="admin-panel">
+    <div class="contact-list" id="contacts-results" aria-busy="false"></div>
+  </div>
+</AdminLayout>
+
+<script>
+  import { initContactsPage } from '../../lib/admin/ui/contacts-page';
+
+  initContactsPage();
+</script>

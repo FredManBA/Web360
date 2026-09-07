@@ -101,6 +101,46 @@ export interface PublicLabels {
   zoomIn: string;
   zoomOut: string;
   resetNorth: string;
+
+  /* -- Contacto ---------------------------------------------------------- */
+  contactTitle: string;
+  contactDescription: string;
+  contactChannels: string;
+  contactWhatsapp: string;
+  contactPhone: string;
+  contactEmail: string;
+  contactSocial: string;
+  contactNoChannels: string;
+  /** CTA de la ficha. */
+  contactAbout: (title: string) => string;
+  contactAboutLead: string;
+  writeToUs: string;
+
+  /* -- Formulario -------------------------------------------------------- */
+  formTitle: string;
+  formName: string;
+  formMethod: string;
+  formMethodEmail: string;
+  formMethodWhatsapp: string;
+  formMethodPhone: string;
+  formValueEmail: string;
+  formValueWhatsapp: string;
+  formValuePhone: string;
+  formMessage: string;
+  formMessageOptional: string;
+  formConsent: string;
+  formSubmit: string;
+  formSending: string;
+  formSent: string;
+  formSentHint: string;
+  formAbout: string;
+  /** Trampa antispam: visible solo para quien no debe rellenarla. */
+  formHoneypot: string;
+  formRequired: string;
+  errorInvalid: string;
+  errorPropertyGone: string;
+  errorTooFast: string;
+  errorServer: string;
 }
 
 const ES: PublicLabels = {
@@ -189,6 +229,43 @@ const ES: PublicLabels = {
   zoomIn: 'Acercar',
   zoomOut: 'Alejar',
   resetNorth: 'Orientar al norte',
+
+  contactTitle: 'Contacto',
+  contactDescription: 'Escríbenos y te respondemos por donde prefieras.',
+  contactChannels: 'Canales directos',
+  contactWhatsapp: 'WhatsApp',
+  contactPhone: 'Teléfono',
+  contactEmail: 'Correo',
+  contactSocial: 'Redes',
+  contactNoChannels: 'Todavía no hay canales directos publicados. El formulario sí funciona.',
+  contactAbout: (title) => `¿Te interesa ${title}?`,
+  contactAboutLead: 'Escríbenos y te contamos lo que necesites saber.',
+  writeToUs: 'Escríbenos',
+
+  formTitle: 'Escríbenos',
+  formName: 'Nombre',
+  formMethod: '¿Cómo prefieres que te respondamos?',
+  formMethodEmail: 'Por correo',
+  formMethodWhatsapp: 'Por WhatsApp',
+  formMethodPhone: 'Por teléfono',
+  formValueEmail: 'Tu correo',
+  formValueWhatsapp: 'Tu número de WhatsApp',
+  formValuePhone: 'Tu teléfono',
+  formMessage: 'Mensaje',
+  formMessageOptional: 'opcional',
+  formConsent: 'Acepto que uséis mis datos para responderme a esta consulta.',
+  formSubmit: 'Enviar consulta',
+  formSending: 'Enviando…',
+  formSent: 'Consulta enviada. Te respondemos en breve.',
+  formSentHint: 'Gracias por escribir.',
+  formAbout: 'Consultas sobre',
+  formHoneypot: 'No rellenes este campo',
+  formRequired: 'obligatorio',
+  errorInvalid: 'Revisa los datos: falta algo o no tiene el formato correcto.',
+  errorPropertyGone:
+    'Esta propiedad ya no está disponible. Escríbenos desde la página de contacto.',
+  errorTooFast: 'El envío llegó demasiado rápido. Inténtalo otra vez.',
+  errorServer: 'No hemos podido enviar la consulta. Inténtalo de nuevo en un momento.',
 };
 
 const EN: PublicLabels = {
@@ -276,6 +353,42 @@ const EN: PublicLabels = {
   zoomIn: 'Zoom in',
   zoomOut: 'Zoom out',
   resetNorth: 'Reset north',
+
+  contactTitle: 'Contact',
+  contactDescription: 'Write to us and we will reply however you prefer.',
+  contactChannels: 'Direct channels',
+  contactWhatsapp: 'WhatsApp',
+  contactPhone: 'Phone',
+  contactEmail: 'Email',
+  contactSocial: 'Social',
+  contactNoChannels: 'No direct channels are published yet. The form does work.',
+  contactAbout: (title) => `Interested in ${title}?`,
+  contactAboutLead: 'Write to us and we will tell you whatever you need to know.',
+  writeToUs: 'Write to us',
+
+  formTitle: 'Write to us',
+  formName: 'Name',
+  formMethod: 'How would you like us to reply?',
+  formMethodEmail: 'By email',
+  formMethodWhatsapp: 'By WhatsApp',
+  formMethodPhone: 'By phone',
+  formValueEmail: 'Your email',
+  formValueWhatsapp: 'Your WhatsApp number',
+  formValuePhone: 'Your phone',
+  formMessage: 'Message',
+  formMessageOptional: 'optional',
+  formConsent: 'I agree that you use my details to reply to this enquiry.',
+  formSubmit: 'Send enquiry',
+  formSending: 'Sending…',
+  formSent: 'Enquiry sent. We will get back to you shortly.',
+  formSentHint: 'Thank you for writing.',
+  formAbout: 'Enquiries about',
+  formHoneypot: 'Do not fill in this field',
+  formRequired: 'required',
+  errorInvalid: 'Check the details: something is missing or has the wrong format.',
+  errorPropertyGone: 'This property is no longer available. Write to us from the contact page.',
+  errorTooFast: 'That submission arrived too fast. Please try again.',
+  errorServer: 'We could not send the enquiry. Please try again in a moment.',
 };
 
 export function labelsFor(locale: Locale): PublicLabels {
