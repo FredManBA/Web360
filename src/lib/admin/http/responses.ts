@@ -102,6 +102,11 @@ const STATUS_BY_ERROR: Record<AdminErrorCode, number> = {
   social_link_not_found: 404,
   // Choque de estado, no de forma: la lista ya no describe la realidad.
   social_order_conflict: 409,
+
+  review_not_found: 404,
+  // No se distingue caducado de inexistente: decirlo confirmaria que existio.
+  review_link_invalid: 404,
+  review_failed: 500,
 };
 
 export function jsonFromAdminError(error: AdminError): Response {

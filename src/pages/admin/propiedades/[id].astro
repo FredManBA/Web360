@@ -395,11 +395,25 @@ const { id } = Astro.params;
         <p class="admin-muted">Cargando recorrido…</p>
       </div>
     </section>
+
+    <section class="editor-review admin-panel" id="editor-review" aria-labelledby="review-heading">
+      <h2 id="review-heading">Revisión</h2>
+      <p class="editor-help">
+        Genera un enlace temporal para que alguien de fuera vea la ficha sin publicarla y decida.
+        Aprobarla no la publica.
+      </p>
+
+      <div id="admin-review">
+        <p class="admin-muted">Cargando revisión…</p>
+      </div>
+    </section>
   </div>
 </AdminLayout>
 
 <script>
   import { initEditorPage } from '../../../lib/admin/ui/editor-page';
+  import { initReviewPanel } from '../../../lib/admin/ui/review-panel';
 
   initEditorPage();
+  initReviewPanel();
 </script>

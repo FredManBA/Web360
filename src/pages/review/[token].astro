@@ -1,0 +1,182 @@
+---
+/**
+ * Vista previa de revision.
+ *
+ * On-demand y fuera de `/admin`: el reviewer no tiene cuenta ni sesion, su
+ * unica credencial es el token de la URL.
+ *
+ * Reutiliza `PropertyDetail`, la misma ficha del sitio publico, sobre un
+ * snapshot construido con la MISMA proyeccion. No hay una segunda ficha
+ * escrita aparte, asi que lo que aqui no aparece —coordenadas privadas,
+ * claves de R2, estados editoriales, ids— no aparece porque es el mismo
+ * codigo que ya lo excluye, no por una lista de campos que alguien recuerde
+ * mantener.
+ *
+ * Lo unico que cambia es de donde salen los archivos: de la ruta de revision,
+ * que exige el token, en vez de la publica, que solo sirve lo publicado.
+ */
+import { env } from 'cloudflare:workers';
+
+import '../../styles/global.css';
+
+import PropertyDetail from '../../components/public/PropertyDetail.astro';
+import { getDb } from '../../db/client';
+import { LOCALES, type Locale } from '../../lib/domain/vocabularies';
+import { buildPreviewSnapshot, type PublicPropertyDetail } from '../../lib/public/read-model';
+import { reviewMediaUrl } from '../../lib/review/preview-media';
+import { resolveReviewToken } from '../../lib/review/review';
+
+export const prerender = false;
+
+// Un borrador no se cachea en ninguna parte, ni un segundo.
+Astro.response.headers.set('cache-control', 'no-store');
+Astro.response.headers.set('x-robots-tag', 'noindex, nofollow');
+
+const token = Astro.params.token ?? '';
+const db = getDb(env);
+
+const resolved = await resolveReviewToken(db, token);
+
+/*
+ * Un enlace que no sirve responde igual esté caducado, revocado, usado o
+ * inventado: distinguirlos confirmaria que ese token existio alguna vez.
+ */
+if (resolved === null) {
+  Astro.response.status = 404;
+}
+
+const snapshot =
+  resolved === null
+    ? null
+    : await buildPreviewSnapshot(db, resolved.propertyId, (mediaId) =>
+        reviewMediaUrl(token, mediaId),
+      );
+
+/*
+ * Los idiomas en los que la propiedad tiene ficha utilizable. Sin traduccion
+ * usable en un idioma, ese idioma simplemente no esta: es la misma regla del
+ * sitio publico, no una excepcion de la revision.
+ */
+const detailFor = (locale: Locale): PublicPropertyDetail | null =>
+  snapshot === null ? null : (snapshot.properties[locale][0] ?? null);
+
+const available: Locale[] = LOCALES.filter((locale) => detailFor(locale) !== null);
+
+const requested = Astro.url.searchParams.get('lang');
+const locale: Locale =
+  available.find((candidate) => candidate === requested) ?? available[0] ?? 'es';
+
+const property = detailFor(locale);
+---
+
+<!doctype html>
+<html lang={locale}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    {/* Nunca en un buscador: esto es un borrador con un enlace privado. */}
+    <meta name="robots" content="noindex, nofollow, noarchive" />
+    <title>{resolved === null ? 'Revisión' : `Revisión · ${resolved.propertyCode}`}</title>
+  </head>
+
+  <body>
+    {
+      resolved === null ? (
+        <main class="review-gone">
+          <h1>Este enlace ya no sirve</h1>
+          <p>
+            Puede haber caducado, haberse revocado o haberse usado ya. Pide uno nuevo a quien te lo
+            envió.
+          </p>
+        </main>
+      ) : property === null || snapshot === null ? (
+        /*
+         * El enlace es bueno, pero la propiedad todavia no tiene ficha en
+         * ningun idioma. Decir "ya no sirve" mandaria a pedir otro enlace, que
+         * no arreglaria nada: lo que falta es contenido.
+         */
+        <main class="review-gone">
+          <h1>Todavía no hay nada que revisar</h1>
+          <p>
+            Esta propiedad aún no tiene título ni dirección en ningún idioma. Cuando los tenga, este
+            mismo enlace mostrará la ficha.
+          </p>
+        </main>
+      ) : (
+        <>
+          <header class="review-bar">
+            <div class="review-bar-inner">
+              <p class="review-bar-title">
+                <span class="review-badge">Revisión</span>
+                {property.code}
+              </p>
+
+              {available.length > 1 && (
+                <nav class="review-langs" aria-label="Idioma de la ficha">
+                  {available.map((candidate) => (
+                    <a
+                      href={`?lang=${candidate}`}
+                      aria-current={candidate === locale ? 'page' : undefined}
+                      class={candidate === locale ? 'is-current' : undefined}
+                    >
+                      {candidate === 'es' ? 'Español' : 'English'}
+                    </a>
+                  ))}
+                </nav>
+              )}
+            </div>
+
+            <p class="review-bar-note">
+              Así se verá la ficha cuando se publique. Todavía no está publicada.
+            </p>
+          </header>
+
+          <main id="contenido">
+            <div class="page">
+              <PropertyDetail property={property} locale={locale} channels={snapshot.contact} />
+            </div>
+          </main>
+
+          <section class="review-decision" id="review-decision" aria-labelledby="decision-title">
+            <div class="review-decision-inner">
+              <h2 id="decision-title">¿Qué te parece?</h2>
+              <p class="review-decision-note">
+                Aprobarla no la publica: avisa de que está lista. Publicar lo hace quien lleva el
+                sitio.
+              </p>
+
+              <label class="review-comment-field" for="review-comment">
+                Comentario <span>(opcional)</span>
+              </label>
+              <textarea id="review-comment" rows="3" maxlength="2000" />
+
+              <div class="review-actions">
+                <button type="button" class="review-approve" data-decision="approved">
+                  Aprobar
+                </button>
+                <button type="button" class="review-changes" data-decision="changes_requested">
+                  Pedir cambios
+                </button>
+              </div>
+
+              <p
+                class="review-status"
+                id="review-status"
+                role="status"
+                aria-live="polite"
+                tabindex="-1"
+                hidden
+              />
+            </div>
+          </section>
+        </>
+      )
+    }
+
+    <script>
+      import { initReviewDecision } from '../../lib/review/decision-page';
+
+      initReviewDecision();
+    </script>
+  </body>
+</html>

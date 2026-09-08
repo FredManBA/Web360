@@ -91,7 +91,13 @@ export type AdminErrorCode =
   // -- Configuracion del sitio -----------------------------------------------
   | 'social_link_not_found'
   // El orden enviado ya no describe los enlaces guardados.
-  | 'social_order_conflict';
+  | 'social_order_conflict'
+
+  // -- Revision privada ------------------------------------------------------
+  | 'review_not_found'
+  // No existe, caduco, se revoco o ya se uso: por fuera son el mismo caso.
+  | 'review_link_invalid'
+  | 'review_failed';
 
 export interface FieldIssue {
   /** Ruta del campo, p. ej. "publicLatitude" o "translations.es.slug". */

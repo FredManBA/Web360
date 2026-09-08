@@ -383,6 +383,42 @@ export async function buildPublicSnapshot(
   db: AdminDatabase,
   now: Date = new Date(),
 ): Promise<PublicSnapshot> {
+  return buildSnapshot(db, { now });
+}
+
+/**
+ * Snapshot de UNA propiedad, sin exigir que sea publica.
+ *
+ * Lo usa la revision privada: quien tiene el enlace ve un borrador con la
+ * misma proyeccion que tendria publicado, no una segunda ficha escrita
+ * aparte. Todo lo que este modulo no publica —coordenadas privadas, claves de
+ * R2, estados editoriales, ids— sigue sin salir, porque es exactamente el
+ * mismo codigo.
+ *
+ * La puerta esta en QUIEN llama: `buildPublicSnapshot` filtra siempre por
+ * visibilidad y no admite excepciones; esta funcion se llama solo despues de
+ * validar un token, y nunca desde el sitio publico.
+ */
+export async function buildPreviewSnapshot(
+  db: AdminDatabase,
+  propertyId: number,
+  mediaUrl: (mediaId: number) => string,
+  now: Date = new Date(),
+): Promise<PublicSnapshot> {
+  return buildSnapshot(db, { now, only: propertyId, mediaUrl });
+}
+
+interface SnapshotOptions {
+  now: Date;
+  /** Cuando se indica, solo entra esa propiedad y se salta la visibilidad. */
+  only?: number;
+  /** Como se construye la ruta de cada archivo. */
+  mediaUrl?: (mediaId: number) => string;
+}
+
+async function buildSnapshot(db: AdminDatabase, options: SnapshotOptions): Promise<PublicSnapshot> {
+  const { now } = options;
+  const mediaUrlOf = options.mediaUrl ?? publicMediaUrl;
   const propertyRows = await db
     .select({
       id: properties.id,
@@ -415,13 +451,21 @@ export async function buildPublicSnapshot(
   const contact = await readContactChannels(db);
   const site = await readSiteTexts(db);
 
-  const visible = propertyRows.filter((row) =>
-    isPubliclyVisible({
-      publicationStatus: row.publicationStatus,
-      commercialStatus: row.commercialStatus,
-      showWhenSold: row.showWhenSold,
-    }),
-  );
+  /*
+   * La regla de siempre: solo lo publicamente visible. La revision privada es
+   * la unica excepcion, y llega por `only` con una propiedad concreta que ya
+   * se ha autorizado con un token.
+   */
+  const visible =
+    options.only === undefined
+      ? propertyRows.filter((row) =>
+          isPubliclyVisible({
+            publicationStatus: row.publicationStatus,
+            commercialStatus: row.commercialStatus,
+            showWhenSold: row.showWhenSold,
+          }),
+        )
+      : propertyRows.filter((row) => row.id === options.only);
 
   if (visible.length === 0) {
     return { generatedAt: now.toISOString(), properties: { es: [], en: [] }, contact, site };
@@ -655,7 +699,7 @@ export async function buildPublicSnapshot(
       return {
         key: keyOf.get(node.id) ?? '1',
         name: name === undefined || name.length === 0 ? null : name,
-        url: publicMediaUrl(node.propertyMediaId),
+        url: mediaUrlOf(node.propertyMediaId),
         initialView:
           node.initialYaw === null || node.initialPitch === null
             ? null
@@ -701,7 +745,7 @@ export async function buildPublicSnapshot(
         return {
           kind: row.mediaKind,
           // Los de YouTube no se sirven desde R2: se enlazan con su id.
-          url: youtube === null ? publicMediaUrl(row.id) : null,
+          url: youtube === null ? mediaUrlOf(row.id) : null,
           youtubeVideoId: youtube,
 
           title: texts?.title?.trim() ?? null,

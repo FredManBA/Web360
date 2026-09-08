@@ -1615,3 +1615,111 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/* Revision                                                                   */
+/* -------------------------------------------------------------------------- */
+
+.editor-review {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem 1.1rem 1.2rem;
+}
+
+.review-state,
+.review-current {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.review-chip {
+  padding: 0.1rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.review-chip-pending {
+  background: #f6efe1;
+  color: #9a7b46;
+}
+
+.review-chip-approved {
+  background: #e8eeea;
+  color: #1f4034;
+}
+
+.review-chip-changes_requested {
+  background: #fbeae7;
+  color: #8c3b2c;
+}
+
+.review-chip-cancelled {
+  background: #eceeed;
+  color: #55655c;
+}
+
+/*
+ * El enlace recien creado. Se destaca porque es la unica vez que se puede
+ * leer: en la base solo queda su huella.
+ */
+.review-fresh {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-start;
+  padding: 0.85rem 1rem;
+  border: 1px solid #c9a86a;
+  border-radius: 6px;
+  background: #fdf8ee;
+}
+
+.review-fresh p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.review-link-input {
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--admin-border-strong);
+  border-radius: var(--admin-radius-sm);
+  background: #fff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85rem;
+}
+
+.review-actions-admin {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.review-history h3 {
+  margin: 0 0 0.4rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #55655c;
+}
+
+.review-history ul {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.review-history-date {
+  color: #55655c;
+  font-size: 0.85rem;
+}
+
+.review-history-comment {
+  margin: 0.2rem 0 0;
+  font-size: 0.9rem;
+}

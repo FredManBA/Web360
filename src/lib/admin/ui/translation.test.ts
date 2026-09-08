@@ -343,9 +343,17 @@ describe('integracion', () => {
     }
   });
 
-  it('no se implementa publicacion ni SEO en esta subfase', () => {
+  it('el editor sigue sin publicar ni tocar SEO', () => {
     const page = read(EDITOR_PAGE);
 
-    expect(page).not.toMatch(/publicar|noindex|meta description/i);
+    /*
+     * Desde 5B el editor SI habla de revision, y ahi aparece la palabra
+     * "publicar" —justo para decir que aprobar no publica—. Lo que se sigue
+     * comprobando es que no existe ninguna accion de publicar ni nada de SEO:
+     * publicar es de otra fase.
+     */
+    expect(page).not.toMatch(/noindex|meta description/i);
+    expect(page).not.toContain('data-action="publish"');
+    expect(page).not.toContain('/publish');
   });
 });
