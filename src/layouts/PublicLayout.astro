@@ -4,7 +4,9 @@ import '../styles/global.css';
 import SiteHeader from '../components/public/SiteHeader.astro';
 import SiteFooter from '../components/public/SiteFooter.astro';
 import type { Locale } from '../lib/domain/vocabularies';
+import { labelsFor } from '../lib/public/labels';
 import type { SectionId } from '../lib/public/navigation';
+import { loadPublicSnapshot } from '../lib/public/snapshot';
 
 interface Props {
   title: string;
@@ -41,6 +43,14 @@ const absolute = (path: string): string =>
   Astro.site === undefined ? path : new URL(path, Astro.site).href;
 
 const other: Locale = locale === 'es' ? 'en' : 'es';
+
+/*
+ * La marca sale de la configuracion del sitio, no de la plantilla: quien
+ * lleva el negocio cambia el nombre en el panel y cambia en todas partes. Se
+ * resuelve AQUI, en el unico sitio por el que pasan todas las paginas
+ * publicas, en vez de pasarlo por props desde cada una.
+ */
+const brand = loadPublicSnapshot().site.businessName ?? labelsFor(locale).brandName;
 ---
 
 <!doctype html>
@@ -68,12 +78,12 @@ const other: Locale = locale === 'es' ? 'en' : 'es';
     }
   </head>
   <body>
-    <SiteHeader locale={locale} section={section} alternateHref={alternateHref} />
+    <SiteHeader locale={locale} section={section} alternateHref={alternateHref} brand={brand} />
 
     <main id="contenido">
       <slot />
     </main>
 
-    <SiteFooter locale={locale} />
+    <SiteFooter locale={locale} brand={brand} />
   </body>
 </html>

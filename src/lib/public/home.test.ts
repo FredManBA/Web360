@@ -284,11 +284,16 @@ describe('la raiz', () => {
     expect(root).toContain('hreflang="x-default"');
   });
 
-  it('no arrastra nada del sitio: es una pagina de paso', () => {
+  it('es una pagina de paso: ni shell ni catalogo', () => {
     const root = read(ROOT);
 
-    expect(root).not.toContain('loadPublicSnapshot');
+    /*
+     * Del snapshot solo coge la marca, que necesita para no escribir el
+     * nombre del negocio a mano. Ni cabecera, ni pie, ni propiedades.
+     */
+    expect(root).toContain('loadPublicSnapshot().site.businessName');
     expect(root).not.toContain('PublicLayout');
+    expect(root).not.toContain('catalogueOf');
   });
 });
 

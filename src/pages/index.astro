@@ -20,10 +20,13 @@ import '../styles/global.css';
 
 import { labelsFor } from '../lib/public/labels';
 import { LANGUAGE_STORAGE_KEY } from '../lib/public/language-preference';
+import { loadPublicSnapshot } from '../lib/public/snapshot';
 
 // La raiz no tiene idioma propio: se presenta en los dos.
 const es = labelsFor('es');
 const en = labelsFor('en');
+
+const brand = loadPublicSnapshot().site.businessName ?? es.brandName;
 ---
 
 <!doctype html>
@@ -31,7 +34,7 @@ const en = labelsFor('en');
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{es.brandName}</title>
+    <title>{brand}</title>
     <meta name="description" content={es.homeSeoDescription} />
 
     {/* La raiz no se indexa: lo que se indexa son las dos portadas. */}
@@ -80,8 +83,8 @@ const en = labelsFor('en');
   <body class="root-choice">
     <main>
       <p class="root-brand">
-        <span class="root-brand-mark" aria-hidden="true">L</span>
-        {es.brandName}
+        <span class="root-brand-mark" aria-hidden="true">{brand.trim().charAt(0)}</span>
+        {brand}
       </p>
 
       <h1 class="root-title">{es.chooseLanguage} · {en.chooseLanguage}</h1>

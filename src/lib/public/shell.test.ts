@@ -112,6 +112,36 @@ describe('recuento de resultados', () => {
   });
 });
 
+describe('el nombre del negocio', () => {
+  it('lo pone la configuracion, no la plantilla', () => {
+    const header = read(HEADER);
+    const footer = read(FOOTER);
+
+    // Antes de 5A estaba escrito a mano en las dos, y no seguia al panel.
+    expect(header).toContain('brand: string');
+    expect(header).toContain('{brand}');
+    expect(header).not.toContain('>Loba<');
+
+    expect(footer).toContain('brand: string');
+    expect(footer).toContain('{brand}');
+    expect(footer).not.toContain('>Loba<');
+  });
+
+  it('el shell lo resuelve una sola vez, donde pasan todas las paginas', () => {
+    const layout = read(LAYOUT);
+
+    expect(layout).toContain('loadPublicSnapshot().site.businessName');
+    // Sin configurar, el sitio no se queda sin marca.
+    expect(layout).toContain('labelsFor(locale).brandName');
+    expect(layout).toContain('brand={brand}');
+  });
+
+  it('la inicial del distintivo sale del propio nombre', () => {
+    // Una "L" fija junto a otro nombre quedaria absurda.
+    expect(read(HEADER)).toContain('brand.trim().charAt(0)');
+  });
+});
+
 /* -------------------------------------------------------------------------- */
 /* Idiomas                                                                    */
 /* -------------------------------------------------------------------------- */

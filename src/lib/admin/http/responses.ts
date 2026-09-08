@@ -98,6 +98,10 @@ const STATUS_BY_ERROR: Record<AdminErrorCode, number> = {
   tour_link_duplicate: 409,
 
   contact_not_found: 404,
+
+  social_link_not_found: 404,
+  // Choque de estado, no de forma: la lista ya no describe la realidad.
+  social_order_conflict: 409,
 };
 
 export function jsonFromAdminError(error: AdminError): Response {

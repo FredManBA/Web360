@@ -4,17 +4,19 @@ import { labelsFor } from '../../lib/public/labels';
 
 interface Props {
   locale: Locale;
+  /** Nombre configurado del negocio; el shell no lo decide. */
+  brand: string;
 }
 
-const { locale } = Astro.props;
+const { locale, brand } = Astro.props;
 const labels = labelsFor(locale);
 const year = new Date().getFullYear();
 ---
 
 <footer class="site-footer">
   <div class="site-footer-inner">
-    <p class="site-footer-brand">Loba</p>
+    <p class="site-footer-brand">{brand}</p>
     <p class="site-footer-note">{labels.footerNote}</p>
-    <p class="site-footer-legal">© {year} Loba</p>
+    <p class="site-footer-legal">© {year} {brand}</p>
   </div>
 </footer>

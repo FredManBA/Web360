@@ -86,7 +86,12 @@ export type AdminErrorCode =
   | 'tour_link_duplicate'
 
   // -- Consultas -------------------------------------------------------------
-  | 'contact_not_found';
+  | 'contact_not_found'
+
+  // -- Configuracion del sitio -----------------------------------------------
+  | 'social_link_not_found'
+  // El orden enviado ya no describe los enlaces guardados.
+  | 'social_order_conflict';
 
 export interface FieldIssue {
   /** Ruta del campo, p. ej. "publicLatitude" o "translations.es.slug". */

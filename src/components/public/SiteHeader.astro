@@ -7,9 +7,11 @@ interface Props {
   locale: Locale;
   section?: SectionId;
   alternateHref?: string | null;
+  /** Nombre configurado del negocio; el shell no lo decide. */
+  brand: string;
 }
 
-const { locale, section, alternateHref = null } = Astro.props;
+const { locale, section, alternateHref = null, brand } = Astro.props;
 
 const labels = labelsFor(locale);
 const items = navigationFor(locale);
@@ -22,8 +24,8 @@ const other = languages[1];
 <header class="site-header">
   <div class="site-header-inner">
     <a class="site-brand" href={`/${locale}/`}>
-      <span class="site-brand-mark" aria-hidden="true">L</span>
-      <span class="site-brand-name">Loba</span>
+      <span class="site-brand-mark" aria-hidden="true">{brand.trim().charAt(0)}</span>
+      <span class="site-brand-name">{brand}</span>
     </a>
 
     {

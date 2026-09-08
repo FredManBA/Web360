@@ -1505,3 +1505,113 @@
   gap: 0.5rem;
   padding-top: 0.5rem;
 }
+
+/* -------------------------------------------------------------------------- */
+/* Configuracion                                                              */
+/* -------------------------------------------------------------------------- */
+
+.settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.settings-form .admin-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1rem 1.1rem 1.2rem;
+}
+
+/*
+ * `.admin-field` nace con `flex: 1 1 11rem` porque la escribio la barra de
+ * filtros, donde los campos van en fila y reparten el ancho. Aqui van en
+ * columna, y ese `grow` los estiraba hasta llenar el panel: cada campo
+ * ocupaba tres veces su altura.
+ */
+.settings-form .admin-field {
+  flex: 0 0 auto;
+}
+
+.settings-form input,
+.settings-form textarea {
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--admin-border-strong);
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  font: inherit;
+}
+
+.settings-form textarea {
+  resize: vertical;
+}
+
+.settings-form .admin-panel h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.admin-hint {
+  margin: 0;
+  color: #55655c;
+  font-size: 0.85rem;
+}
+
+.social-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.social-row {
+  display: grid;
+  grid-template-columns: minmax(6rem, auto) minmax(0, 1fr) auto auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--admin-line, #dfe3e0);
+  border-radius: 6px;
+  background: #fff;
+}
+
+.social-platform {
+  font-weight: 600;
+}
+
+.social-url {
+  overflow: hidden;
+  color: #1f4034;
+  font-size: 0.9rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.social-active {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.social-actions {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.social-new {
+  display: grid;
+  grid-template-columns: minmax(8rem, 1fr) minmax(0, 2fr) auto;
+  gap: 0.75rem;
+  align-items: end;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--admin-line, #dfe3e0);
+}
+
+@media (max-width: 46rem) {
+  .social-row,
+  .social-new {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

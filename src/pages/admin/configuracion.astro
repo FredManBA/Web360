@@ -1,0 +1,180 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { SUPPORTED_CURRENCY_CODES } from '../../lib/domain/money';
+
+export const prerender = false;
+
+/*
+ * El shell se renderiza en el servidor; la configuracion la carga el navegador
+ * contra `/api/admin/settings`, para no saltarse la capa HTTP.
+ *
+ * Logo, favicon e imagen social existen en el esquema pero no se editan aqui:
+ * son claves de objeto de R2 y necesitan una subida de archivo, que es la fase
+ * de media global. Pedirle a alguien que escriba una ruta de bucket a mano no
+ * es administrar nada.
+ */
+---
+
+<AdminLayout title="Configuración" description="Los datos del negocio y los textos del sitio.">
+  <p class="admin-state" id="settings-state">Cargando la configuración…</p>
+
+  <form class="settings-form" id="settings-form" hidden>
+    <div class="admin-listing-bar">
+      <p class="admin-count" id="settings-save-state" aria-live="polite"></p>
+    </div>
+
+    <p class="editor-error" id="settings-errors" role="alert" hidden></p>
+
+    <section class="admin-panel" aria-labelledby="settings-business">
+      <h2 id="settings-business">Negocio</h2>
+
+      <div class="admin-field">
+        <label for="businessName">Nombre del negocio</label>
+        <input id="businessName" name="businessName" type="text" maxlength="120" />
+        <p class="admin-hint">Aparece en la cabecera, el pie y la portada del sitio público.</p>
+      </div>
+
+      <div class="admin-field">
+        <label for="address">Dirección</label>
+        <input id="address" name="address" type="text" maxlength="300" />
+      </div>
+
+      <div class="admin-field">
+        <label for="defaultCurrencyCode">Moneda por defecto</label>
+        <select id="defaultCurrencyCode" name="defaultCurrencyCode">
+          <option value="">Sin definir</option>
+          {SUPPORTED_CURRENCY_CODES.map((code) => <option value={code}>{code}</option>)}
+        </select>
+      </div>
+    </section>
+
+    <section class="admin-panel" aria-labelledby="settings-public">
+      <h2 id="settings-public">Canales públicos</h2>
+      <p class="admin-hint">Esto sí se publica en el sitio. Lo que dejes vacío no se muestra.</p>
+
+      <div class="admin-field">
+        <label for="phone">Teléfono</label>
+        <input id="phone" name="phone" type="tel" maxlength="40" />
+      </div>
+
+      <div class="admin-field">
+        <label for="whatsapp">WhatsApp</label>
+        <input id="whatsapp" name="whatsapp" type="tel" maxlength="40" />
+        <p class="admin-hint">Con prefijo internacional. Ej.: +506 8888 8888</p>
+      </div>
+
+      <div class="admin-field">
+        <label for="email">Correo público</label>
+        <input id="email" name="email" type="email" maxlength="200" />
+      </div>
+    </section>
+
+    <section class="admin-panel" aria-labelledby="settings-internal">
+      <h2 id="settings-internal">Correos internos</h2>
+      <p class="admin-hint">
+        <strong>No se publican nunca.</strong> Solo se usan para avisarte a ti.
+      </p>
+
+      <div class="admin-field">
+        <label for="notificationsEmail">Avisos de consultas nuevas</label>
+        <input id="notificationsEmail" name="notificationsEmail" type="email" maxlength="200" />
+      </div>
+
+      <div class="admin-field">
+        <label for="reviewerEmail">Revisión de borradores</label>
+        <input id="reviewerEmail" name="reviewerEmail" type="email" maxlength="200" />
+      </div>
+    </section>
+
+    {
+      (['es', 'en'] as const).map((locale) => (
+        <section class="admin-panel" aria-labelledby={`settings-texts-${locale}`}>
+          <h2 id={`settings-texts-${locale}`}>
+            Textos del sitio · {locale === 'es' ? 'Español' : 'Inglés'}
+          </h2>
+
+          <div class="admin-field">
+            <label for={`${locale}.brandTagline`}>Lema</label>
+            <input
+              id={`${locale}.brandTagline`}
+              name={`${locale}.brandTagline`}
+              type="text"
+              maxlength="160"
+            />
+          </div>
+
+          <div class="admin-field">
+            <label for={`${locale}.homeHeroTitle`}>Título de portada</label>
+            <input
+              id={`${locale}.homeHeroTitle`}
+              name={`${locale}.homeHeroTitle`}
+              type="text"
+              maxlength="160"
+            />
+          </div>
+
+          <div class="admin-field">
+            <label for={`${locale}.homeHeroSubtitle`}>Subtítulo de portada</label>
+            <textarea
+              id={`${locale}.homeHeroSubtitle`}
+              name={`${locale}.homeHeroSubtitle`}
+              rows="2"
+              maxlength="300"
+            />
+          </div>
+
+          <div class="admin-field">
+            <label for={`${locale}.globalSeoTitle`}>Título para buscadores</label>
+            <input
+              id={`${locale}.globalSeoTitle`}
+              name={`${locale}.globalSeoTitle`}
+              type="text"
+              maxlength="160"
+            />
+            <p class="admin-hint">Si lo dejas vacío se compone con el nombre del negocio.</p>
+          </div>
+
+          <div class="admin-field">
+            <label for={`${locale}.globalSeoDescription`}>Descripción para buscadores</label>
+            <textarea
+              id={`${locale}.globalSeoDescription`}
+              name={`${locale}.globalSeoDescription`}
+              rows="2"
+              maxlength="300"
+            />
+          </div>
+        </section>
+      ))
+    }
+
+    <section class="admin-panel" aria-labelledby="settings-social">
+      <h2 id="settings-social">Redes sociales</h2>
+
+      <div class="social-list" id="social-list"></div>
+
+      <div class="social-new">
+        <div class="admin-field">
+          <label for="social-platform">Red</label>
+          <input id="social-platform" type="text" maxlength="60" placeholder="Instagram" />
+        </div>
+
+        <div class="admin-field">
+          <label for="social-url">Dirección</label>
+          <input id="social-url" type="url" maxlength="500" placeholder="https://instagram.com/…" />
+        </div>
+
+        <button type="button" class="admin-button admin-button-primary" id="social-add">
+          Añadir
+        </button>
+      </div>
+
+      <p class="editor-error" id="social-error" role="alert" hidden></p>
+    </section>
+  </form>
+</AdminLayout>
+
+<script>
+  import { initSettingsPage } from '../../lib/admin/ui/settings-page';
+
+  initSettingsPage();
+</script>
