@@ -2,6 +2,7 @@ import { env } from 'cloudflare:workers';
 import type { APIRoute } from 'astro';
 
 import { getDb } from '../../db/client';
+import { deployedReleaseManifest } from '../../lib/publication/deployed-release';
 import { servePublicMedia } from '../../lib/public/media-delivery';
 
 /*
@@ -17,4 +18,9 @@ export const GET: APIRoute = ({ params, request }) =>
     db: getDb(env),
     bucket: env.MEDIA,
     ifNoneMatch: request.headers.get('if-none-match'),
+    /*
+     * La version desplegada acota que archivos pertenecen a este sitio. Hoy
+     * no hay ninguna y decide la base, igual que antes.
+     */
+    release: deployedReleaseManifest(),
   });

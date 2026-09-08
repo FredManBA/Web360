@@ -1723,3 +1723,178 @@
   margin: 0.2rem 0 0;
   font-size: 0.9rem;
 }
+
+/* -------------------------------------------------------------------------- */
+/* Publicacion                                                                */
+/* -------------------------------------------------------------------------- */
+
+.editor-publication {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem 1.1rem 1.2rem;
+}
+
+/* El panel se repinta entero, asi que el ritmo lo pone el contenedor. */
+#admin-publication {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+#admin-publication > .publication-current,
+#admin-publication > .publication-issues,
+#admin-publication > .publication-confirm,
+#admin-publication > .publication-manual,
+#admin-publication > .publication-history {
+  align-self: stretch;
+}
+
+.publication-state,
+.publication-current {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+/*
+ * El estado de la OPERACION, que no es el de la propiedad. Se colorea para
+ * que "en curso" no se confunda de un vistazo con "ya esta".
+ */
+.publication-current {
+  padding: 0.5rem 0.7rem;
+  border-radius: var(--admin-radius-sm);
+  background: #eceeed;
+  color: #55655c;
+}
+
+.publication-current[data-status='pending'],
+.publication-current[data-status='building'] {
+  background: #f6efe1;
+  color: #9a7b46;
+}
+
+.publication-current[data-status='done'] {
+  background: #e8eeea;
+  color: #1f4034;
+}
+
+.publication-current[data-status='failed'] {
+  background: #fbeae7;
+  color: #8c3b2c;
+}
+
+.publication-issues {
+  padding: 0.7rem 0.9rem;
+  border: 1px solid #e2d6bd;
+  border-radius: var(--admin-radius-sm);
+  background: #fdf8ee;
+  font-size: 0.9rem;
+}
+
+.publication-issues p {
+  margin: 0 0 0.3rem;
+  font-weight: 600;
+}
+
+.publication-issues ul {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+/* Confirmar no es un adorno: publicar cambia lo que ve cualquiera. */
+.publication-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--admin-border-strong);
+  border-radius: 6px;
+  background: #fff;
+}
+
+.publication-confirm p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+/*
+ * El token del ejecutor manual. Mismo tratamiento que el enlace de revision:
+ * se destaca porque es la unica vez que puede leerse.
+ */
+.publication-manual {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-start;
+  padding: 0.85rem 1rem;
+  border: 1px solid #c9a86a;
+  border-radius: 6px;
+  background: #fdf8ee;
+}
+
+.publication-manual p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.publication-token-input {
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--admin-border-strong);
+  border-radius: var(--admin-radius-sm);
+  background: #fff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85rem;
+}
+
+.publication-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.publication-chip {
+  padding: 0.1rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.publication-chip-done {
+  background: #e8eeea;
+  color: #1f4034;
+}
+
+.publication-chip-failed {
+  background: #fbeae7;
+  color: #8c3b2c;
+}
+
+.publication-history h3 {
+  margin: 0 0 0.4rem;
+  color: #55655c;
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.publication-history ul {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.publication-history-date {
+  color: #55655c;
+  font-size: 0.85rem;
+}
+
+.publication-history-error {
+  margin: 0.2rem 0 0;
+  font-size: 0.9rem;
+}

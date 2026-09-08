@@ -67,3 +67,29 @@ export const SYSTEM_PROPERTY_TYPE_KEYS = [
   'other',
 ] as const;
 export type SystemPropertyTypeKey = (typeof SYSTEM_PROPERTY_TYPE_KEYS)[number];
+
+/**
+ * Que se le pide al flujo de publicacion.
+ *
+ * `publish` lleva una propiedad aprobada al sitio publico; `unpublish` la
+ * retira y la devuelve a `approved`. No hay un tercer verbo: archivar sigue
+ * siendo una decision editorial que no toca la web publicada.
+ */
+export const PUBLICATION_ACTIONS = ['publish', 'unpublish'] as const;
+export type PublicationAction = (typeof PUBLICATION_ACTIONS)[number];
+
+/**
+ * Vida de una peticion de publicacion.
+ *
+ * `pending` es "anotada, todavia sin lanzar"; `building` es "el ejecutor la
+ * acepto y esta trabajando"; `done` y `failed` son finales. NO son estados
+ * editoriales de la propiedad: son el estado de la OPERACION.
+ */
+export const PUBLICATION_REQUEST_STATUSES = ['pending', 'building', 'done', 'failed'] as const;
+export type PublicationRequestStatus = (typeof PUBLICATION_REQUEST_STATUSES)[number];
+
+/** Una peticion sigue viva —y bloquea otra— mientras no termine. */
+export const ACTIVE_PUBLICATION_REQUEST_STATUSES: readonly PublicationRequestStatus[] = [
+  'pending',
+  'building',
+];

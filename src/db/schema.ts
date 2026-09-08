@@ -32,6 +32,8 @@ import {
   LOCATION_PRECISIONS,
   MEDIA_KINDS,
   PRICE_MODES,
+  PUBLICATION_ACTIONS,
+  PUBLICATION_REQUEST_STATUSES,
   PUBLICATION_STATUSES,
   REVIEW_STATUSES,
   SOURCE_PROVIDERS,
@@ -57,6 +59,8 @@ export {
   CONTACT_METHODS,
   CONTACT_STATUSES,
   REVIEW_STATUSES,
+  PUBLICATION_ACTIONS,
+  PUBLICATION_REQUEST_STATUSES,
 } from '../lib/domain/vocabularies';
 
 export type {
@@ -1211,6 +1215,100 @@ export const propertyReviewTokens = sqliteTable(
 );
 
 /* -------------------------------------------------------------------------- */
+/* publication_requests                                                       */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Una peticion de publicar o retirar una propiedad.
+ *
+ * Existe porque publicar no es un UPDATE: el sitio publico es estatico y se
+ * regenera fuera de la base. Entre "el admin lo pide" y "ya esta en la web"
+ * hay un build que ocurre en otra maquina y puede fallar, asi que hace falta
+ * una anotacion duradera que sobreviva a ese viaje de ida y vuelta.
+ *
+ * Lo que NO es: no es un estado editorial. La propiedad sigue en `approved`
+ * mientras la peticion esta viva, y solo pasa a `published` cuando vuelve la
+ * confirmacion. Por eso una peticion fallida no deja nada a medias.
+ *
+ * Del token de callback solo se guarda el HASH, igual que en los enlaces de
+ * revision: es la unica credencial de quien confirma el resultado y no se
+ * puede recuperar leyendo la base.
+ */
+export const publicationRequests = sqliteTable(
+  'publication_requests',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+
+    propertyId: integer('property_id')
+      .notNull()
+      .references(() => properties.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+
+    action: text('action', { enum: PUBLICATION_ACTIONS }).notNull(),
+
+    status: text('status', { enum: PUBLICATION_REQUEST_STATUSES }).notNull().default('pending'),
+
+    /** Hash del token de callback. Nunca el token. */
+    callbackTokenHash: text('callback_token_hash').notNull(),
+
+    /**
+     * Referencia opaca que devuelve quien ejecuta el build, si la da.
+     *
+     * No se interpreta aqui: para esta tabla es una cadena que sirve para
+     * poder mirar el trabajo por fuera. Ninguna decision depende de ella.
+     */
+    jobRef: text('job_ref'),
+
+    /** Motivo resumido del fallo, para el panel. Sin trazas ni detalles. */
+    errorSummary: text('error_summary'),
+
+    requestedAt: integer('requested_at', { mode: 'timestamp' })
+      .notNull()
+      .default(sql`(unixepoch())`),
+    /** Cuando el ejecutor acepto el trabajo. */
+    startedAt: integer('started_at', { mode: 'timestamp' }),
+    /** Cuando quedo en `done` o en `failed`. */
+    finishedAt: integer('finished_at', { mode: 'timestamp' }),
+
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    /*
+     * Idempotencia del callback: el token identifica UNA peticion y solo una.
+     * Sin este indice unico, dos filas podrian responder al mismo secreto.
+     */
+    unique('publication_requests_callback_token_hash_unique').on(table.callbackTokenHash),
+
+    /*
+     * Como mucho una operacion viva por propiedad.
+     *
+     * Es la constraint que impide el escenario incoherente de verdad: pedir
+     * "publicar" y "retirar" a la vez, o dos publicaciones en paralelo cuyos
+     * callbacks lleguen en cualquier orden. El indice es PARCIAL porque el
+     * historial si admite muchas filas terminadas por propiedad.
+     */
+    uniqueIndex('publication_requests_active_per_property_idx')
+      .on(table.propertyId)
+      .where(sql`status IN ('pending', 'building')`),
+
+    index('publication_requests_property_created_at_idx').on(table.propertyId, table.createdAt),
+
+    check(
+      'publication_requests_action_check',
+      sql`${table.action} IN (${sql.raw(sqlList(PUBLICATION_ACTIONS))})`,
+    ),
+    check(
+      'publication_requests_status_check',
+      sql`${table.status} IN (${sql.raw(sqlList(PUBLICATION_REQUEST_STATUSES))})`,
+    ),
+    check(
+      'publication_requests_callback_token_hash_not_blank_check',
+      sql`length(trim(${table.callbackTokenHash})) > 0`,
+    ),
+  ],
+);
+
+/* -------------------------------------------------------------------------- */
 /* Relaciones                                                                 */
 /* -------------------------------------------------------------------------- */
 
@@ -1239,6 +1337,7 @@ export const propertiesRelations = relations(properties, ({ one, many }) => ({
   tourNodes: many(propertyTourNodes),
   contacts: many(contacts),
   reviews: many(propertyReviews),
+  publicationRequests: many(publicationRequests),
 }));
 
 export const propertyTranslationsRelations = relations(propertyTranslations, ({ one }) => ({
@@ -1421,6 +1520,13 @@ export const propertyReviewTokensRelations = relations(propertyReviewTokens, ({ 
   }),
 }));
 
+export const publicationRequestsRelations = relations(publicationRequests, ({ one }) => ({
+  property: one(properties, {
+    fields: [publicationRequests.propertyId],
+    references: [properties.id],
+  }),
+}));
+
 /* -------------------------------------------------------------------------- */
 /* Tipos inferidos                                                            */
 /* -------------------------------------------------------------------------- */
@@ -1497,3 +1603,6 @@ export type NewPropertyReview = typeof propertyReviews.$inferInsert;
 
 export type PropertyReviewToken = typeof propertyReviewTokens.$inferSelect;
 export type NewPropertyReviewToken = typeof propertyReviewTokens.$inferInsert;
+
+export type PublicationRequest = typeof publicationRequests.$inferSelect;
+export type NewPublicationRequest = typeof publicationRequests.$inferInsert;

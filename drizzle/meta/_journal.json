@@ -29,6 +29,13 @@
       "when": 1788631312689,
       "tag": "0003_site_map_and_reviews",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1788837356138,
+      "tag": "0004_publication_requests",
+      "breakpoints": true
     }
   ]
 }

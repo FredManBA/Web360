@@ -97,7 +97,20 @@ export type AdminErrorCode =
   | 'review_not_found'
   // No existe, caduco, se revoco o ya se uso: por fuera son el mismo caso.
   | 'review_link_invalid'
-  | 'review_failed';
+  | 'review_failed'
+
+  // -- Publicacion -----------------------------------------------------------
+  // El estado editorial actual no admite la operacion pedida.
+  | 'publication_not_allowed'
+  // La ficha no esta completa: no se llega a crear ninguna peticion.
+  | 'publication_incomplete'
+  // Ya hay una operacion viva sobre esa propiedad.
+  | 'publication_in_progress'
+  // Token de callback que no existe, o que ya se uso: no se distinguen.
+  | 'publication_link_invalid'
+  // Quien tenia que construir el sitio no acepto el trabajo.
+  | 'publication_trigger_failed'
+  | 'publication_failed';
 
 export interface FieldIssue {
   /** Ruta del campo, p. ej. "publicLatitude" o "translations.es.slug". */

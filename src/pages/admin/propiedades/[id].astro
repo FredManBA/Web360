@@ -407,13 +407,30 @@ const { id } = Astro.params;
         <p class="admin-muted">Cargando revisión…</p>
       </div>
     </section>
+    <section
+      class="editor-publication admin-panel"
+      id="editor-publication"
+      aria-labelledby="publication-heading"
+    >
+      <h2 id="publication-heading">Publicación</h2>
+      <p class="editor-help">
+        Publicar prepara una versión nueva del sitio con esta ficha dentro. No es inmediato: la
+        propiedad no aparece como publicada hasta que la preparación termina bien.
+      </p>
+
+      <div id="admin-publication">
+        <p class="admin-muted">Cargando publicación…</p>
+      </div>
+    </section>
   </div>
 </AdminLayout>
 
 <script>
   import { initEditorPage } from '../../../lib/admin/ui/editor-page';
+  import { initPublicationPanel } from '../../../lib/admin/ui/publication-panel';
   import { initReviewPanel } from '../../../lib/admin/ui/review-panel';
 
   initEditorPage();
   initReviewPanel();
+  initPublicationPanel();
 </script>

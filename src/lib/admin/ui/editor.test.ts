@@ -313,11 +313,18 @@ describe('campos de informacion basica', () => {
     expect(page).not.toMatch(/SEO|noindex/i);
   });
 
-  it('el estado editorial no se puede cambiar desde aqui', () => {
-    expect(page).not.toContain('publicationStatus');
-    expect(page).not.toContain('Publicar');
-    expect(page).not.toContain('Archivar');
-    expect(page).not.toContain('Enviar a revisión');
+  /*
+   * El formulario edita la ficha, no su estado editorial. Se mira solo el
+   * <form>: la pagina si tiene paneles —revision y publicacion— que cambian
+   * el estado, pero cada uno por su flujo y no escribiendo una columna.
+   */
+  it('el estado editorial no se puede cambiar desde el formulario', () => {
+    const form = page.slice(page.indexOf('<form id="editor-form"'), page.indexOf('</form>'));
+
+    expect(form).not.toContain('publicationStatus');
+    expect(form).not.toContain('Publicar');
+    expect(form).not.toContain('Archivar');
+    expect(form).not.toContain('Enviar a revisión');
   });
 });
 

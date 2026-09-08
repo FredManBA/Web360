@@ -29,6 +29,7 @@ import {
   createCustomPropertyType,
   listActivePropertyTypes,
 } from '../property-types/property-types';
+import type { PublishTrigger } from '../../publication/trigger';
 import type { MediaBucket } from '../media/bucket';
 import type { AdminBatchDatabase } from '../types';
 import {
@@ -60,6 +61,14 @@ export interface AdminHttpContext {
    * define, asi que en produccion siempre se usa el JWKS remoto real.
    */
   accessKeyResolver?: JWTVerifyGetKey;
+
+  /**
+   * Quien construye y despliega el sitio, cuando se quiere otro.
+   *
+   * Sin definir se usa el ejecutor manual. Los tests inyectan uno falso para
+   * poder comprobar tambien el camino en que el ejecutor rechaza el trabajo.
+   */
+  publishTrigger?: PublishTrigger;
 }
 
 /**

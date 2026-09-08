@@ -107,6 +107,16 @@ const STATUS_BY_ERROR: Record<AdminErrorCode, number> = {
   // No se distingue caducado de inexistente: decirlo confirmaria que existio.
   review_link_invalid: 404,
   review_failed: 500,
+
+  // Choque con el estado real, no con la forma de la peticion.
+  publication_not_allowed: 409,
+  publication_incomplete: 422,
+  publication_in_progress: 409,
+  // No se distingue "no existe" de "ya se uso": decirlo confirmaria que existio.
+  publication_link_invalid: 404,
+  // El fallo no es de quien pide: lo pone quien tenia que construir el sitio.
+  publication_trigger_failed: 502,
+  publication_failed: 500,
 };
 
 export function jsonFromAdminError(error: AdminError): Response {

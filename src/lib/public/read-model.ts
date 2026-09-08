@@ -53,6 +53,7 @@ import type {
   LocationPrecision,
   MediaKind,
   PriceMode,
+  PublicationAction,
 } from '../domain/vocabularies';
 import type { AdminDatabase } from '../admin/types';
 
@@ -322,6 +323,27 @@ export function publicMediaUrl(mediaId: number): string {
   return `/media/${mediaId}`;
 }
 
+/**
+ * La inversa: que fila referencia una ruta publica.
+ *
+ * Vive al lado de `publicMediaUrl` para que la forma de la ruta se decida en
+ * un unico sitio. La usa el manifiesto de una release, que necesita saber
+ * exactamente que archivos referencia el HTML que se va a desplegar.
+ *
+ * Devuelve `null` para lo que no sea una ruta de archivo propio: los videos
+ * de YouTube no pasan por el Worker.
+ */
+export function mediaIdFromPublicUrl(url: string | null): number | null {
+  if (url === null) return null;
+
+  const match = /^\/media\/(\d+)$/.exec(url);
+  if (match === null) return null;
+
+  const id = Number(match[1]);
+
+  return Number.isSafeInteger(id) && id > 0 ? id : null;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Formato                                                                    */
 /* -------------------------------------------------------------------------- */
@@ -408,12 +430,47 @@ export async function buildPreviewSnapshot(
   return buildSnapshot(db, { now, only: propertyId, mediaUrl });
 }
 
+/**
+ * Cambio hipotetico sobre una propiedad, sin tocar la base.
+ *
+ * `publish` la trata como si ya estuviera publicada; `unpublish`, como si ya
+ * hubiera vuelto a `approved`.
+ */
+export interface CandidateChange {
+  propertyId: number;
+  action: PublicationAction;
+}
+
+/**
+ * El sitio publico TAL COMO QUEDARIA si una operacion de publicacion saliera
+ * bien.
+ *
+ * Existe por un problema de orden: el sitio es estatico y se genera leyendo
+ * que es publico, asi que si se marcara la propiedad como publicada antes del
+ * build, un fallo dejaria la base afirmando algo que la web no dice; y si se
+ * marcara despues, el build habria corrido cuando todavia era `approved` y la
+ * web desplegada no la contendria. La salida es no mover nada y construir el
+ * sitio que tendria sentido: eso es esta funcion.
+ *
+ * No escribe nada. Es la misma proyeccion publica de siempre con el estado de
+ * UNA propiedad sustituido en memoria.
+ */
+export async function buildCandidateSnapshot(
+  db: AdminDatabase,
+  candidate: CandidateChange,
+  now: Date = new Date(),
+): Promise<PublicSnapshot> {
+  return buildSnapshot(db, { now, candidate });
+}
+
 interface SnapshotOptions {
   now: Date;
   /** Cuando se indica, solo entra esa propiedad y se salta la visibilidad. */
   only?: number;
   /** Como se construye la ruta de cada archivo. */
   mediaUrl?: (mediaId: number) => string;
+  /** Estado hipotetico de una propiedad, para un snapshot candidato. */
+  candidate?: CandidateChange;
 }
 
 async function buildSnapshot(db: AdminDatabase, options: SnapshotOptions): Promise<PublicSnapshot> {
@@ -456,11 +513,25 @@ async function buildSnapshot(db: AdminDatabase, options: SnapshotOptions): Promi
    * la unica excepcion, y llega por `only` con una propiedad concreta que ya
    * se ha autorizado con un token.
    */
+  const candidate = options.candidate;
+
   const visible =
     options.only === undefined
       ? propertyRows.filter((row) =>
           isPubliclyVisible({
-            publicationStatus: row.publicationStatus,
+            /*
+             * El candidato NO consulta un estado distinto: sustituye el de una
+             * sola propiedad por el que tendria si la operacion saliera bien, y
+             * lo pasa por la misma regla. Asi una propiedad vendida y oculta
+             * sigue sin aparecer aunque se publique, porque el estado comercial
+             * lo decide la misma funcion de siempre.
+             */
+            publicationStatus:
+              candidate !== undefined && candidate.propertyId === row.id
+                ? candidate.action === 'publish'
+                  ? 'published'
+                  : 'approved'
+                : row.publicationStatus,
             commercialStatus: row.commercialStatus,
             showWhenSold: row.showWhenSold,
           }),
