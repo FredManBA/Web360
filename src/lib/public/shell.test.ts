@@ -13,7 +13,13 @@ import { describe, expect, it } from 'vitest';
 
 import { labelsFor } from './labels';
 import { LANGUAGE_STORAGE_KEY, languageOptions, navigationFor } from './navigation';
-import { alternateHref, catalogueOf, EMPTY_CONTACT, type PublicSnapshot } from './read-model';
+import {
+  alternateHref,
+  catalogueOf,
+  EMPTY_CONTACT,
+  EMPTY_SITE,
+  type PublicSnapshot,
+} from './read-model';
 
 function read(relative: string): string {
   return readFileSync(path.resolve(process.cwd(), relative), 'utf8');
@@ -175,6 +181,7 @@ describe('la misma ficha en el otro idioma', () => {
         en: en.map((slug, index) => build(slug, `LOBA-00${index + 1}`)),
       },
       contact: EMPTY_CONTACT,
+      site: EMPTY_SITE,
     };
   }
 
@@ -216,9 +223,10 @@ describe('todo el texto publico esta en los dos idiomas', () => {
 
     /*
      * Lo que de verdad se escribe igual en los dos idiomas. Son nombres
-     * propios, no textos sin traducir: traducir "WhatsApp" seria un error.
+     * propios, no textos sin traducir: traducir "WhatsApp" o el nombre del
+     * negocio seria un error.
      */
-    const sameInBoth = new Set(['code', 'contactWhatsapp']);
+    const sameInBoth = new Set(['code', 'contactWhatsapp', 'brandName']);
 
     for (const key of Object.keys(es) as (keyof typeof es)[]) {
       const spanish = es[key];

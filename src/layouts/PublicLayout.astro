@@ -14,9 +14,33 @@ interface Props {
   section?: SectionId;
   /** Esta misma pagina en el otro idioma, si existe. */
   alternateHref?: string | null;
+  /** Ruta canonica de ESTA pagina. */
+  canonical?: string | null;
+  /** La portada declara ademas un `x-default` para quien llega a la raiz. */
+  homeAlternates?: boolean;
 }
 
-const { title, locale, description, section, alternateHref = null } = Astro.props;
+const {
+  title,
+  locale,
+  description,
+  section,
+  alternateHref = null,
+  canonical = null,
+  homeAlternates = false,
+} = Astro.props;
+
+/*
+ * Las URL del `<head>` se emiten absolutas SOLO cuando el proyecto tiene un
+ * dominio configurado (`site` en `astro.config.mjs`). Mientras no lo tenga
+ * —y no lo tiene: el dominio es cosa del despliegue— se emiten relativas,
+ * que son validas y resuelven bien. El dia que se configure, se vuelven
+ * absolutas solas, sin tocar ninguna pagina.
+ */
+const absolute = (path: string): string =>
+  Astro.site === undefined ? path : new URL(path, Astro.site).href;
+
+const other: Locale = locale === 'es' ? 'en' : 'es';
 ---
 
 <!doctype html>
@@ -26,9 +50,20 @@ const { title, locale, description, section, alternateHref = null } = Astro.prop
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
     {description && <meta name="description" content={description} />}
+    {canonical && <link rel="canonical" href={absolute(canonical)} />}
+
+    {alternateHref && <link rel="alternate" hreflang={other} href={absolute(alternateHref)} />}
+
     {
-      alternateHref && (
-        <link rel="alternate" hreflang={locale === 'es' ? 'en' : 'es'} href={alternateHref} />
+      /*
+       * La portada declara los dos idiomas y un `x-default`: es la unica
+       * pagina a la que se llega sin haber elegido ninguno.
+       */
+      homeAlternates && canonical && (
+        <>
+          <link rel="alternate" hreflang={locale} href={absolute(canonical)} />
+          <link rel="alternate" hreflang="x-default" href={absolute('/es/')} />
+        </>
       )
     }
   </head>

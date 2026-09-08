@@ -40,6 +40,7 @@ import {
   propertyTranslations,
   propertyTypeTranslations,
   siteSettings,
+  siteSettingTranslations,
   siteSocialLinks,
 } from '../../db/schema';
 import { formatArea } from '../domain/area';
@@ -228,7 +229,6 @@ export interface PublicSocialLink {
  * seria regalar dos buzones al primer robot que lea el HTML.
  */
 export interface PublicContactChannels {
-  businessName: string | null;
   phone: string | null;
   whatsapp: string | null;
   email: string | null;
@@ -237,7 +237,6 @@ export interface PublicContactChannels {
 }
 
 export const EMPTY_CONTACT: PublicContactChannels = {
-  businessName: null,
   phone: null,
   whatsapp: null,
   email: null,
@@ -245,17 +244,57 @@ export const EMPTY_CONTACT: PublicContactChannels = {
   social: [],
 };
 
+/* -------------------------------------------------------------------------- */
+/* Textos del sitio                                                           */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Lo que la portada dice del negocio, por idioma.
+ *
+ * Sale de `site_setting_translations`, no de constantes en el codigo: el
+ * mensaje de la portada lo escribe quien lleva el negocio. Cuando falta, la
+ * pagina usa su texto por defecto; nunca se deja un hueco.
+ */
+export interface PublicSiteTexts {
+  tagline: string | null;
+  heroTitle: string | null;
+  heroSubtitle: string | null;
+  seoTitle: string | null;
+  seoDescription: string | null;
+}
+
+export interface PublicSite {
+  /** Nombre comercial; la marca, no un canal de contacto. */
+  businessName: string | null;
+  texts: Record<Locale, PublicSiteTexts>;
+}
+
+const EMPTY_TEXTS: PublicSiteTexts = {
+  tagline: null,
+  heroTitle: null,
+  heroSubtitle: null,
+  seoTitle: null,
+  seoDescription: null,
+};
+
+export const EMPTY_SITE: PublicSite = {
+  businessName: null,
+  texts: { es: EMPTY_TEXTS, en: EMPTY_TEXTS },
+};
+
 export interface PublicSnapshot {
   /** Cuando se genero, para poder saber si una build va con datos viejos. */
   generatedAt: string;
   properties: Record<Locale, PublicPropertyDetail[]>;
   contact: PublicContactChannels;
+  site: PublicSite;
 }
 
 export const EMPTY_SNAPSHOT: PublicSnapshot = {
   generatedAt: '1970-01-01T00:00:00.000Z',
   properties: { es: [], en: [] },
   contact: EMPTY_CONTACT,
+  site: EMPTY_SITE,
 };
 
 /* -------------------------------------------------------------------------- */
@@ -374,6 +413,7 @@ export async function buildPublicSnapshot(
     .orderBy(asc(properties.id));
 
   const contact = await readContactChannels(db);
+  const site = await readSiteTexts(db);
 
   const visible = propertyRows.filter((row) =>
     isPubliclyVisible({
@@ -384,7 +424,7 @@ export async function buildPublicSnapshot(
   );
 
   if (visible.length === 0) {
-    return { generatedAt: now.toISOString(), properties: { es: [], en: [] }, contact };
+    return { generatedAt: now.toISOString(), properties: { es: [], en: [] }, contact, site };
   }
 
   const visibleIds = new Set(visible.map((row) => row.id));
@@ -784,6 +824,58 @@ export async function buildPublicSnapshot(
     generatedAt: now.toISOString(),
     properties: { es: buildFor('es'), en: buildFor('en') },
     contact,
+    site,
+  };
+}
+
+/**
+ * Textos de la portada, por idioma.
+ *
+ * `globalSeoTitle` y `globalSeoDescription` son publicos por definicion —van
+ * en el `<head>`— asi que viajan con el resto.
+ */
+async function readSiteTexts(db: AdminDatabase): Promise<PublicSite> {
+  const settings = await db
+    .select({ id: siteSettings.id, businessName: siteSettings.businessName })
+    .from(siteSettings)
+    .orderBy(asc(siteSettings.id))
+    .limit(1);
+
+  const rows = await db
+    .select({
+      settingsId: siteSettingTranslations.siteSettingsId,
+      locale: siteSettingTranslations.locale,
+      brandTagline: siteSettingTranslations.brandTagline,
+      homeHeroTitle: siteSettingTranslations.homeHeroTitle,
+      homeHeroSubtitle: siteSettingTranslations.homeHeroSubtitle,
+      globalSeoTitle: siteSettingTranslations.globalSeoTitle,
+      globalSeoDescription: siteSettingTranslations.globalSeoDescription,
+    })
+    .from(siteSettingTranslations);
+
+  const current = settings[0];
+  const clean = (value: string | null | undefined): string | null => {
+    const trimmed = value?.trim();
+    return trimmed === undefined || trimmed.length === 0 ? null : trimmed;
+  };
+
+  const textsFor = (locale: Locale): PublicSiteTexts => {
+    const row = rows.find(
+      (candidate) => candidate.locale === locale && candidate.settingsId === current?.id,
+    );
+
+    return {
+      tagline: clean(row?.brandTagline),
+      heroTitle: clean(row?.homeHeroTitle),
+      heroSubtitle: clean(row?.homeHeroSubtitle),
+      seoTitle: clean(row?.globalSeoTitle),
+      seoDescription: clean(row?.globalSeoDescription),
+    };
+  };
+
+  return {
+    businessName: clean(current?.businessName),
+    texts: { es: textsFor('es'), en: textsFor('en') },
   };
 }
 
@@ -797,7 +889,6 @@ export async function buildPublicSnapshot(
 async function readContactChannels(db: AdminDatabase): Promise<PublicContactChannels> {
   const rows = await db
     .select({
-      businessName: siteSettings.businessName,
       phone: siteSettings.phone,
       whatsapp: siteSettings.whatsapp,
       email: siteSettings.email,
@@ -825,7 +916,6 @@ async function readContactChannels(db: AdminDatabase): Promise<PublicContactChan
   };
 
   return {
-    businessName: clean(settings?.businessName),
     phone: clean(settings?.phone),
     whatsapp: clean(settings?.whatsapp),
     email: clean(settings?.email),

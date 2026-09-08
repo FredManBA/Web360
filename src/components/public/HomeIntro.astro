@@ -1,0 +1,42 @@
+---
+/**
+ * Que ofrece el sitio, en tres frases.
+ *
+ * Corto a proposito: la portada no es una pagina corporativa. Solo dice con
+ * que se cuenta cada propiedad, que es lo que distingue a este sitio de un
+ * portal.
+ */
+import type { Locale } from '../../lib/domain/vocabularies';
+import { labelsFor } from '../../lib/public/labels';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const labels = labelsFor(locale);
+
+const items = [
+  { title: labels.homeIntroPhotos, text: labels.homeIntroPhotosText },
+  { title: labels.homeIntroTour, text: labels.homeIntroTourText },
+  { title: labels.homeIntroMap, text: labels.homeIntroMapText },
+];
+---
+
+<section class="home-section home-intro" aria-labelledby="intro-title">
+  <div class="home-section-head">
+    <h2 id="intro-title">{labels.homeIntroTitle}</h2>
+    <p class="home-section-lead">{labels.homeIntroLead}</p>
+  </div>
+
+  <ul class="intro-list">
+    {
+      items.map((item) => (
+        <li class="intro-item">
+          <h3>{item.title}</h3>
+          <p>{item.text}</p>
+        </li>
+      ))
+    }
+  </ul>
+</section>

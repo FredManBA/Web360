@@ -11,7 +11,13 @@ import type { DatabaseSync } from 'node:sqlite';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { properties, propertyTourNodes, propertyTranslations, siteSettings } from '../../db/schema';
+import {
+  properties,
+  propertyTourNodes,
+  propertyTranslations,
+  siteSettings,
+  siteSettingTranslations,
+} from '../../db/schema';
 import { createFeatureGroup } from '../admin/features/feature-groups';
 import { createFeature } from '../admin/features/features';
 import { createMedia } from '../admin/media/media';
@@ -24,6 +30,7 @@ import { createTourNode, setStartNode, type CreateTourNodeInput } from '../admin
 import type { AdminBatchDatabase } from '../admin/types';
 import type { CommercialStatus, PublicationStatus } from '../domain/vocabularies';
 import { createLead } from '../contacts/lead';
+import { featuredOf } from './home';
 import { mapPointsOf } from './map';
 import {
   buildPublicSnapshot,
@@ -729,6 +736,95 @@ describe('el mapa publico', () => {
     // Ni el valor concreto, que es lo unico que de verdad importa.
     expect(json).not.toContain('9.9512');
     expect(json).not.toContain('-85.6531');
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Portada                                                                    */
+/* -------------------------------------------------------------------------- */
+
+describe('las destacadas de la portada', () => {
+  /** Marca una propiedad como destacada, como haria el panel. */
+  async function feature(propertyId: number): Promise<void> {
+    await db.update(properties).set({ isFeatured: true }).where(eq(properties.id, propertyId));
+  }
+
+  async function featured(locale: 'es' | 'en' = 'es') {
+    return featuredOf(catalogueOf(await snapshot(), locale));
+  }
+
+  it('una publicada y marcada encabeza la portada', async () => {
+    const propertyId = await publishedProperty();
+    await feature(propertyId);
+
+    expect((await featured()).map((item) => item.slug)).toEqual(['lote-nosara']);
+  });
+
+  it('una publicada sin marcar no sale, aunque este en el catalogo', async () => {
+    await publishedProperty();
+
+    expect(await featured()).toEqual([]);
+    expect(catalogueOf(await snapshot(), 'es')).toHaveLength(1);
+  });
+
+  it('una destacada en borrador no sale por ninguna parte', async () => {
+    const propertyId = await publishedProperty();
+    await feature(propertyId);
+    await setStatus(propertyId, 'draft');
+
+    expect(await featured()).toEqual([]);
+  });
+
+  it('una destacada VENDIDA y oculta no sale: la marca no salta la visibilidad', async () => {
+    const propertyId = await publishedProperty();
+    await feature(propertyId);
+    await setStatus(propertyId, 'published', 'sold');
+
+    // `show_when_sold` sigue en falso: la regla de visibilidad manda.
+    expect(await featured()).toEqual([]);
+  });
+
+  it('una vendida que se publica a proposito si puede encabezar', async () => {
+    const propertyId = await publishedProperty();
+    await feature(propertyId);
+    await db
+      .update(properties)
+      .set({ commercialStatus: 'sold', showWhenSold: true })
+      .where(eq(properties.id, propertyId));
+
+    expect((await featured()).map((item) => item.slug)).toEqual(['lote-nosara']);
+  });
+
+  it('la portada se queda en tres aunque haya mas marcadas', async () => {
+    for (let index = 0; index < 5; index += 1) {
+      const propertyId = await publishedProperty(`destacada-${index}`);
+      await feature(propertyId);
+    }
+
+    expect(await featured()).toHaveLength(3);
+  });
+
+  it('los textos del negocio llegan por idioma, y sin ellos no hay hueco', async () => {
+    await db.insert(siteSettings).values({ id: 1, businessName: 'Loba Costa Rica' });
+    await db.insert(siteSettingTranslations).values([
+      { siteSettingsId: 1, locale: 'es', homeHeroTitle: 'Nuestra costa' },
+      { siteSettingsId: 1, locale: 'en', homeHeroTitle: 'Our coast' },
+    ]);
+
+    const site = (await snapshot()).site;
+
+    expect(site.businessName).toBe('Loba Costa Rica');
+    expect(site.texts.es.heroTitle).toBe('Nuestra costa');
+    expect(site.texts.en.heroTitle).toBe('Our coast');
+    // Lo que nadie ha escrito llega vacio, y la pagina pone lo suyo.
+    expect(site.texts.es.heroSubtitle).toBeNull();
+  });
+
+  it('sin configuracion ninguna, el sitio se construye igual', async () => {
+    const site = (await snapshot()).site;
+
+    expect(site.businessName).toBeNull();
+    expect(site.texts.es.heroTitle).toBeNull();
   });
 });
 

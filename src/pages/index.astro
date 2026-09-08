@@ -1,0 +1,95 @@
+---
+/**
+ * Raiz del sitio.
+ *
+ * Aqui no hay contenido: `/` solo decide en que idioma abrir. Hasta ahora era
+ * un 302 fijo a `/es/`, y el servidor no puede saber lo que la persona eligio
+ * la ultima vez, asi que decide el navegador.
+ *
+ * El orden es el aprobado: manda la eleccion guardada, si no la hay se mira el
+ * idioma del navegador, y si tampoco dice nada util, espanol.
+ *
+ * Solo pasa en `/`. A quien ya esta dentro de `/es` o `/en` no se le mueve
+ * nunca: seria hostil y romperia los enlaces compartidos.
+ *
+ * La pagina sigue siendo estatica. El script va en linea y en el `<head>` para
+ * que sustituya la URL antes de pintar nada; sin JavaScript queda una eleccion
+ * de idioma de verdad, con sus dos enlaces.
+ */
+import '../styles/global.css';
+
+import { labelsFor } from '../lib/public/labels';
+import { LANGUAGE_STORAGE_KEY } from '../lib/public/language-preference';
+
+// La raiz no tiene idioma propio: se presenta en los dos.
+const es = labelsFor('es');
+const en = labelsFor('en');
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{es.brandName}</title>
+    <meta name="description" content={es.homeSeoDescription} />
+
+    {/* La raiz no se indexa: lo que se indexa son las dos portadas. */}
+    <link rel="canonical" href="/es/" />
+    <link rel="alternate" hreflang="es" href="/es/" />
+    <link rel="alternate" hreflang="en" href="/en/" />
+    <link rel="alternate" hreflang="x-default" href="/es/" />
+
+    {
+      /*
+      En linea y aqui arriba a proposito: un script normal se ejecutaria
+      despues de pintar y se veria un parpadeo. Son seis lineas; la regla que
+      implementa esta en `resolveRootLocale`, que es lo que se prueba.
+    */
+    }
+    <script is:inline define:vars={{ key: LANGUAGE_STORAGE_KEY }}>
+      (() => {
+        let chosen = null;
+
+        try {
+          const stored = localStorage.getItem(key);
+          if (stored === 'es' || stored === 'en') chosen = stored;
+        } catch {
+          // Sin almacenamiento no se recuerda nada; se sigue adelante.
+        }
+
+        if (chosen === null) {
+          const languages = navigator.languages ?? [navigator.language ?? ''];
+
+          for (const language of languages) {
+            // `es-CR`, `en-US`: solo importa la parte de delante.
+            const base = String(language).toLowerCase().split('-')[0];
+            if (base === 'es' || base === 'en') {
+              chosen = base;
+              break;
+            }
+          }
+        }
+
+        // `replace` y no `assign`: volver atras no debe caer otra vez aqui.
+        location.replace('/' + (chosen ?? 'es') + '/');
+      })();
+    </script>
+  </head>
+
+  <body class="root-choice">
+    <main>
+      <p class="root-brand">
+        <span class="root-brand-mark" aria-hidden="true">L</span>
+        {es.brandName}
+      </p>
+
+      <h1 class="root-title">{es.chooseLanguage} · {en.chooseLanguage}</h1>
+
+      <ul class="root-languages">
+        <li><a href="/es/" lang="es">Español</a></li>
+        <li><a href="/en/" lang="en">English</a></li>
+      </ul>
+    </main>
+  </body>
+</html>

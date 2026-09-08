@@ -1,0 +1,25 @@
+---
+/**
+ * Cierre: invitacion a escribir.
+ *
+ * No se repite el formulario. Ya vive en su pagina y en cada ficha, y
+ * duplicarlo aqui solo anadiria peso a la portada sin dar nada nuevo: quien
+ * quiere escribir pulsa, y lo tiene entero una pantalla despues.
+ */
+import type { Locale } from '../../lib/domain/vocabularies';
+import { labelsFor } from '../../lib/public/labels';
+import { contactHref } from '../../lib/public/navigation';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const labels = labelsFor(locale);
+---
+
+<section class="home-contact" aria-labelledby="home-contact-title">
+  <h2 id="home-contact-title">{labels.homeContactTitle}</h2>
+  <p>{labels.homeContactLead}</p>
+  <a class="home-cta" href={contactHref(locale)}>{labels.writeToUs}</a>
+</section>

@@ -1,13 +1,90 @@
 ---
-import BaseLayout from '../../layouts/BaseLayout.astro';
+import HomeContactCta from '../../components/public/HomeContactCta.astro';
+import HomeHero from '../../components/public/HomeHero.astro';
+import HomeIntro from '../../components/public/HomeIntro.astro';
+import HomeMapTeaser from '../../components/public/HomeMapTeaser.astro';
+import PropertyCard from '../../components/public/PropertyCard.astro';
+import PublicLayout from '../../layouts/PublicLayout.astro';
+import { featuredOf, hasPlacedProperties, homeCopy } from '../../lib/public/home';
+import { labelsFor } from '../../lib/public/labels';
+import { catalogueHref, catalogueOf } from '../../lib/public/read-model';
+import { loadPublicSnapshot } from '../../lib/public/snapshot';
 
-// Public page: static by default (prerendered at build time).
+/*
+ * Portada estatica, como el resto del sitio publico: sale del snapshot del
+ * build y en tiempo de ejecucion no se consulta nada.
+ */
+const locale = 'en' as const;
+const labels = labelsFor(locale);
+
+const snapshot = loadPublicSnapshot();
+const properties = catalogueOf(snapshot, locale);
+
+const copy = homeCopy(snapshot.site, locale, {
+  brand: labels.brandName,
+  heroTitle: labels.homeHeroTitle,
+  heroSubtitle: labels.homeHeroSubtitle,
+  seoTitle: labels.homeSeoTitle,
+  seoDescription: labels.homeSeoDescription,
+});
+
+const featured = featuredOf(properties);
+const showMap = hasPlacedProperties(properties);
 ---
 
-<BaseLayout lang="en" title="CodeLoba" description="CodeLoba project - initial technical base.">
-  <main>
-    <h1>CodeLoba</h1>
-    <p>English version. Minimal page to validate the build.</p>
-    <p><a href="/es/">Espanol</a></p>
-  </main>
-</BaseLayout>
+<PublicLayout
+  locale={locale}
+  title={copy.seoTitle}
+  description={copy.seoDescription}
+  alternateHref="/es/"
+  canonical="/en/"
+  homeAlternates={true}
+>
+  <HomeHero copy={copy} locale={locale} showMap={showMap} />
+
+  <div class="home">
+    <section class="home-section home-featured" aria-labelledby="featured-title">
+      <div class="home-section-head">
+        <h2 id="featured-title">{labels.homeFeaturedTitle}</h2>
+        <p class="home-section-lead">{labels.homeFeaturedLead}</p>
+      </div>
+
+      {
+        featured.length === 0 ? (
+          /* Sin seleccion la portada no se rompe: se dice y se sigue. */
+          <p class="home-empty">{labels.homeFeaturedEmpty}</p>
+        ) : (
+          <ul class="property-list home-featured-list">
+            {featured.map((property) => (
+              <li>
+                <PropertyCard property={property} locale={locale} />
+              </li>
+            ))}
+          </ul>
+        )
+      }
+
+      {
+        properties.length > 0 && (
+          <p class="home-more">
+            <a class="home-link" href={catalogueHref(locale)}>
+              {labels.homeSeeAll} →
+            </a>
+          </p>
+        )
+      }
+    </section>
+
+    <HomeIntro locale={locale} />
+
+    {showMap && <HomeMapTeaser locale={locale} />}
+
+    <HomeContactCta locale={locale} />
+  </div>
+</PublicLayout>
+
+<script>
+  import { initLanguagePreference } from '../../lib/public/language-preference';
+
+  initLanguagePreference();
+</script>

@@ -141,6 +141,34 @@ export interface PublicLabels {
   errorPropertyGone: string;
   errorTooFast: string;
   errorServer: string;
+
+  /* -- Portada ----------------------------------------------------------- */
+  homeSeoTitle: string;
+  homeSeoDescription: string;
+  homeHeroTitle: string;
+  homeHeroSubtitle: string;
+  homeSeeProperties: string;
+  homeSeeMap: string;
+  homeFeaturedTitle: string;
+  homeFeaturedLead: string;
+  homeFeaturedEmpty: string;
+  homeSeeAll: string;
+  homeIntroTitle: string;
+  homeIntroLead: string;
+  homeIntroPhotos: string;
+  homeIntroPhotosText: string;
+  homeIntroTour: string;
+  homeIntroTourText: string;
+  homeIntroMap: string;
+  homeIntroMapText: string;
+  homeMapTitle: string;
+  homeMapLead: string;
+  homeContactTitle: string;
+  homeContactLead: string;
+  /** Marca por defecto, mientras `site_settings` este vacio. */
+  brandName: string;
+  /** Solo para el `/`, que elige idioma con JavaScript. */
+  chooseLanguage: string;
 }
 
 const ES: PublicLabels = {
@@ -266,6 +294,34 @@ const ES: PublicLabels = {
     'Esta propiedad ya no está disponible. Escríbenos desde la página de contacto.',
   errorTooFast: 'El envío llegó demasiado rápido. Inténtalo otra vez.',
   errorServer: 'No hemos podido enviar la consulta. Inténtalo de nuevo en un momento.',
+
+  homeSeoTitle: 'Propiedades en la costa de Costa Rica',
+  homeSeoDescription:
+    'Lotes, casas y fincas en la costa de Costa Rica, con fotografía, recorrido 360° y mapa.',
+  homeHeroTitle: 'Un pedazo de costa, contado como se merece',
+  homeHeroSubtitle:
+    'Lotes, casas y fincas en el Pacífico de Costa Rica. Míralos con calma antes de venir.',
+  homeSeeProperties: 'Ver propiedades',
+  homeSeeMap: 'Explorar el mapa',
+  homeFeaturedTitle: 'Selección',
+  homeFeaturedLead: 'Unas pocas, escogidas a mano.',
+  homeFeaturedEmpty: 'Todavía no hay una selección. Mientras tanto, están todas en Propiedades.',
+  homeSeeAll: 'Ver todas las propiedades',
+  homeIntroTitle: 'Verla antes de verla',
+  homeIntroLead:
+    'Cada propiedad se cuenta con lo que hace falta para entenderla desde lejos, sin adornos ni prisa.',
+  homeIntroPhotos: 'Fotografía y vídeo',
+  homeIntroPhotosText: 'La propiedad tal como es, con luz de verdad.',
+  homeIntroTour: 'Recorrido 360°',
+  homeIntroTourText: 'Camina por el terreno desde donde estés.',
+  homeIntroMap: 'Ubicación',
+  homeIntroMapText: 'Dónde está, y qué tiene alrededor.',
+  homeMapTitle: 'Empieza por el dónde',
+  homeMapLead: 'De Guanacaste al Pacífico sur. Mira qué hay en la zona que te interesa.',
+  homeContactTitle: '¿Hablamos?',
+  homeContactLead: 'Cuéntanos qué buscas y te respondemos por donde prefieras.',
+  brandName: 'Loba',
+  chooseLanguage: 'Elige idioma',
 };
 
 const EN: PublicLabels = {
@@ -389,6 +445,34 @@ const EN: PublicLabels = {
   errorPropertyGone: 'This property is no longer available. Write to us from the contact page.',
   errorTooFast: 'That submission arrived too fast. Please try again.',
   errorServer: 'We could not send the enquiry. Please try again in a moment.',
+
+  homeSeoTitle: 'Property on the coast of Costa Rica',
+  homeSeoDescription:
+    'Lots, houses and farms on the coast of Costa Rica, with photography, a 360° tour and a map.',
+  homeHeroTitle: 'A piece of the coast, told properly',
+  homeHeroSubtitle:
+    'Lots, houses and farms on the Pacific coast of Costa Rica. Take your time before you fly out.',
+  homeSeeProperties: 'See properties',
+  homeSeeMap: 'Explore the map',
+  homeFeaturedTitle: 'Selection',
+  homeFeaturedLead: 'A few, picked by hand.',
+  homeFeaturedEmpty: 'There is no selection yet. In the meantime, they are all under Properties.',
+  homeSeeAll: 'See every property',
+  homeIntroTitle: 'See it before you see it',
+  homeIntroLead:
+    'Every property is shown with what it takes to understand it from far away, with no frills and no rush.',
+  homeIntroPhotos: 'Photography and video',
+  homeIntroPhotosText: 'The property as it is, in real light.',
+  homeIntroTour: '360° tour',
+  homeIntroTourText: 'Walk the land from wherever you are.',
+  homeIntroMap: 'Location',
+  homeIntroMapText: 'Where it sits, and what surrounds it.',
+  homeMapTitle: 'Start with the where',
+  homeMapLead: 'From Guanacaste to the southern Pacific. See what is in the area you care about.',
+  homeContactTitle: 'Shall we talk?',
+  homeContactLead: 'Tell us what you are after and we will reply however you prefer.',
+  brandName: 'Loba',
+  chooseLanguage: 'Choose a language',
 };
 
 export function labelsFor(locale: Locale): PublicLabels {

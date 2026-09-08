@@ -1,0 +1,28 @@
+---
+/**
+ * Invitacion al mapa.
+ *
+ * Aqui NO se carga Mapbox: la portada no monta un mapa, solo lleva al que ya
+ * existe. El dibujo del fondo son gradientes, sin una peticion de red.
+ */
+import type { Locale } from '../../lib/domain/vocabularies';
+import { labelsFor } from '../../lib/public/labels';
+import { mapHref } from '../../lib/public/navigation';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const labels = labelsFor(locale);
+---
+
+<section class="home-map" aria-labelledby="home-map-title">
+  <div class="home-map-art" aria-hidden="true"></div>
+
+  <div class="home-map-body">
+    <h2 id="home-map-title">{labels.homeMapTitle}</h2>
+    <p>{labels.homeMapLead}</p>
+    <a class="home-link" href={mapHref(locale)}>{labels.homeSeeMap} →</a>
+  </div>
+</section>

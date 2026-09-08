@@ -1694,6 +1694,388 @@ a {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Portada                                                                    */
+/* -------------------------------------------------------------------------- */
+
+/*
+ * El hero no tiene fotografia porque todavia no hay media global configurable:
+ * el modelo guarda logo, favicon e imagen social, y `property_media` es de
+ * cada propiedad. Colgar la portada de la foto de un lote la ataria a que ese
+ * lote siga publicado.
+ *
+ * Asi que el fondo se dibuja: selva arriba, marfil abajo, y unas curvas de
+ * nivel muy tenues hechas con gradientes repetidos. Ni una peticion de red, ni
+ * un byte de imagen, y cuando exista la imagen configurable entra encima sin
+ * tocar nada de esto.
+ */
+.hero {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  min-height: min(78vh, 40rem);
+  overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 15% 0%, var(--jungle-soft) 0%, transparent 55%),
+    linear-gradient(160deg, var(--jungle) 0%, var(--jungle-deep) 45%, #16302549 100%),
+    var(--ivory-warm);
+  color: var(--ivory);
+}
+
+/* Curvas de nivel: lineas finas que no llegan a leerse como un patron. */
+.hero-terrain {
+  position: absolute;
+  inset: 0;
+  background-image:
+    repeating-radial-gradient(
+      130% 80% at 78% 118%,
+      transparent 0 3.4rem,
+      rgb(201 168 106 / 13%) 3.4rem 3.5rem
+    ),
+    repeating-radial-gradient(
+      90% 70% at 12% -20%,
+      transparent 0 4.6rem,
+      rgb(250 247 240 / 6%) 4.6rem 4.7rem
+    );
+  pointer-events: none;
+}
+
+.hero-inner {
+  position: relative;
+  width: 100%;
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: var(--space-xl) var(--space-md);
+}
+
+.hero-brand {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+  margin-bottom: var(--space-lg);
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.hero-brand-mark {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid var(--sand);
+  border-radius: 50%;
+  color: var(--sand);
+  font-size: 1.1rem;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.hero-title {
+  max-width: 20ch;
+  font-size: clamp(2.5rem, 7vw, 4.75rem);
+  line-height: 1.05;
+}
+
+.hero-subtitle {
+  max-width: 44ch;
+  margin-top: var(--space-md);
+  color: rgb(250 247 240 / 82%);
+  font-size: clamp(1rem, 2vw, 1.2rem);
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-top: var(--space-lg);
+}
+
+.hero-cta {
+  padding: var(--space-sm) var(--space-lg);
+  border: 1px solid var(--sand);
+  border-radius: 999px;
+  background: var(--sand);
+  color: var(--jungle-deep);
+  font-size: 1rem;
+  text-decoration: none;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
+}
+
+.hero-cta:hover {
+  background: transparent;
+  color: var(--sand);
+}
+
+/* El segundo camino existe, pero no compite con el primero. */
+.hero-cta-quiet {
+  border-color: rgb(250 247 240 / 40%);
+  background: transparent;
+  color: var(--ivory);
+}
+
+.hero-cta-quiet:hover {
+  border-color: var(--ivory);
+  background: transparent;
+  color: var(--ivory);
+}
+
+.hero-tagline {
+  margin-top: var(--space-lg);
+  color: var(--sand);
+  font-size: 0.85rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Secciones de la portada                                                    */
+/* -------------------------------------------------------------------------- */
+
+.home {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: var(--space-xl) var(--space-md);
+}
+
+.home-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.home-section-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  max-width: 44rem;
+}
+
+.home-section-head h2 {
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+}
+
+.home-section-lead {
+  color: var(--ink-soft);
+  font-size: 1.05rem;
+}
+
+.home-empty {
+  padding: var(--space-lg) var(--space-md);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--ivory-warm);
+  color: var(--ink-soft);
+  text-align: center;
+}
+
+.home-more {
+  margin-top: calc(var(--space-md) * -1);
+}
+
+.home-link {
+  color: var(--jungle-soft);
+  font-size: 0.95rem;
+  text-underline-offset: 4px;
+}
+
+/* Tres como mucho: una portada no es el catalogo. */
+.home-featured-list {
+  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+}
+
+/* -------------------------------------------------------------------------- */
+/* Que ofrece el sitio                                                        */
+/* -------------------------------------------------------------------------- */
+
+.intro-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: var(--space-lg);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.intro-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--line);
+}
+
+.intro-item h3 {
+  font-size: 1.15rem;
+}
+
+.intro-item p {
+  color: var(--ink-soft);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Invitacion al mapa                                                         */
+/* -------------------------------------------------------------------------- */
+
+/*
+ * Aqui NO se carga Mapbox. El dibujo es un degradado con curvas de nivel, del
+ * mismo lenguaje que el hero: sugiere un mapa sin serlo y no cuesta nada.
+ */
+.home-map {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background: var(--jungle);
+  color: var(--ivory);
+}
+
+.home-map-art {
+  min-height: 16rem;
+  background-image:
+    repeating-radial-gradient(
+      70% 60% at 30% 40%,
+      transparent 0 2.2rem,
+      rgb(201 168 106 / 20%) 2.2rem 2.3rem
+    ),
+    linear-gradient(140deg, var(--jungle-soft), var(--jungle-deep));
+}
+
+.home-map-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  align-items: flex-start;
+  justify-content: center;
+  padding: var(--space-xl) var(--space-lg);
+}
+
+.home-map-body h2 {
+  font-size: clamp(1.5rem, 3vw, 2.1rem);
+}
+
+.home-map-body p {
+  color: rgb(250 247 240 / 80%);
+}
+
+.home-map-body .home-link {
+  color: var(--sand);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Cierre                                                                     */
+/* -------------------------------------------------------------------------- */
+
+.home-contact {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  align-items: center;
+  padding: var(--space-xl) var(--space-md);
+  border-top: 1px solid var(--line);
+  text-align: center;
+}
+
+.home-contact h2 {
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+}
+
+.home-contact p {
+  max-width: 40ch;
+  color: var(--ink-soft);
+}
+
+.home-cta {
+  margin-top: var(--space-xs);
+  padding: var(--space-sm) var(--space-xl);
+  border: 1px solid var(--jungle);
+  border-radius: 999px;
+  background: var(--jungle);
+  color: var(--ivory);
+  text-decoration: none;
+  transition: background 0.2s ease;
+}
+
+.home-cta:hover {
+  background: var(--jungle-soft);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Raiz: eleccion de idioma                                                   */
+/* -------------------------------------------------------------------------- */
+
+/*
+ * Solo se ve sin JavaScript: con el, la URL se sustituye antes de pintar. Aun
+ * asi es una pagina de verdad, no una pantalla de carga.
+ */
+.root-choice {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: var(--space-lg);
+  background: var(--jungle);
+  color: var(--ivory);
+  text-align: center;
+}
+
+.root-brand {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.root-brand-mark {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid var(--sand);
+  border-radius: 50%;
+  color: var(--sand);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.root-title {
+  margin-top: var(--space-lg);
+  font-size: 1.15rem;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+}
+
+.root-languages {
+  display: flex;
+  gap: var(--space-lg);
+  justify-content: center;
+  margin-top: var(--space-md);
+  padding: 0;
+  list-style: none;
+}
+
+.root-languages a {
+  padding: var(--space-xs) var(--space-lg);
+  border: 1px solid var(--sand);
+  border-radius: 999px;
+  color: var(--sand);
+  text-decoration: none;
+}
+
+.root-languages a:hover {
+  background: var(--sand);
+  color: var(--jungle-deep);
+}
+
+/* -------------------------------------------------------------------------- */
 /* Movil                                                                      */
 /* -------------------------------------------------------------------------- */
 
@@ -1837,5 +2219,40 @@ a {
 
   .contact-channels-compact .channel-list {
     flex-direction: column;
+  }
+
+  /* -- Portada ------------------------------------------------------------ */
+
+  .hero {
+    min-height: auto;
+    padding-top: var(--space-lg);
+  }
+
+  .hero-inner {
+    padding: var(--space-lg) var(--space-md) var(--space-xl);
+  }
+
+  .hero-cta {
+    /* A pantalla completa se pulsa con el pulgar sin apuntar. */
+    flex: 1 1 100%;
+    text-align: center;
+  }
+
+  /* El dibujo del mapa pasa arriba y el texto debajo, no en dos columnas. */
+  .home-map {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .home-map-art {
+    min-height: 11rem;
+  }
+
+  .home-map-body {
+    padding: var(--space-lg) var(--space-md);
+  }
+
+  .home {
+    gap: var(--space-lg);
+    padding: var(--space-lg) var(--space-md);
   }
 }

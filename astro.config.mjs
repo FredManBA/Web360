@@ -32,12 +32,9 @@ export default defineConfig({
   session: false,
 
   // ES y EN son arboles de rutas independientes (mejor para SEO).
-  // La raiz solo redirige al idioma por defecto, de forma temporal (302),
-  // para no fijar el idioma en cache mientras no exista deteccion.
-  redirects: {
-    '/': {
-      status: 302,
-      destination: '/es/',
-    },
-  },
+  //
+  // La raiz ya NO redirige desde la configuracion: un 302 del servidor no
+  // puede saber que idioma eligio la persona la ultima vez. Ahora `/` es una
+  // pagina estatica (`src/pages/index.astro`) que decide en el navegador y
+  // deja una eleccion de idioma visible cuando no hay JavaScript.
 });

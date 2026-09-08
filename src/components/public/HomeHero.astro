@@ -1,0 +1,62 @@
+---
+/**
+ * Hero de la portada.
+ *
+ * Sobre la fotografia: todavia NO existe media global configurable. El modelo
+ * guarda logo, favicon e imagen social, pero no una imagen de portada, y
+ * `property_media` es de cada propiedad: colgar la portada de la foto de un
+ * lote la ataria a que ese lote siga publicado. Asi que el fondo se dibuja:
+ * un degradado de selva a marfil con unas curvas de nivel muy tenues, hechas
+ * con gradientes, sin una sola peticion de red y sin nada que cargar.
+ *
+ * Gestionar una imagen de hero global queda pendiente para cuando exista la
+ * configuracion del sitio en el panel.
+ *
+ * Los textos SI salen de la configuracion cuando estan escritos; lo que hay
+ * en `labels` son valores por defecto, no contenido comercial fijado.
+ */
+import type { Locale } from '../../lib/domain/vocabularies';
+import type { HomeCopy } from '../../lib/public/home';
+import { labelsFor } from '../../lib/public/labels';
+import { mapHref } from '../../lib/public/navigation';
+import { catalogueHref } from '../../lib/public/read-model';
+
+interface Props {
+  copy: HomeCopy;
+  locale: Locale;
+  /** El mapa solo se ofrece si hay algo situado que mirar. */
+  showMap?: boolean;
+}
+
+const { copy, locale, showMap = false } = Astro.props;
+const labels = labelsFor(locale);
+---
+
+<section class="hero">
+  {/* El relieve es decoracion: no aporta nada que leer. */}
+  <div class="hero-terrain" aria-hidden="true"></div>
+
+  <div class="hero-inner">
+    <p class="hero-brand">
+      <span class="hero-brand-mark" aria-hidden="true">L</span>
+      {copy.brand}
+    </p>
+
+    <h1 class="hero-title">{copy.heroTitle}</h1>
+    <p class="hero-subtitle">{copy.heroSubtitle}</p>
+
+    <div class="hero-actions">
+      <a class="hero-cta" href={catalogueHref(locale)}>{labels.homeSeeProperties}</a>
+
+      {
+        showMap && (
+          <a class="hero-cta hero-cta-quiet" href={mapHref(locale)}>
+            {labels.homeSeeMap}
+          </a>
+        )
+      }
+    </div>
+
+    {copy.tagline && <p class="hero-tagline">{copy.tagline}</p>}
+  </div>
+</section>
