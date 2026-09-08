@@ -48,14 +48,56 @@ interface PublicationIssue {
   message: string;
 }
 
+interface DeployedRelease {
+  releaseId: string;
+  requestId: number;
+  generatedAt: string;
+  mediaCount: number;
+}
+
 interface PublicationState {
   propertyId: number;
   publicationStatus: string;
   canPublish: boolean;
   canUnpublish: boolean;
+  canAbandon: boolean;
   issues: PublicationIssue[];
   current: PublicationRequest | null;
   history: PublicationRequest[];
+  /** La version que ejecuta el artefacto que responde, si afirma alguna. */
+  deployed: DeployedRelease | null;
+}
+
+/** Lo que contesta una comprobacion de "¿ya está publicado?". */
+type ReconciliationReason =
+  'applied' | 'nothing_to_reconcile' | 'release_mismatch' | 'no_release_deployed';
+
+/**
+ * Como se cuenta el resultado de una comprobacion.
+ *
+ * Cuando la version en linea es otra NO se dice "ha fallado": no se sabe. Se
+ * dice lo unico cierto —que esta version no es la de esta operacion— y no se
+ * toca nada.
+ */
+export function reconciliationMessage(reason: ReconciliationReason): {
+  text: string;
+  kind: 'ok' | 'warn';
+} {
+  if (reason === 'applied') {
+    /* Vale igual para publicar y para retirar: lo que ya está en línea es el cambio. */
+    return { text: 'El cambio ya está en línea: la operación queda cerrada.', kind: 'ok' };
+  }
+
+  if (reason === 'nothing_to_reconcile') {
+    return { text: 'No hay ninguna operación pendiente.', kind: 'ok' };
+  }
+
+  return {
+    text:
+      'La versión que está en línea no es la de esta operación, así que todavía no se ha ' +
+      'desplegado. No se ha cambiado nada: vuelve a comprobarlo cuando termine.',
+    kind: 'warn',
+  };
 }
 
 interface ManualInstructions {
@@ -90,6 +132,17 @@ export function requestSummary(request: PublicationRequest): string {
   if (request.status === 'building') return `${what} en curso. Todavía no está en la web.`;
   if (request.status === 'done') return `${what} completada.`;
 
+  /*
+   * Abandonada NO es fallida: nadie ha dicho que saliera mal, solo que se
+   * dejo de esperar. Confundirlas seria escribir en pantalla algo que la base
+   * no afirma.
+   */
+  if (request.status === 'abandoned') {
+    return request.errorSummary === null
+      ? `${what} abandonada. No se publicó ni se retiró nada.`
+      : `${what} abandonada: ${request.errorSummary}`;
+  }
+
   return request.errorSummary === null
     ? `${what} fallida. Vuelve a intentarlo.`
     : `${what} fallida: ${request.errorSummary}`;
@@ -123,7 +176,9 @@ export function initPublicationPanel(): void {
   /** Instrucciones manuales recien recibidas. Viven en memoria y no vuelven. */
   let manual: ManualInstructions | null = null;
   /** Que accion esta esperando confirmacion. */
-  let pendingConfirm: 'publish' | 'unpublish' | null = null;
+  let pendingConfirm: 'publish' | 'unpublish' | 'abandon' | null = null;
+  /** Lo que contesto la ultima comprobacion, si se pidio alguna. */
+  let notice: { text: string; kind: 'ok' | 'warn' } | null = null;
   let busy = false;
   let message = '';
 
@@ -173,8 +228,59 @@ export function initPublicationPanel(): void {
     );
   };
 
+  /**
+   * El resultado de una comprobacion, cuando la ha habido.
+   *
+   * Solo aparece despues de pedirla: que la version en linea sea otra NO es
+   * una anomalia mientras la preparacion esta en marcha —todavia no se ha
+   * desplegado nada—, asi que marcarlo por su cuenta seria alarmar sin motivo.
+   */
+  const noticeHtml = (): string => {
+    if (notice === null) return '';
+
+    return (
+      `<p class="publication-notice" data-kind="${escapeHtml(notice.kind)}">` +
+      `${escapeHtml(notice.text)}</p>`
+    );
+  };
+
+  /** Que version esta en linea. Diagnostico, no accion. */
+  const deployedHtml = (): string => {
+    const deployed = state?.deployed ?? null;
+    if (deployed === null) return '';
+
+    return (
+      '<p class="publication-deployed admin-muted">Versión en línea: ' +
+      `<code>${escapeHtml(deployed.releaseId)}</code></p>`
+    );
+  };
+
   const confirmHtml = (): string => {
     if (pendingConfirm === null) return '';
+
+    /*
+     * Abandonar se explica con mas cuidado que las otras dos: lo que hay que
+     * dejar claro no es lo que va a pasar, sino lo que NO va a pasar.
+     */
+    if (pendingConfirm === 'abandon') {
+      return (
+        '<div class="publication-confirm" role="group" aria-label="Confirmar abandono">' +
+        '<p><strong>Esto no publica ni retira nada.</strong> La ficha se queda exactamente como ' +
+        'está y el sitio en línea tampoco cambia. Solo deja de esperar a esta operación para ' +
+        'que puedas pedir otra.</p>' +
+        '<p class="admin-muted">No se da por hecho que haya fallado: quedará registrada como ' +
+        'abandonada.</p>' +
+        '<label class="publication-reason" for="publication-reason">Motivo (opcional)' +
+        '<input type="text" id="publication-reason" maxlength="200" ' +
+        'placeholder="Por ejemplo: se perdió el aviso del despliegue"></label>' +
+        '<div class="publication-actions">' +
+        '<button type="button" class="admin-button admin-button-primary" ' +
+        'data-action="confirm-abandon">Sí, abandonar</button>' +
+        '<button type="button" class="admin-button" data-action="cancel">Cancelar</button>' +
+        '</div>' +
+        '</div>'
+      );
+    }
 
     const publishing = pendingConfirm === 'publish';
 
@@ -231,7 +337,16 @@ export function initPublicationPanel(): void {
             ? '<button type="button" class="admin-button" data-action="unpublish">Retirar</button>'
             : '') +
           (current !== null
-            ? '<button type="button" class="admin-button" data-action="refresh">Actualizar estado</button>'
+            ? '<button type="button" class="admin-button" data-action="refresh">Actualizar estado</button>' +
+              '<button type="button" class="admin-button" data-action="reconcile">Comprobar si ya se publicó</button>'
+            : '') +
+          /*
+           * Abandonar lo ofrece el servidor, que es quien sabe si el artefacto
+           * desplegado demuestra algo. Si lo demuestra, lo que toca es
+           * reconciliar y este boton no aparece.
+           */
+          (state.canAbandon
+            ? '<button type="button" class="admin-button publication-abandon" data-action="abandon">Abandonar operación</button>'
             : '') +
           '</div>';
 
@@ -243,9 +358,11 @@ export function initPublicationPanel(): void {
         ? issuesHtml(state.issues)
         : '') +
       manualHtml() +
+      noticeHtml() +
       confirmHtml() +
       actions +
       `<p class="editor-error" id="publication-error" role="alert"${message.length === 0 ? ' hidden' : ''}>${escapeHtml(message)}</p>` +
+      deployedHtml() +
       historyHtml(state.history);
   };
 
@@ -307,6 +424,92 @@ export function initPublicationPanel(): void {
 
       state = data.publication;
       manual = data.manual;
+      notice = null;
+      message = '';
+      render();
+    } catch {
+      say('Sin conexión con el servidor.');
+    } finally {
+      busy = false;
+    }
+  };
+
+  /**
+   * Pregunta si la operacion viva ya esta desplegada.
+   *
+   * No decide nada por su cuenta: lo unico que puede demostrarlo es el
+   * artefacto que atiende la peticion, y eso lo mira el servidor.
+   */
+  const reconcile = async (): Promise<void> => {
+    if (busy) return;
+    busy = true;
+
+    try {
+      const response = await fetch(`/api/admin/properties/${propertyId}/publication/reconcile`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', accept: 'application/json' },
+        body: JSON.stringify({}),
+      });
+
+      const body = (await response.json()) as {
+        data?: {
+          reconciliation: { reason: ReconciliationReason };
+          publication: PublicationState;
+          deployed: DeployedRelease | null;
+        };
+        error?: { message?: string };
+      };
+
+      if (!response.ok || body.data === undefined) {
+        say(body.error?.message ?? 'No se pudo comprobar el estado de la publicación.');
+        return;
+      }
+
+      // La version en linea viene aparte; se junta para no perderla al repintar.
+      state = { ...body.data.publication, deployed: body.data.deployed };
+      notice = reconciliationMessage(body.data.reconciliation.reason);
+      message = '';
+      render();
+    } catch {
+      say('Sin conexión con el servidor.');
+    } finally {
+      busy = false;
+    }
+  };
+
+  /**
+   * Abandona la operacion viva.
+   *
+   * Lo que vuelve es el estado ya recalculado por el servidor: si la propiedad
+   * admite otra operacion, los botones reaparecen solos.
+   */
+  const abandon = async (reason: string): Promise<void> => {
+    if (busy) return;
+    busy = true;
+
+    try {
+      const response = await fetch(`/api/admin/properties/${propertyId}/publication/abandon`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', accept: 'application/json' },
+        body: JSON.stringify(reason.trim().length === 0 ? {} : { reason: reason.trim() }),
+      });
+
+      const body = (await response.json()) as {
+        data?: { publication: PublicationState; deployed: DeployedRelease | null };
+        error?: { message?: string };
+      };
+
+      if (!response.ok || body.data === undefined) {
+        say(body.error?.message ?? 'No se pudo abandonar la operación.');
+        await load();
+        return;
+      }
+
+      state = { ...body.data.publication, deployed: body.data.deployed };
+      notice = {
+        text: 'Operación abandonada. No se ha publicado ni retirado nada.',
+        kind: 'ok',
+      };
       message = '';
       render();
     } catch {
@@ -334,7 +537,7 @@ export function initPublicationPanel(): void {
       return;
     }
 
-    if (action === 'publish' || action === 'unpublish') {
+    if (action === 'publish' || action === 'unpublish' || action === 'abandon') {
       pendingConfirm = action;
       message = '';
       render();
@@ -348,7 +551,24 @@ export function initPublicationPanel(): void {
     }
 
     if (action === 'refresh') {
+      notice = null;
       void load();
+      return;
+    }
+
+    if (action === 'reconcile') {
+      void reconcile();
+      return;
+    }
+
+    if (action === 'confirm-abandon') {
+      // El motivo se lee antes de repintar: el campo desaparece con el bloque.
+      const field = byId<HTMLInputElement>('publication-reason');
+      const reason = field?.value ?? '';
+
+      pendingConfirm = null;
+      render();
+      void abandon(reason);
       return;
     }
 

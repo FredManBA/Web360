@@ -112,6 +112,9 @@ const STATUS_BY_ERROR: Record<AdminErrorCode, number> = {
   publication_not_allowed: 409,
   publication_incomplete: 422,
   publication_in_progress: 409,
+  publication_request_not_found: 404,
+  // Choque de estado: la operacion no esta donde el cliente cree.
+  publication_must_reconcile: 409,
   // No se distingue "no existe" de "ya se uso": decirlo confirmaria que existio.
   publication_link_invalid: 404,
   // El fallo no es de quien pide: lo pone quien tenia que construir el sitio.

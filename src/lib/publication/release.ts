@@ -36,13 +36,22 @@ import type { AdminDatabase } from '../admin/types';
 /**
  * Que archivos puede servir una version del sitio, y de que version se habla.
  *
- * No lleva ids de propiedad ni estados: es una lista blanca de archivos y su
- * procedencia. Se publica junto al sitio, asi que no debe contener nada que
- * no pudiera verse en el HTML.
+ * Lleva lo justo: que archivos referencia el HTML y de que operacion salio.
+ * Ni claves de R2, ni credenciales, ni estados editoriales, ni nada que no
+ * pudiera verse ya en el propio HTML. Viaja dentro del artefacto, asi que
+ * cualquier cosa de mas que se metiera aqui viajaria con el.
  */
 export interface ReleaseManifest {
   /** Identifica esta version. Se deriva de la peticion que la origino. */
   releaseId: string;
+  /**
+   * La peticion que origino esta version.
+   *
+   * Es lo que permite demostrar, mirando el artefacto que se esta ejecutando,
+   * que operacion llego de verdad a desplegarse. Sin este numero, reconciliar
+   * una peticion cuyo callback se perdio seria adivinar.
+   */
+  requestId: number;
   generatedAt: string;
   /** Archivos que el HTML de esta version referencia. Ordenados. */
   mediaIds: number[];
@@ -118,6 +127,7 @@ export async function buildReleaseCandidate(
     snapshot,
     manifest: {
       releaseId: releaseIdFor(request),
+      requestId: request.id,
       generatedAt: snapshot.generatedAt,
       mediaIds: releaseMediaIds(snapshot),
     },
@@ -134,4 +144,28 @@ export async function buildReleaseCandidate(
  */
 export function releaseAllowsMedia(manifest: ReleaseManifest | null, mediaId: number): boolean {
   return manifest === null || manifest.mediaIds.includes(mediaId);
+}
+
+/**
+ * Lo que se puede contar de una version desplegada.
+ *
+ * Sin la lista de archivos: para diagnosticar basta con saber cuantos hay, y
+ * enumerarlos no aporta nada que no este ya en el HTML.
+ */
+export interface DeployedReleaseView {
+  releaseId: string;
+  requestId: number;
+  generatedAt: string;
+  mediaCount: number;
+}
+
+export function describeRelease(manifest: ReleaseManifest | null): DeployedReleaseView | null {
+  if (manifest === null) return null;
+
+  return {
+    releaseId: manifest.releaseId,
+    requestId: manifest.requestId,
+    generatedAt: manifest.generatedAt,
+    mediaCount: manifest.mediaIds.length,
+  };
 }

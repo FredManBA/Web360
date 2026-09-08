@@ -1245,6 +1245,12 @@ export const publicationRequests = sqliteTable(
 
     action: text('action', { enum: PUBLICATION_ACTIONS }).notNull(),
 
+    /**
+     * Estado de la OPERACION, no de la propiedad.
+     *
+     * `abandoned` es terminal y no afirma nada sobre el build: solo que una
+     * persona decidio dejar de esperar. Por eso no se mete en `failed`.
+     */
     status: text('status', { enum: PUBLICATION_REQUEST_STATUSES }).notNull().default('pending'),
 
     /** Hash del token de callback. Nunca el token. */
@@ -1258,7 +1264,15 @@ export const publicationRequests = sqliteTable(
      */
     jobRef: text('job_ref'),
 
-    /** Motivo resumido del fallo, para el panel. Sin trazas ni detalles. */
+    /**
+     * Motivo resumido del desenlace, para el panel. Sin trazas ni detalles.
+     *
+     * Lo escriben los dos finales que no son un exito: el fallo cuenta que
+     * salio mal, y el abandono, por que una persona decidio dejarlo. Es la
+     * misma clase de dato —una frase corta para quien mire el historial—, asi
+     * que no hace falta una segunda columna; lo que distingue un caso del otro
+     * es `status`, no este texto.
+     */
     errorSummary: text('error_summary'),
 
     requestedAt: integer('requested_at', { mode: 'timestamp' })
@@ -1285,7 +1299,9 @@ export const publicationRequests = sqliteTable(
      * Es la constraint que impide el escenario incoherente de verdad: pedir
      * "publicar" y "retirar" a la vez, o dos publicaciones en paralelo cuyos
      * callbacks lleguen en cualquier orden. El indice es PARCIAL porque el
-     * historial si admite muchas filas terminadas por propiedad.
+     * historial si admite muchas filas terminadas por propiedad. Solo cuentan
+     * como vivas `pending` y `building`: un abandono libera la propiedad en el
+     * acto, igual que un exito o un fallo.
      */
     uniqueIndex('publication_requests_active_per_property_idx')
       .on(table.propertyId)

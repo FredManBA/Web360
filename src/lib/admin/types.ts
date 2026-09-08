@@ -106,6 +106,10 @@ export type AdminErrorCode =
   | 'publication_incomplete'
   // Ya hay una operacion viva sobre esa propiedad.
   | 'publication_in_progress'
+  // No hay ninguna operacion de publicacion con ese numero, o ya no esta viva.
+  | 'publication_request_not_found'
+  // Se intento abandonar algo que el artefacto desplegado si confirma.
+  | 'publication_must_reconcile'
   // Token de callback que no existe, o que ya se uso: no se distinguen.
   | 'publication_link_invalid'
   // Quien tenia que construir el sitio no acepto el trabajo.

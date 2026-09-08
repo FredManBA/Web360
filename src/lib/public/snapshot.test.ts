@@ -92,7 +92,7 @@ describe('snapshot de build', () => {
     const plugin = read(PLUGIN);
 
     expect(plugin).toContain('buildStart()');
-    expect(plugin).toContain('pending ??= readLocalSnapshot()');
+    expect(plugin).toContain('pending ??= read()');
   });
 });
 
@@ -139,11 +139,16 @@ describe('el sitio publico sigue siendo estatico', () => {
     expect(read(ASTRO_CONFIG)).toContain('publicSnapshotPlugin()');
   });
 
-  it('el origen aisla lo que habra que cambiar para D1 remoto', () => {
+  it('el origen es el unico que sabe de donde vienen los datos', () => {
     const source = read(SOURCE);
 
-    expect(source).toContain('readLocalSnapshot');
-    expect(source).toContain('D1 remoto');
+    // Los dos origenes viven aqui, y solo aqui.
+    expect(source).toContain('findLocalDatabaseFile');
+    expect(source).toContain('createRemoteD1');
+
+    // El read model no se entera de ninguno de los dos.
+    expect(read(READ_MODEL)).not.toContain('createRemoteD1');
+    expect(read(READ_MODEL)).not.toContain('CODELOBA_D1_SOURCE');
   });
 
   it('cada ficha se genera desde el snapshot, no en tiempo de peticion', () => {

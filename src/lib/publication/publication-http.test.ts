@@ -14,7 +14,7 @@
 
 import type { DatabaseSync } from 'node:sqlite';
 
-import { eq } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { properties, publicationRequests } from '../../db/schema';
@@ -31,11 +31,15 @@ import type { AdminBatchDatabase } from '../admin/types';
 import type { AdminHttpContext } from '../admin/http/handlers';
 import { handleUpdateStatus } from '../admin/http/handlers';
 import {
+  handleAbandonPublication,
+  handleGetDeployedRelease,
   handleGetPublication,
+  handleReconcilePublication,
   handleRequestPublish,
   handleRequestUnpublish,
 } from '../admin/http/publication-handlers';
 import { CALLBACK_TOKEN_HEADER, handlePublicationCallback } from './callback-handler';
+import type { ReleaseManifest } from './release';
 import type { PublishTrigger } from './trigger';
 
 const BASE = 'https://codeloba.test';
@@ -59,7 +63,11 @@ beforeEach(() => {
 function ctx(
   request: Request,
   params: Record<string, string | undefined> = {},
-  options: { bypass?: boolean; trigger?: PublishTrigger } = {},
+  options: {
+    bypass?: boolean;
+    trigger?: PublishTrigger;
+    deployed?: ReleaseManifest | null;
+  } = {},
 ): AdminHttpContext {
   const bypass = options.bypass ?? true;
 
@@ -70,7 +78,33 @@ function ctx(
     bucket,
     env: bypass ? { isDev: true, ADMIN_DEV_BYPASS: 'true' } : { isDev: true },
     ...(options.trigger === undefined ? {} : { publishTrigger: options.trigger }),
+    ...(options.deployed === undefined ? {} : { deployedRelease: options.deployed }),
   };
+}
+
+/** El manifiesto que llevaria dentro el artefacto de una peticion. */
+function artifactOf(requestId: number, propertyId: number): ReleaseManifest {
+  return {
+    releaseId: `publish-p${propertyId}-r${requestId}`,
+    requestId,
+    generatedAt: '2026-01-01T00:00:00.000Z',
+    mediaIds: [],
+  };
+}
+
+/** El numero de la operacion viva de una propiedad. */
+async function activeRequestId(propertyId: number): Promise<number> {
+  const rows = await db
+    .select({ id: publicationRequests.id })
+    .from(publicationRequests)
+    .where(eq(publicationRequests.propertyId, propertyId))
+    .orderBy(desc(publicationRequests.id))
+    .limit(1);
+
+  const id = rows[0]?.id;
+  if (id === undefined) throw new Error('setup: sin peticion');
+
+  return id;
 }
 
 function post(path: string, body?: unknown): Request {
@@ -543,5 +577,386 @@ describe('el callback del build', () => {
 
     const rows = await db.select().from(publicationRequests);
     expect((rows[0]?.errorSummary ?? '').length).toBeLessThanOrEqual(200);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Reconciliacion                                                             */
+/* -------------------------------------------------------------------------- */
+
+describe('la comprobacion de si ya esta desplegado', () => {
+  it('exige acceso administrativo', async () => {
+    const propertyId = await approvedProperty();
+
+    const response = await handleReconcilePublication(
+      ctx(
+        post(`/api/admin/properties/${propertyId}/publication/reconcile`, {}),
+        { id: String(propertyId) },
+        { bypass: false },
+      ),
+    );
+
+    expect(response.status).toBe(403);
+  });
+
+  it('rechaza una llamada de otro origen', async () => {
+    const propertyId = await approvedProperty();
+    await askToPublish(propertyId);
+    const requestId = await activeRequestId(propertyId);
+
+    const request = new Request(
+      `${BASE}/api/admin/properties/${propertyId}/publication/reconcile`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', origin: 'https://otro.example' },
+        body: '{}',
+      },
+    );
+
+    const response = await handleReconcilePublication(
+      ctx(request, { id: String(propertyId) }, { deployed: artifactOf(requestId, propertyId) }),
+    );
+
+    expect(response.status).toBe(403);
+    // Y no ha cerrado nada por el camino.
+    expect(await statusOf(propertyId)).toBe('approved');
+  });
+
+  it('cierra la operacion cuando el artefacto lleva esa release', async () => {
+    const propertyId = await approvedProperty();
+    await askToPublish(propertyId);
+    const requestId = await activeRequestId(propertyId);
+
+    const response = await handleReconcilePublication(
+      ctx(
+        post(`/api/admin/properties/${propertyId}/publication/reconcile`, {}),
+        { id: String(propertyId) },
+        { deployed: artifactOf(requestId, propertyId) },
+      ),
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('cache-control')).toBe('no-store');
+
+    const payload = (await response.json()) as {
+      data: {
+        reconciliation: { reconciled: boolean; reason: string; deployedReleaseId: string | null };
+        publication: { publicationStatus: string };
+        deployed: { releaseId: string } | null;
+      };
+    };
+
+    expect(payload.data.reconciliation.reconciled).toBe(true);
+    expect(payload.data.reconciliation.reason).toBe('applied');
+    expect(payload.data.publication.publicationStatus).toBe('published');
+    expect(payload.data.deployed?.releaseId).toBe(`publish-p${propertyId}-r${requestId}`);
+
+    expect(await statusOf(propertyId)).toBe('published');
+  });
+
+  it('con otro artefacto no cambia nada y lo dice', async () => {
+    const propertyId = await approvedProperty();
+    await askToPublish(propertyId);
+    const requestId = await activeRequestId(propertyId);
+
+    const response = await handleReconcilePublication(
+      ctx(
+        post(`/api/admin/properties/${propertyId}/publication/reconcile`, {}),
+        { id: String(propertyId) },
+        { deployed: artifactOf(requestId + 50, propertyId) },
+      ),
+    );
+
+    expect(response.status).toBe(200);
+
+    const payload = (await response.json()) as {
+      data: { reconciliation: { reconciled: boolean; reason: string } };
+    };
+
+    expect(payload.data.reconciliation.reconciled).toBe(false);
+    expect(payload.data.reconciliation.reason).toBe('release_mismatch');
+    expect(await statusOf(propertyId)).toBe('approved');
+  });
+
+  it('el cliente no puede decir que release se desplego', async () => {
+    const propertyId = await approvedProperty();
+    await askToPublish(propertyId);
+    const requestId = await activeRequestId(propertyId);
+
+    // Se manda el manifiesto "bueno" en el cuerpo, pero el artefacto es otro.
+    const response = await handleReconcilePublication(
+      ctx(
+        post(`/api/admin/properties/${propertyId}/publication/reconcile`, {
+          releaseId: `publish-p${propertyId}-r${requestId}`,
+          requestId,
+        }),
+        { id: String(propertyId) },
+        { deployed: null },
+      ),
+    );
+
+    const payload = (await response.json()) as {
+      data: { reconciliation: { reconciled: boolean; reason: string } };
+    };
+
+    expect(payload.data.reconciliation.reconciled).toBe(false);
+    expect(payload.data.reconciliation.reason).toBe('no_release_deployed');
+    expect(await statusOf(propertyId)).toBe('approved');
+  });
+
+  it('rechaza un identificador que no es un entero positivo', async () => {
+    const response = await handleReconcilePublication(
+      ctx(post('/api/admin/properties/abc/publication/reconcile', {}), { id: 'abc' }),
+    );
+
+    expect(response.status).toBe(422);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Estado del artefacto                                                       */
+/* -------------------------------------------------------------------------- */
+
+describe('la version que ejecuta el artefacto', () => {
+  it('esta detras de Access', async () => {
+    const response = await handleGetDeployedRelease(
+      ctx(get('/api/admin/publication/deployed'), {}, { bypass: false }),
+    );
+
+    expect(response.status).toBe(403);
+  });
+
+  it('en un build normal no afirma ninguna release', async () => {
+    const response = await handleGetDeployedRelease(
+      ctx(get('/api/admin/publication/deployed'), {}, { deployed: null }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(((await response.json()) as { data: { deployed: null } }).data.deployed).toBeNull();
+  });
+
+  it('describe la release sin enumerar los archivos', async () => {
+    const response = await handleGetDeployedRelease(
+      ctx(
+        get('/api/admin/publication/deployed'),
+        {},
+        {
+          deployed: {
+            releaseId: 'publish-p1-r3',
+            requestId: 3,
+            generatedAt: '2026-01-01T00:00:00.000Z',
+            mediaIds: [4, 5, 6],
+          },
+        },
+      ),
+    );
+
+    const payload = (await response.json()) as {
+      data: { deployed: Record<string, unknown> };
+    };
+
+    expect(payload.data.deployed).toEqual({
+      releaseId: 'publish-p1-r3',
+      requestId: 3,
+      generatedAt: '2026-01-01T00:00:00.000Z',
+      mediaCount: 3,
+    });
+
+    expect(response.headers.get('cache-control')).toBe('no-store');
+    expect(JSON.stringify(payload)).not.toContain('mediaIds');
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Abandono                                                                   */
+/* -------------------------------------------------------------------------- */
+
+describe('abandonar la operacion viva', () => {
+  it('exige acceso administrativo', async () => {
+    const propertyId = await approvedProperty();
+    await askToPublish(propertyId);
+
+    const response = await handleAbandonPublication(
+      ctx(
+        post(`/api/admin/properties/${propertyId}/publication/abandon`, {}),
+        { id: String(propertyId) },
+        { bypass: false },
+      ),
+    );
+
+    expect(response.status).toBe(403);
+
+    const rows = await db.select().from(publicationRequests);
+    expect(rows[0]?.status).toBe('building');
+  });
+
+  it('rechaza una llamada de otro origen', async () => {
+    const propertyId = await approvedProperty();
+    await askToPublish(propertyId);
+
+    const request = new Request(`${BASE}/api/admin/properties/${propertyId}/publication/abandon`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: 'https://otro.example' },
+      body: '{}',
+    });
+
+    const response = await handleAbandonPublication(ctx(request, { id: String(propertyId) }));
+
+    expect(response.status).toBe(403);
+
+    const rows = await db.select().from(publicationRequests);
+    expect(rows[0]?.status).toBe('building');
+  });
+
+  it('cierra la operacion y devuelve el estado, sin publicar nada', async () => {
+    const propertyId = await approvedProperty();
+    await askToPublish(propertyId);
+
+    const response = await handleAbandonPublication(
+      ctx(
+        post(`/api/admin/properties/${propertyId}/publication/abandon`, {
+          reason: 'se perdió el aviso',
+        }),
+        { id: String(propertyId) },
+        { deployed: null },
+      ),
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('cache-control')).toBe('no-store');
+
+    const payload = (await response.json()) as {
+      data: {
+        abandoned: { status: string; errorSummary: string };
+        publication: { publicationStatus: string; canPublish: boolean; current: unknown };
+      };
+    };
+
+    expect(payload.data.abandoned.status).toBe('abandoned');
+    expect(payload.data.abandoned.errorSummary).toBe('se perdió el aviso');
+    expect(payload.data.publication.publicationStatus).toBe('approved');
+    expect(payload.data.publication.current).toBeNull();
+    // Y la propiedad vuelve a admitir una operacion.
+    expect(payload.data.publication.canPublish).toBe(true);
+
+    expect(await statusOf(propertyId)).toBe('approved');
+  });
+
+  it('sin cuerpo tambien vale: el motivo es opcional', async () => {
+    const propertyId = await approvedProperty();
+    await askToPublish(propertyId);
+
+    const response = await handleAbandonPublication(
+      ctx(
+        new Request(`${BASE}/api/admin/properties/${propertyId}/publication/abandon`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+        }),
+        { id: String(propertyId) },
+      ),
+    );
+
+    expect(response.status).toBe(200);
+  });
+
+  it('rechaza un cuerpo con campos de mas', async () => {
+    const propertyId = await approvedProperty();
+    await askToPublish(propertyId);
+
+    const response = await handleAbandonPublication(
+      ctx(
+        post(`/api/admin/properties/${propertyId}/publication/abandon`, {
+          reason: 'da igual',
+          publicationStatus: 'published',
+        }),
+        { id: String(propertyId) },
+      ),
+    );
+
+    expect(response.status).toBe(422);
+    expect(await statusOf(propertyId)).toBe('approved');
+
+    const rows = await db.select().from(publicationRequests);
+    expect(rows[0]?.status).toBe('building');
+  });
+
+  it('con el artefacto que la confirma responde 409 y manda reconciliar', async () => {
+    const propertyId = await approvedProperty();
+    await askToPublish(propertyId);
+    const requestId = await activeRequestId(propertyId);
+
+    const response = await handleAbandonPublication(
+      ctx(
+        post(`/api/admin/properties/${propertyId}/publication/abandon`, {}),
+        { id: String(propertyId) },
+        { deployed: artifactOf(requestId, propertyId) },
+      ),
+    );
+
+    expect(response.status).toBe(409);
+
+    const payload = await body(response);
+    expect((payload.error as { code: string }).code).toBe('publication_must_reconcile');
+
+    const rows = await db.select().from(publicationRequests);
+    expect(rows[0]?.status).toBe('building');
+  });
+
+  it('con otro artefacto si se puede', async () => {
+    const propertyId = await approvedProperty();
+    await askToPublish(propertyId);
+    const requestId = await activeRequestId(propertyId);
+
+    const response = await handleAbandonPublication(
+      ctx(
+        post(`/api/admin/properties/${propertyId}/publication/abandon`, {}),
+        { id: String(propertyId) },
+        { deployed: artifactOf(requestId + 3, propertyId) },
+      ),
+    );
+
+    expect(response.status).toBe(200);
+  });
+
+  it('sin operacion viva responde 404', async () => {
+    const propertyId = await approvedProperty();
+
+    const response = await handleAbandonPublication(
+      ctx(post(`/api/admin/properties/${propertyId}/publication/abandon`, {}), {
+        id: String(propertyId),
+      }),
+    );
+
+    expect(response.status).toBe(404);
+  });
+
+  it('el callback que llega despues sigue siendo invalido', async () => {
+    const propertyId = await approvedProperty();
+    const token = await askToPublish(propertyId);
+
+    await handleAbandonPublication(
+      ctx(post(`/api/admin/properties/${propertyId}/publication/abandon`, {}), {
+        id: String(propertyId),
+      }),
+    );
+
+    const late = await handlePublicationCallback({
+      request: callback(token, { ok: true }),
+      db,
+    });
+
+    expect(late.status).toBe(404);
+    expect(await statusOf(propertyId)).toBe('approved');
+
+    const rows = await db.select().from(publicationRequests);
+    expect(rows[0]?.status).toBe('abandoned');
+  });
+
+  it('rechaza un identificador que no es un entero positivo', async () => {
+    const response = await handleAbandonPublication(
+      ctx(post('/api/admin/properties/abc/publication/abandon', {}), { id: 'abc' }),
+    );
+
+    expect(response.status).toBe(422);
   });
 });

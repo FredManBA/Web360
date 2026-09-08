@@ -82,13 +82,32 @@ export type PublicationAction = (typeof PUBLICATION_ACTIONS)[number];
  * Vida de una peticion de publicacion.
  *
  * `pending` es "anotada, todavia sin lanzar"; `building` es "el ejecutor la
- * acepto y esta trabajando"; `done` y `failed` son finales. NO son estados
- * editoriales de la propiedad: son el estado de la OPERACION.
+ * acepto y esta trabajando". NO son estados editoriales de la propiedad: son
+ * el estado de la OPERACION.
+ *
+ * Los tres desenlaces finales dicen cosas distintas, y no son intercambiables:
+ *
+ * - `done`: la operacion salio bien y la propiedad cambio de estado;
+ * - `failed`: algo salio mal y consta como tal;
+ * - `abandoned`: una persona decidio dejarla, y NO se afirma nada sobre si el
+ *   build o el despliegue llegaron a ocurrir. Es lo unico honesto cuando no
+ *   hay forma de saberlo, y por eso no se mete en `failed`.
  */
-export const PUBLICATION_REQUEST_STATUSES = ['pending', 'building', 'done', 'failed'] as const;
+export const PUBLICATION_REQUEST_STATUSES = [
+  'pending',
+  'building',
+  'done',
+  'failed',
+  'abandoned',
+] as const;
 export type PublicationRequestStatus = (typeof PUBLICATION_REQUEST_STATUSES)[number];
 
-/** Una peticion sigue viva —y bloquea otra— mientras no termine. */
+/**
+ * Una peticion sigue viva —y bloquea otra— mientras no termine.
+ *
+ * `abandoned` es terminal: deja de bloquear en cuanto se decide, igual que
+ * `done` y `failed`.
+ */
 export const ACTIVE_PUBLICATION_REQUEST_STATUSES: readonly PublicationRequestStatus[] = [
   'pending',
   'building',

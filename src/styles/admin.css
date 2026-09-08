@@ -1743,6 +1743,7 @@
   align-items: flex-start;
 }
 
+#admin-publication > .publication-notice,
 #admin-publication > .publication-current,
 #admin-publication > .publication-issues,
 #admin-publication > .publication-confirm,
@@ -1782,6 +1783,11 @@
 .publication-current[data-status='failed'] {
   background: #fbeae7;
   color: #8c3b2c;
+}
+
+.publication-current[data-status='abandoned'] {
+  background: #eceeed;
+  color: #55655c;
 }
 
 .publication-issues {
@@ -1872,6 +1878,12 @@
   color: #8c3b2c;
 }
 
+/* Abandonada no es fallida: gris de "aqui no se sabe", no rojo de error. */
+.publication-chip-abandoned {
+  background: #eceeed;
+  color: #55655c;
+}
+
 .publication-history h3 {
   margin: 0 0 0.4rem;
   color: #55655c;
@@ -1897,4 +1909,57 @@
 .publication-history-error {
   margin: 0.2rem 0 0;
   font-size: 0.9rem;
+}
+
+/*
+ * El resultado de comprobar si una operacion ya esta desplegada. `warn` no es
+ * un error: es "todavia no", que es distinto de "ha fallado".
+ */
+.publication-notice {
+  margin: 0;
+  /* La franja lo separa del estado de la operacion, que va justo encima. */
+  padding: 0.5rem 0.7rem 0.5rem 0.9rem;
+  border-left: 3px solid currentcolor;
+  border-radius: var(--admin-radius-sm);
+  font-size: 0.95rem;
+}
+
+.publication-notice[data-kind='ok'] {
+  background: #e8eeea;
+  color: #1f4034;
+}
+
+.publication-notice[data-kind='warn'] {
+  background: #f6efe1;
+  color: #9a7b46;
+}
+
+.publication-deployed {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+/* El motivo del abandono: opcional, y una linea. */
+.publication-reason {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  color: #55655c;
+  font-size: 0.85rem;
+}
+
+.publication-reason input {
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--admin-border-strong);
+  border-radius: var(--admin-radius-sm);
+  color: var(--admin-ink, inherit);
+  font: inherit;
+}
+
+/*
+ * Abandonar no es destructivo —no publica ni retira—, asi que no se pinta de
+ * rojo; solo se separa de las acciones normales.
+ */
+.publication-abandon {
+  margin-left: auto;
 }

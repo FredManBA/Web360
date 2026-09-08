@@ -30,7 +30,6 @@ import {
   releaseIdFor,
   releaseMediaIds,
 } from './release';
-import { deployedReleaseManifest } from './deployed-release';
 
 let db: AdminBatchDatabase;
 let sqlite: DatabaseSync;
@@ -270,10 +269,6 @@ describe('la autorizacion de archivos con manifiesto', () => {
     expect(releaseAllowsMedia(null, mediaId)).toBe(true);
   });
 
-  it('hoy no hay ninguna version desplegada que acotar', () => {
-    expect(deployedReleaseManifest()).toBeNull();
-  });
-
   it('con manifiesto, lo que no esta en la version no se sirve', async () => {
     const propertyId = await property('lote-publicado', 'published');
     const mediaId = await mediaIdOf(propertyId);
@@ -282,7 +277,12 @@ describe('la autorizacion de archivos con manifiesto', () => {
       mediaId,
       db,
       bucket,
-      release: { releaseId: 'r1', generatedAt: '2026-01-01T00:00:00.000Z', mediaIds: [] },
+      release: {
+        releaseId: 'r1',
+        requestId: 1,
+        generatedAt: '2026-01-01T00:00:00.000Z',
+        mediaIds: [],
+      },
     });
 
     // 404 sobrio, igual que un archivo inexistente.
@@ -300,6 +300,7 @@ describe('la autorizacion de archivos con manifiesto', () => {
       // Aunque la version lo listara, la base sigue diciendo que no es publico.
       release: {
         releaseId: 'r1',
+        requestId: 1,
         generatedAt: '2026-01-01T00:00:00.000Z',
         mediaIds: [mediaId],
       },
@@ -318,6 +319,7 @@ describe('la autorizacion de archivos con manifiesto', () => {
       bucket,
       release: {
         releaseId: 'r1',
+        requestId: 1,
         generatedAt: '2026-01-01T00:00:00.000Z',
         mediaIds: [mediaId],
       },

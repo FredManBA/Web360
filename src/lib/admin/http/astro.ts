@@ -12,6 +12,7 @@ import { env } from 'cloudflare:workers';
 import type { APIContext } from 'astro';
 
 import { getDb } from '../../../db/client';
+import { deployedReleaseManifest } from '../../publication/deployed-release';
 import type { AdminAuthEnv } from '../auth/authorize';
 import type { AdminHttpContext } from './handlers';
 
@@ -54,5 +55,12 @@ export function toAdminContext(context: APIContext): AdminHttpContext {
      */
     bucket: env.MEDIA,
     env: readAdminAuthEnv(),
+
+    /*
+     * La version que este artefacto lleva dentro. Se lee aqui, que es el
+     * unico sitio que ya conoce el entorno de ejecucion, y viaja como un dato
+     * mas del contexto.
+     */
+    deployedRelease: deployedReleaseManifest(),
   };
 }

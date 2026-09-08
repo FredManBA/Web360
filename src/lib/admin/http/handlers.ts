@@ -29,6 +29,7 @@ import {
   createCustomPropertyType,
   listActivePropertyTypes,
 } from '../property-types/property-types';
+import type { ReleaseManifest } from '../../publication/release';
 import type { PublishTrigger } from '../../publication/trigger';
 import type { MediaBucket } from '../media/bucket';
 import type { AdminBatchDatabase } from '../types';
@@ -69,6 +70,16 @@ export interface AdminHttpContext {
    * poder comprobar tambien el camino en que el ejecutor rechaza el trabajo.
    */
   publishTrigger?: PublishTrigger;
+
+  /**
+   * Manifiesto de la version que ejecuta este artefacto.
+   *
+   * Lo pone el puente de Astro leyendo el modulo que el build embebio; los
+   * handlers no lo van a buscar por su cuenta para que sigan probandose sin
+   * pasar por el empaquetado. `null` o ausente = esta version no salio de una
+   * operacion de publicacion.
+   */
+  deployedRelease?: ReleaseManifest | null;
 }
 
 /**

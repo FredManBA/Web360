@@ -34,3 +34,20 @@ declare module 'virtual:public-snapshot' {
   const snapshot: PublicSnapshot;
   export default snapshot;
 }
+
+/**
+ * Modulo virtual con el manifiesto de la release desplegada.
+ *
+ * Lo genera el mismo plugin y de la misma lectura que el snapshot, para que
+ * el HTML prerenderizado y la lista de archivos que el Worker acepta servir
+ * pertenezcan a la misma version.
+ *
+ * Es `null` en cualquier build que no sea una version candidata de una
+ * operacion de publicacion.
+ */
+declare module 'virtual:release-manifest' {
+  import type { ReleaseManifest } from './lib/publication/release';
+
+  const manifest: ReleaseManifest | null;
+  export default manifest;
+}

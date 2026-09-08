@@ -54,6 +54,7 @@ import {
   hashSecretToken,
   looksLikeSecretToken,
 } from '../security/secret-token';
+import type { ReleaseManifest } from './release';
 import type { ManualInstructions, PublishTrigger } from './trigger';
 
 /* -------------------------------------------------------------------------- */
@@ -86,6 +87,14 @@ export interface PublicationStateView {
   /** Si hoy se podria pedir cada operacion. */
   canPublish: boolean;
   canUnpublish: boolean;
+  /**
+   * Si tiene sentido ofrecer abandonar la operacion viva.
+   *
+   * Falso cuando no hay ninguna, y tambien cuando el artefacto desplegado es
+   * justo el de esa operacion: entonces la respuesta no es abandonar, es
+   * reconciliar.
+   */
+  canAbandon: boolean;
   /**
    * Que le falta a la ficha para poder publicarse.
    *
@@ -226,9 +235,18 @@ async function activeRequestOf(
   return rows[0];
 }
 
+/**
+ * El estado que ve el panel.
+ *
+ * Recibe el manifiesto del artefacto que atiende la peticion porque una de las
+ * respuestas depende de el: si esta misma operacion ya esta desplegada, lo que
+ * toca es reconciliar y NO se ofrece abandonarla. Esa regla vive aqui y no en
+ * la pantalla, para que el panel no tenga que comparar releases por su cuenta.
+ */
 export async function getPublicationState(
   db: AdminDatabase,
   propertyId: number,
+  deployed: ReleaseManifest | null = null,
 ): Promise<AdminResult<PublicationStateView>> {
   const property = await loadForPublication(db, propertyId);
   if (property === null) {
@@ -254,6 +272,11 @@ export async function getPublicationState(
     // Con una operacion viva no se puede pedir otra, sea cual sea el estado.
     canPublish: status === 'approved' && current === null && check?.valid === true,
     canUnpublish: status === 'published' && current === null,
+    /*
+     * Abandonar solo tiene sentido mientras no haya forma de saber que paso.
+     * Si el artefacto desplegado ES el de esta operacion, si la hay.
+     */
+    canAbandon: current !== null && !(deployed !== null && deployed.requestId === current.id),
     issues: check === null ? [] : check.issues,
     current,
     history,
@@ -425,18 +448,54 @@ export async function requestPublication(
   return ok({ request: requestView(row), manual: result.manual ?? null });
 }
 
-/** Cierra una peticion como fallida. */
-async function markFailed(
+/* -------------------------------------------------------------------------- */
+/* Finales                                                                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Como termina una peticion. Tres desenlaces, y significan cosas distintas.
+ *
+ * - `succeeded`: el cambio esta en la web y la propiedad se mueve;
+ * - `failed`: consta que algo salio mal;
+ * - `abandoned`: una persona decidio dejarlo. NO se afirma que el build o el
+ *   despliegue fallaran; se afirma que nadie va a seguir esperando.
+ *
+ * Meter el abandono en `failed` seria escribir en la base algo que nadie sabe.
+ */
+export type PublicationEnding =
+  | { kind: 'succeeded' }
+  | { kind: 'failed'; reason: string }
+  | { kind: 'abandoned'; reason: string };
+
+/** El estado con el que queda una peticion segun como termine. */
+const STATUS_BY_ENDING = {
+  succeeded: 'done',
+  failed: 'failed',
+  abandoned: 'abandoned',
+} as const satisfies Record<PublicationEnding['kind'], PublicationRequestStatus>;
+
+/**
+ * El unico sitio que escribe un estado terminal.
+ *
+ * Todo lo que termina una peticion pasa por aqui: el callback, la
+ * reconciliacion, el fallo del ejecutor y el abandono. Tener una sola puerta
+ * es lo que impide que aparezcan dos maneras distintas de cerrar lo mismo, y
+ * lo que hace que "ya no esta viva" signifique siempre lo mismo.
+ *
+ * No toca la propiedad. Mover el estado editorial es decision de quien llama,
+ * y solo un exito lo hace.
+ */
+async function finishRequest(
   db: AdminDatabase,
   requestId: number,
-  reason: string,
+  ending: PublicationEnding,
   now: Date,
 ): Promise<PublicationRequestView | null> {
   const updated = await db
     .update(publicationRequests)
     .set({
-      status: 'failed',
-      errorSummary: summarizeError(reason),
+      status: STATUS_BY_ENDING[ending.kind],
+      errorSummary: ending.kind === 'succeeded' ? null : summarizeError(ending.reason),
       finishedAt: now,
       updatedAt: now,
     })
@@ -446,6 +505,16 @@ async function markFailed(
   const row = updated[0];
 
   return row === undefined ? null : requestView(row);
+}
+
+/** Cierra una peticion como fallida. */
+async function markFailed(
+  db: AdminDatabase,
+  requestId: number,
+  reason: string,
+  now: Date,
+): Promise<PublicationRequestView | null> {
+  return finishRequest(db, requestId, { kind: 'failed', reason }, now);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -494,6 +563,27 @@ export async function finalizePublication(
   // Ya cerrada: el token murio con ella y no se vuelve a aplicar nada.
   if (!ACTIVE_PUBLICATION_REQUEST_STATUSES.includes(request.status)) return invalid;
 
+  return applyOutcome(db, request, outcome, now);
+}
+
+/**
+ * Cierra una peticion VIVA con un resultado.
+ *
+ * Es el unico sitio donde una peticion deja de estar viva y donde se aplica la
+ * transicion editorial. Da igual como se haya llegado —con el token del
+ * callback o reconciliando contra el artefacto desplegado—: las dos puertas
+ * pasan por aqui, asi que no puede haber dos maneras distintas de terminar
+ * una publicacion.
+ *
+ * Quien llama es responsable de haber comprobado que la peticion sigue viva.
+ * Esa comprobacion es lo que impide transicionar dos veces.
+ */
+async function applyOutcome(
+  db: AdminDatabase,
+  request: typeof publicationRequests.$inferSelect,
+  outcome: PublicationOutcome,
+  now: Date,
+): Promise<AdminResult<FinalizationResult>> {
   if (!outcome.ok) {
     const failed = await markFailed(
       db,
@@ -543,16 +633,221 @@ export async function finalizePublication(
     });
   }
 
-  const updated = await db
-    .update(publicationRequests)
-    .set({ status: 'done', errorSummary: null, finishedAt: now, updatedAt: now })
-    .where(eq(publicationRequests.id, request.id))
-    .returning();
-
-  const row = updated[0];
-  if (row === undefined) {
+  const row = await finishRequest(db, request.id, { kind: 'succeeded' }, now);
+  if (row === null) {
     return fail({ code: 'publication_failed', message: 'No se pudo cerrar la peticion.' });
   }
 
-  return ok({ request: requestView(row), publicationStatus: moved.data.publicationStatus });
+  return ok({ request: row, publicationStatus: moved.data.publicationStatus });
+}
+
+/* -------------------------------------------------------------------------- */
+/* Reconciliacion                                                             */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Por que una reconciliacion hizo o no hizo algo.
+ *
+ * - `applied`: el artefacto que responde lleva dentro esa release, luego el
+ *   despliegue ocurrio y la operacion se cierra como exito;
+ * - `nothing_to_reconcile`: no hay ninguna operacion viva. Es lo que devuelve
+ *   una segunda llamada, y por eso repetir es inofensivo;
+ * - `release_mismatch`: hay una operacion viva, pero el artefacto desplegado
+ *   es otro;
+ * - `no_release_deployed`: hay una operacion viva y el artefacto no afirma
+ *   pertenecer a ninguna.
+ */
+export type ReconciliationReason =
+  'applied' | 'nothing_to_reconcile' | 'release_mismatch' | 'no_release_deployed';
+
+export interface ReconciliationResult {
+  reconciled: boolean;
+  reason: ReconciliationReason;
+  publicationStatus: PublicationStatus;
+  /** La operacion mirada, tal como queda despues. */
+  request: PublicationRequestView | null;
+  /** La release que dice llevar el artefacto que responde. */
+  deployedReleaseId: string | null;
+}
+
+/**
+ * Recupera una operacion cuyo callback se perdio.
+ *
+ * El caso real es este: el build se hizo, el sitio se desplego y la
+ * confirmacion no llego —se cayo la red, el proceso murio al final—. La
+ * peticion se queda viva para siempre, la propiedad bloqueada, y el token en
+ * claro ya no existe en ninguna parte.
+ *
+ * La unica prueba admisible de que el despliegue ocurrio es el ARTEFACTO que
+ * esta respondiendo: lleva dentro el manifiesto de la version que se genero,
+ * con el numero de la peticion que la origino. Si coincide, no hay nada que
+ * suponer —la web ya muestra el resultado— y la operacion se cierra como
+ * exito por la misma via que un callback normal.
+ *
+ * Si NO coincide, no se toca nada. Y no se toca a proposito: que el artefacto
+ * sea otro no demuestra que el despliegue fallara, solo que este no es.
+ * Darlo por fallido dejaria la base afirmando lo contrario de lo que la web
+ * muestra, que es justo la incoherencia que todo este flujo existe para
+ * evitar. Por la misma razon no hay ninguna caducidad por tiempo: llevar
+ * mucho rato viva no dice nada sobre lo que ocurrio.
+ */
+/* -------------------------------------------------------------------------- */
+/* Abandono                                                                   */
+/* -------------------------------------------------------------------------- */
+
+/** Lo que queda escrito cuando nadie da un motivo. */
+export const DEFAULT_ABANDON_REASON = 'Abandonada a mano, sin confirmacion del despliegue.';
+
+/** Un motivo es una frase, no un informe. */
+export const MAX_ABANDON_REASON = 200;
+
+export interface AbandonResult {
+  request: PublicationRequestView;
+  publicationStatus: PublicationStatus;
+}
+
+/**
+ * Abandona una operacion viva.
+ *
+ * Existe para el unico caso que la reconciliacion no puede resolver: la
+ * operacion lleva ahi, el artefacto desplegado no la confirma, y nadie va a
+ * poder averiguar nunca si el despliegue ocurrio. Alguien tiene que decidir, y
+ * esta funcion es esa decision hecha explicita.
+ *
+ * Lo que hace, y solo esto: cierra la peticion como `abandoned`, guarda el
+ * motivo y libera la propiedad para otra operacion. Lo que NO hace, y es lo
+ * importante:
+ *
+ * - no toca `publicationStatus` ni `published_at`. Abandonar no publica ni
+ *   despublica: la web se queda exactamente como este;
+ * - no lo cuenta como fallo. `failed` significa "consta que salio mal", y aqui
+ *   nadie lo sabe;
+ * - no simula un callback. Nadie ha confirmado nada.
+ *
+ * El token de la peticion queda inservible por el mismo camino que el de una
+ * peticion ya cerrada: la finalizacion solo acepta operaciones vivas.
+ *
+ * Y una puerta antes de todo eso: si el artefacto que responde SI lleva dentro
+ * esta release, abandonar seria tirar informacion que si existe. En ese caso
+ * se rechaza y se manda reconciliar, que es la respuesta correcta.
+ */
+export async function abandonPublication(
+  db: AdminDatabase,
+  propertyId: number,
+  deployed: ReleaseManifest | null,
+  reason: string | null = null,
+  now: Date = new Date(),
+): Promise<AdminResult<AbandonResult>> {
+  const found = await db
+    .select({ publicationStatus: properties.publicationStatus })
+    .from(properties)
+    .where(eq(properties.id, propertyId))
+    .limit(1);
+
+  const property = found[0];
+  if (property === undefined) {
+    return fail({ code: 'not_found', message: 'La propiedad no existe.', field: 'propertyId' });
+  }
+
+  const active = await activeRequestOf(db, propertyId);
+  if (active === undefined) {
+    return fail({
+      code: 'publication_request_not_found',
+      message: 'Esta propiedad no tiene ninguna operacion de publicacion en curso.',
+      field: 'propertyId',
+    });
+  }
+
+  /*
+   * Si el artefacto desplegado ES el de esta operacion, no hay nada que
+   * decidir: la prueba existe y lo que toca es reconciliar. Abandonarla
+   * dejaria la base diciendo "no sabemos" sobre algo que si se sabe.
+   */
+  if (deployed !== null && deployed.requestId === active.id) {
+    return fail({
+      code: 'publication_must_reconcile',
+      message: 'Esta operacion ya esta desplegada: reconciliala en vez de abandonarla.',
+    });
+  }
+
+  const clean = reason?.trim();
+
+  const abandoned = await finishRequest(
+    db,
+    active.id,
+    {
+      kind: 'abandoned',
+      reason: clean === undefined || clean.length === 0 ? DEFAULT_ABANDON_REASON : clean,
+    },
+    now,
+  );
+
+  if (abandoned === null) {
+    return fail({ code: 'publication_failed', message: 'No se pudo cerrar la peticion.' });
+  }
+
+  // La propiedad no se ha movido, y se devuelve tal cual estaba.
+  return ok({ request: abandoned, publicationStatus: property.publicationStatus });
+}
+
+export async function reconcilePublication(
+  db: AdminDatabase,
+  propertyId: number,
+  deployed: ReleaseManifest | null,
+  now: Date = new Date(),
+): Promise<AdminResult<ReconciliationResult>> {
+  const found = await db
+    .select({ publicationStatus: properties.publicationStatus })
+    .from(properties)
+    .where(eq(properties.id, propertyId))
+    .limit(1);
+
+  const property = found[0];
+  if (property === undefined) {
+    return fail({ code: 'not_found', message: 'La propiedad no existe.', field: 'propertyId' });
+  }
+
+  const active = await activeRequestOf(db, propertyId);
+  const deployedReleaseId = deployed?.releaseId ?? null;
+
+  if (active === undefined) {
+    return ok({
+      reconciled: false,
+      reason: 'nothing_to_reconcile',
+      publicationStatus: property.publicationStatus,
+      request: null,
+      deployedReleaseId,
+    });
+  }
+
+  if (deployed === null) {
+    return ok({
+      reconciled: false,
+      reason: 'no_release_deployed',
+      publicationStatus: property.publicationStatus,
+      request: requestView(active),
+      deployedReleaseId,
+    });
+  }
+
+  if (deployed.requestId !== active.id) {
+    return ok({
+      reconciled: false,
+      reason: 'release_mismatch',
+      publicationStatus: property.publicationStatus,
+      request: requestView(active),
+      deployedReleaseId,
+    });
+  }
+
+  const finalized = await applyOutcome(db, active, { ok: true }, now);
+  if (!finalized.ok) return finalized;
+
+  return ok({
+    reconciled: true,
+    reason: 'applied',
+    publicationStatus: finalized.data.publicationStatus,
+    request: finalized.data.request,
+    deployedReleaseId,
+  });
 }

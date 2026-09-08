@@ -2,23 +2,26 @@
  * El manifiesto de la version que esta desplegada AHORA.
  *
  * Es el unico punto donde el Worker en ejecucion averigua a que release
- * pertenece. Existe separado a proposito: el resto del codigo trabaja con un
- * `ReleaseManifest | null` y no necesita saber de donde sale.
+ * pertenece, y lo sabe porque el manifiesto viaja DENTRO de su propio
+ * artefacto: lo inyecta el plugin del build, de la misma lectura de la que
+ * salio el HTML que se prerenderizo. No se consulta a nadie, no hay red y no
+ * hay estado que pueda haber cambiado por debajo. El artefacto habla de si
+ * mismo.
  *
- * Hoy devuelve `null`, que significa "no hay release que acotar" y deja la
- * autorizacion de archivos exactamente como estaba: la decide la base. Es la
- * conducta correcta en desarrollo y en cualquier build que no venga del flujo
- * de publicacion.
+ * De ahi su otro uso: cuando el callback de una publicacion se pierde, esto
+ * es la prueba de que el despliegue ocurrio. Si el artefacto que responde dice
+ * llevar dentro la release de esa peticion, es que llego a desplegarse.
  *
- * Lo que falta para que devuelva algo NO es codigo de este modulo, sino el
- * build que lo produce: el manifiesto tiene que viajar dentro del mismo
- * artefacto que el HTML —igual que `virtual:public-snapshot` viaja hoy—, y
- * eso lo monta la fase de CI. Cuando exista, esta funcion leera ese modulo y
- * nada mas cambiara de sitio.
+ * `null` significa "esta version no afirma pertenecer a ninguna operacion de
+ * publicacion", que es lo que devuelve cualquier build normal. En ese caso la
+ * autorizacion de archivos la decide la base, igual que antes de que este
+ * modulo existiera.
  */
+
+import manifest from 'virtual:release-manifest';
 
 import type { ReleaseManifest } from './release';
 
 export function deployedReleaseManifest(): ReleaseManifest | null {
-  return null;
+  return manifest;
 }

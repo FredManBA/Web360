@@ -32,8 +32,11 @@ import { applySeed, createTestDatabase } from '../admin/test-database';
 import { isUniqueViolation, type AdminBatchDatabase } from '../admin/types';
 import { hashSecretToken } from '../security/secret-token';
 import {
+  abandonPublication,
+  DEFAULT_ABANDON_REASON,
   finalizePublication,
   getPublicationState,
+  reconcilePublication,
   requestPublication,
   summarizeError,
 } from './publication';
@@ -617,5 +620,481 @@ describe('el resumen de un fallo', () => {
   it('normaliza espacios y recorta', () => {
     expect(summarizeError('  algo   fallo \n aqui ')).toBe('algo fallo aqui');
     expect(summarizeError('x'.repeat(500))).toHaveLength(200);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Reconciliacion                                                             */
+/* -------------------------------------------------------------------------- */
+
+/** El manifiesto que llevaria dentro el artefacto de una peticion. */
+function artifactOf(requestId: number, propertyId: number, action: 'publish' | 'unpublish') {
+  return {
+    releaseId: `${action}-p${propertyId}-r${requestId}`,
+    requestId,
+    generatedAt: '2026-01-01T00:00:00.000Z',
+    mediaIds: [],
+  };
+}
+
+describe('reconciliar una operacion cuyo callback se perdio', () => {
+  it('el artefacto desplegado demuestra que ocurrio, y la cierra', async () => {
+    const propertyId = await approvedProperty();
+    const asked = await requestPublication(db, { propertyId, action: 'publish', trigger });
+    if (!asked.ok) throw new Error('setup');
+
+    const requestId = asked.data.request.id;
+
+    // El callback nunca llego: la propiedad sigue aprobada.
+    expect(await statusOf(propertyId)).toBe('approved');
+
+    const result = await reconcilePublication(
+      db,
+      propertyId,
+      artifactOf(requestId, propertyId, 'publish'),
+    );
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.reconciled).toBe(true);
+      expect(result.data.reason).toBe('applied');
+      expect(result.data.publicationStatus).toBe('published');
+      expect(result.data.request?.status).toBe('done');
+    }
+
+    expect(await statusOf(propertyId)).toBe('published');
+    expect(await publishedAtOf(propertyId)).not.toBeNull();
+  });
+
+  it('tambien cierra una retirada', async () => {
+    const propertyId = await approvedProperty();
+    await publish(propertyId);
+
+    const asked = await requestPublication(db, { propertyId, action: 'unpublish', trigger });
+    if (!asked.ok) throw new Error('setup');
+
+    const result = await reconcilePublication(
+      db,
+      propertyId,
+      artifactOf(asked.data.request.id, propertyId, 'unpublish'),
+    );
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.data.publicationStatus).toBe('approved');
+    expect(await statusOf(propertyId)).toBe('approved');
+  });
+
+  it('un artefacto de otra release NO da la operacion por fallida', async () => {
+    const propertyId = await approvedProperty();
+    const asked = await requestPublication(db, { propertyId, action: 'publish', trigger });
+    if (!asked.ok) throw new Error('setup');
+
+    const result = await reconcilePublication(
+      db,
+      propertyId,
+      artifactOf(asked.data.request.id + 100, propertyId, 'publish'),
+    );
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.reconciled).toBe(false);
+      expect(result.data.reason).toBe('release_mismatch');
+    }
+
+    // Nada se mueve: no se sabe si el despliegue ocurrio o no.
+    expect(await statusOf(propertyId)).toBe('approved');
+
+    const rows = await db.select().from(publicationRequests);
+    expect(rows[0]?.status).toBe('building');
+  });
+
+  it('un artefacto que no afirma ninguna release tampoco decide nada', async () => {
+    const propertyId = await approvedProperty();
+    await requestPublication(db, { propertyId, action: 'publish', trigger });
+
+    const result = await reconcilePublication(db, propertyId, null);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.reconciled).toBe(false);
+      expect(result.data.reason).toBe('no_release_deployed');
+    }
+
+    expect(await statusOf(propertyId)).toBe('approved');
+  });
+
+  it('repetirla es inofensivo', async () => {
+    const propertyId = await approvedProperty();
+    const asked = await requestPublication(db, { propertyId, action: 'publish', trigger });
+    if (!asked.ok) throw new Error('setup');
+
+    const artifact = artifactOf(asked.data.request.id, propertyId, 'publish');
+
+    await reconcilePublication(db, propertyId, artifact);
+    const again = await reconcilePublication(db, propertyId, artifact);
+
+    expect(again.ok).toBe(true);
+    if (again.ok) {
+      expect(again.data.reconciled).toBe(false);
+      expect(again.data.reason).toBe('nothing_to_reconcile');
+    }
+
+    // Y no ha transicionado dos veces.
+    expect(await statusOf(propertyId)).toBe('published');
+    const rows = await db.select().from(publicationRequests);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.status).toBe('done');
+  });
+
+  it('el callback que llega tarde ya no cambia nada', async () => {
+    const propertyId = await approvedProperty();
+    const asked = await requestPublication(db, { propertyId, action: 'publish', trigger });
+    if (!asked.ok || asked.data.manual === null) throw new Error('setup');
+
+    const token = asked.data.manual.callbackToken;
+    await reconcilePublication(
+      db,
+      propertyId,
+      artifactOf(asked.data.request.id, propertyId, 'publish'),
+    );
+
+    // El proceso original despierta y confirma, o dice que fallo. Da igual.
+    const late = await finalizePublication(db, token, { ok: false, error: 'tarde' });
+
+    expect(late.ok).toBe(false);
+    if (!late.ok) expect(late.error.code).toBe('publication_link_invalid');
+
+    expect(await statusOf(propertyId)).toBe('published');
+    const rows = await db.select().from(publicationRequests);
+    expect(rows[0]?.status).toBe('done');
+    expect(rows[0]?.errorSummary).toBeNull();
+  });
+
+  it('el token de una operacion vieja no afecta a la actual', async () => {
+    const propertyId = await approvedProperty();
+
+    const first = await requestPublication(db, { propertyId, action: 'publish', trigger });
+    if (!first.ok || first.data.manual === null) throw new Error('setup');
+    const oldToken = first.data.manual.callbackToken;
+
+    // La primera se cierra por reconciliacion; se pide retirar despues.
+    await reconcilePublication(
+      db,
+      propertyId,
+      artifactOf(first.data.request.id, propertyId, 'publish'),
+    );
+    const second = await requestPublication(db, { propertyId, action: 'unpublish', trigger });
+    if (!second.ok) throw new Error('setup');
+
+    const stale = await finalizePublication(db, oldToken, { ok: true });
+
+    expect(stale.ok).toBe(false);
+    // La operacion nueva sigue viva y la propiedad sigue publicada.
+    expect(await statusOf(propertyId)).toBe('published');
+
+    const rows = await db
+      .select()
+      .from(publicationRequests)
+      .where(eq(publicationRequests.id, second.data.request.id));
+
+    expect(rows[0]?.status).toBe('building');
+  });
+
+  it('sin operacion viva no hay nada que reconciliar', async () => {
+    const propertyId = await approvedProperty();
+
+    const result = await reconcilePublication(db, propertyId, artifactOf(1, propertyId, 'publish'));
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.data.reason).toBe('nothing_to_reconcile');
+  });
+
+  it('la propiedad tiene que existir', async () => {
+    const result = await reconcilePublication(db, 99_999, null);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.code).toBe('not_found');
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Abandono                                                                   */
+/* -------------------------------------------------------------------------- */
+
+describe('abandonar una operacion viva', () => {
+  it('cierra una peticion recien anotada sin tocar la propiedad', async () => {
+    const propertyId = await approvedProperty();
+
+    /* Un ejecutor que acepta pero no llega a arrancar: la peticion se queda en
+     * `pending`, que es el otro estado vivo. */
+    const asked = await requestPublication(db, {
+      propertyId,
+      action: 'publish',
+      trigger: { name: 'lento', start: () => Promise.resolve({ ok: true }) },
+    });
+    if (!asked.ok) throw new Error('setup');
+
+    await db
+      .update(publicationRequests)
+      .set({ status: 'pending' })
+      .where(eq(publicationRequests.id, asked.data.request.id));
+
+    const result = await abandonPublication(db, propertyId, null, 'nadie sabe qué pasó');
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.request.status).toBe('abandoned');
+      expect(result.data.request.isActive).toBe(false);
+      expect(result.data.request.errorSummary).toBe('nadie sabe qué pasó');
+      expect(result.data.publicationStatus).toBe('approved');
+    }
+
+    expect(await statusOf(propertyId)).toBe('approved');
+  });
+
+  it('tambien cierra una que ya estaba en curso', async () => {
+    const propertyId = await approvedProperty();
+    await askToPublish(propertyId);
+
+    const result = await abandonPublication(db, propertyId, null);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.data.request.status).toBe('abandoned');
+
+    const rows = await db.select().from(publicationRequests);
+    expect(rows[0]?.status).toBe('abandoned');
+    expect(rows[0]?.finishedAt).not.toBeNull();
+  });
+
+  it('no toca el estado editorial ni la fecha de publicacion', async () => {
+    const propertyId = await approvedProperty();
+    await publish(propertyId);
+
+    const publishedAt = await publishedAtOf(propertyId);
+
+    await requestPublication(db, { propertyId, action: 'unpublish', trigger });
+    await abandonPublication(db, propertyId, null);
+
+    // Sigue publicada y con la misma fecha: abandonar no retira nada.
+    expect(await statusOf(propertyId)).toBe('published');
+    expect(await publishedAtOf(propertyId)).toEqual(publishedAt);
+  });
+
+  it('sin motivo deja escrito uno legible, y no lo llama fallo', async () => {
+    const propertyId = await approvedProperty();
+    await askToPublish(propertyId);
+
+    await abandonPublication(db, propertyId, null);
+
+    const rows = await db.select().from(publicationRequests);
+    expect(rows[0]?.status).toBe('abandoned');
+    expect(rows[0]?.errorSummary).toBe(DEFAULT_ABANDON_REASON);
+  });
+
+  it('libera la propiedad para una operacion nueva', async () => {
+    const propertyId = await approvedProperty();
+    await askToPublish(propertyId);
+
+    // Con la operacion viva no se puede pedir otra.
+    const blocked = await requestPublication(db, { propertyId, action: 'publish', trigger });
+    expect(blocked.ok).toBe(false);
+
+    await abandonPublication(db, propertyId, null);
+
+    const again = await requestPublication(db, { propertyId, action: 'publish', trigger });
+    expect(again.ok).toBe(true);
+
+    const rows = await db.select().from(publicationRequests);
+    expect(rows.map((row) => row.status).sort()).toEqual(['abandoned', 'building']);
+  });
+
+  it('el token de la abandonada ya no sirve', async () => {
+    const propertyId = await approvedProperty();
+    const token = await askToPublish(propertyId);
+
+    await abandonPublication(db, propertyId, null);
+
+    const late = await finalizePublication(db, token, { ok: true });
+
+    expect(late.ok).toBe(false);
+    if (!late.ok) expect(late.error.code).toBe('publication_link_invalid');
+
+    // Y desde luego no la convierte en un exito.
+    expect(await statusOf(propertyId)).toBe('approved');
+    const rows = await db.select().from(publicationRequests);
+    expect(rows[0]?.status).toBe('abandoned');
+  });
+
+  it('reconciliar despues no la resucita', async () => {
+    const propertyId = await approvedProperty();
+    const asked = await requestPublication(db, { propertyId, action: 'publish', trigger });
+    if (!asked.ok) throw new Error('setup');
+
+    await abandonPublication(db, propertyId, null);
+
+    // Aparece el artefacto de esa release, tarde.
+    const result = await reconcilePublication(
+      db,
+      propertyId,
+      artifactOf(asked.data.request.id, propertyId, 'publish'),
+    );
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.data.reason).toBe('nothing_to_reconcile');
+
+    expect(await statusOf(propertyId)).toBe('approved');
+    const rows = await db.select().from(publicationRequests);
+    expect(rows[0]?.status).toBe('abandoned');
+  });
+
+  it('repetirlo es inofensivo', async () => {
+    const propertyId = await approvedProperty();
+    await askToPublish(propertyId);
+
+    await abandonPublication(db, propertyId, null);
+    const again = await abandonPublication(db, propertyId, null);
+
+    expect(again.ok).toBe(false);
+    if (!again.ok) expect(again.error.code).toBe('publication_request_not_found');
+
+    const rows = await db.select().from(publicationRequests);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.status).toBe('abandoned');
+  });
+
+  it('NO se puede abandonar lo que el artefacto desplegado si confirma', async () => {
+    const propertyId = await approvedProperty();
+    const asked = await requestPublication(db, { propertyId, action: 'publish', trigger });
+    if (!asked.ok) throw new Error('setup');
+
+    const result = await abandonPublication(
+      db,
+      propertyId,
+      artifactOf(asked.data.request.id, propertyId, 'publish'),
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe('publication_must_reconcile');
+      expect(result.error.message).toMatch(/reconcil/i);
+    }
+
+    // Sigue viva, y reconciliarla sigue funcionando.
+    const rows = await db.select().from(publicationRequests);
+    expect(rows[0]?.status).toBe('building');
+  });
+
+  it('con un artefacto distinto si se puede', async () => {
+    const propertyId = await approvedProperty();
+    const asked = await requestPublication(db, { propertyId, action: 'publish', trigger });
+    if (!asked.ok) throw new Error('setup');
+
+    const result = await abandonPublication(
+      db,
+      propertyId,
+      artifactOf(asked.data.request.id + 7, propertyId, 'publish'),
+    );
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.data.request.status).toBe('abandoned');
+  });
+
+  it('sin operacion viva no hay nada que abandonar', async () => {
+    const propertyId = await approvedProperty();
+
+    const result = await abandonPublication(db, propertyId, null);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.code).toBe('publication_request_not_found');
+  });
+
+  it('la propiedad tiene que existir', async () => {
+    const result = await abandonPublication(db, 99_999, null);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.code).toBe('not_found');
+  });
+
+  it('el motivo se recorta como cualquier otro', async () => {
+    const propertyId = await approvedProperty();
+    await askToPublish(propertyId);
+
+    await abandonPublication(db, propertyId, null, 'x'.repeat(500));
+
+    const rows = await db.select().from(publicationRequests);
+    expect((rows[0]?.errorSummary ?? '').length).toBe(200);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Lo que ofrece el panel                                                     */
+/* -------------------------------------------------------------------------- */
+
+describe('lo que la migracion deja en la base', () => {
+  it('el CHECK admite abandoned y sigue rechazando cualquier otra cosa', async () => {
+    const propertyId = await approvedProperty();
+
+    const insert = (status: string, hash: string) =>
+      sqlite.exec(
+        `INSERT INTO publication_requests (property_id, action, status, callback_token_hash)
+         VALUES (${propertyId}, 'publish', '${status}', '${hash}')`,
+      );
+
+    expect(() => insert('abandoned', 'hash-abandonada')).not.toThrow();
+    expect(() => insert('cancelled', 'hash-inventada')).toThrow(/CHECK/i);
+  });
+
+  it('el indice parcial sigue contando vivas solo pending y building', async () => {
+    const propertyId = await approvedProperty();
+
+    const insert = (status: string, hash: string) =>
+      sqlite.exec(
+        `INSERT INTO publication_requests (property_id, action, status, callback_token_hash)
+         VALUES (${propertyId}, 'publish', '${status}', '${hash}')`,
+      );
+
+    // Los tres finales conviven sin estorbarse.
+    insert('done', 'hash-1');
+    insert('failed', 'hash-2');
+    insert('abandoned', 'hash-3');
+    expect(() => insert('pending', 'hash-4')).not.toThrow();
+
+    // Y una segunda viva sigue siendo imposible.
+    expect(() => insert('building', 'hash-5')).toThrow(/UNIQUE/i);
+  });
+});
+
+describe('cuando se ofrece abandonar', () => {
+  it('sin operacion viva, no', async () => {
+    const propertyId = await approvedProperty();
+    const state = await getPublicationState(db, propertyId, null);
+
+    expect(state.ok).toBe(true);
+    if (state.ok) expect(state.data.canAbandon).toBe(false);
+  });
+
+  it('con operacion viva y sin artefacto que la confirme, si', async () => {
+    const propertyId = await approvedProperty();
+    await askToPublish(propertyId);
+
+    const state = await getPublicationState(db, propertyId, null);
+
+    expect(state.ok).toBe(true);
+    if (state.ok) expect(state.data.canAbandon).toBe(true);
+  });
+
+  it('si el artefacto desplegado ES esa operacion, no: toca reconciliar', async () => {
+    const propertyId = await approvedProperty();
+    const asked = await requestPublication(db, { propertyId, action: 'publish', trigger });
+    if (!asked.ok) throw new Error('setup');
+
+    const state = await getPublicationState(
+      db,
+      propertyId,
+      artifactOf(asked.data.request.id, propertyId, 'publish'),
+    );
+
+    expect(state.ok).toBe(true);
+    if (state.ok) expect(state.data.canAbandon).toBe(false);
   });
 });
