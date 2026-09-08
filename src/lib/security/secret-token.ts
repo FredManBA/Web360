@@ -73,3 +73,27 @@ export async function hashSecretToken(token: string): Promise<string> {
 export function looksLikeSecretToken(value: string): boolean {
   return /^[A-Za-z0-9_-]{16,128}$/.test(value);
 }
+
+/**
+ * Compara dos secretos sin filtrar por tiempo cuanto coinciden.
+ *
+ * No se comparan los valores: se comparan sus huellas, y ademas recorriendolas
+ * enteras. Lo primero hace que el tiempo no dependa del secreto sino de su
+ * hash, que no se puede invertir; lo segundo evita el atajo de `===`, que para
+ * en el primer byte distinto.
+ *
+ * Se usa donde la credencial es un secreto compartido y no se puede buscar por
+ * hash en un indice, que es la tecnica preferida en el resto del proyecto.
+ */
+export async function secretsMatch(provided: string, expected: string): Promise<boolean> {
+  if (expected.length === 0) return false;
+
+  const [a, b] = await Promise.all([hashSecretToken(provided), hashSecretToken(expected)]);
+
+  let difference = a.length ^ b.length;
+  for (let i = 0; i < a.length; i += 1) {
+    difference |= a.charCodeAt(i) ^ b.charCodeAt(i % b.length);
+  }
+
+  return difference === 0;
+}

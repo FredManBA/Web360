@@ -47,7 +47,23 @@ const LOCAL_D1_DIR = '.wrangler/state/v3/d1/miniflare-D1DatabaseObject';
 export const BUILD_ENV_KEYS = {
   source: 'CODELOBA_D1_SOURCE',
   publicationRequest: 'CODELOBA_PUBLICATION_REQUEST',
+  /**
+   * Commit del que se construye. Solo diagnostico.
+   *
+   * `GITHUB_SHA` lo pone el runner de Actions por su cuenta, asi que no hay
+   * que configurar nada para tenerlo; `CODELOBA_RELEASE_COMMIT` permite
+   * fijarlo a mano en cualquier otro sitio. Ninguna decision depende de el.
+   */
+  commit: 'CODELOBA_RELEASE_COMMIT',
+  githubSha: 'GITHUB_SHA',
 } as const;
+
+/** El commit del que se construye, si el entorno lo dice. */
+export function readReleaseCommit(env: EnvLike): string | undefined {
+  const raw = (env[BUILD_ENV_KEYS.commit] ?? env[BUILD_ENV_KEYS.githubSha] ?? '').trim();
+
+  return raw.length === 0 ? undefined : raw;
+}
 
 /**
  * Lo que el build necesita saber del mundo.
@@ -286,7 +302,10 @@ export async function readBuildData(
       };
     }
 
-    const candidate = await buildDataOrFail(() => buildRequestedRelease(db, requestId), kind);
+    const candidate = await buildDataOrFail(
+      () => buildRequestedRelease(db, requestId, new Date(), { commit: readReleaseCommit(env) }),
+      kind,
+    );
 
     if (!candidate.ok) {
       throw new BuildDataError(

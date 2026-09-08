@@ -760,6 +760,8 @@ describe('la version que ejecuta el artefacto', () => {
       requestId: 3,
       generatedAt: '2026-01-01T00:00:00.000Z',
       mediaCount: 3,
+      // Diagnostico: el build local no lo sabe.
+      commit: null,
     });
 
     expect(response.headers.get('cache-control')).toBe('no-store');

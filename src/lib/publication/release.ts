@@ -55,6 +55,15 @@ export interface ReleaseManifest {
   generatedAt: string;
   /** Archivos que el HTML de esta version referencia. Ordenados. */
   mediaIds: number[];
+  /**
+   * Commit del que salio esta version, cuando quien construye lo dice.
+   *
+   * Es SOLO para diagnostico: permite mirar un artefacto desplegado y saber
+   * de que codigo salio. No decide nada —ni la autorizacion de archivos, ni
+   * la reconciliacion—, y por eso es opcional: un build local no lo tiene y
+   * funciona igual.
+   */
+  commit?: string;
 }
 
 export interface ReleaseCandidate {
@@ -66,6 +75,12 @@ export interface ReleaseRequest {
   id: number;
   propertyId: number;
   action: PublicationAction;
+}
+
+/** Datos que no salen de la base y que solo sirven para diagnosticar. */
+export interface ReleaseMetadata {
+  /** Commit del que se construye, si quien construye lo sabe. */
+  commit?: string | undefined;
 }
 
 /** Identificador legible y estable de la version que produce una peticion. */
@@ -116,6 +131,7 @@ export async function buildReleaseCandidate(
   db: AdminDatabase,
   request: ReleaseRequest,
   now: Date = new Date(),
+  metadata: ReleaseMetadata = {},
 ): Promise<ReleaseCandidate> {
   const snapshot = await buildCandidateSnapshot(
     db,
@@ -130,6 +146,7 @@ export async function buildReleaseCandidate(
       requestId: request.id,
       generatedAt: snapshot.generatedAt,
       mediaIds: releaseMediaIds(snapshot),
+      ...(metadata.commit === undefined ? {} : { commit: metadata.commit }),
     },
   };
 }
@@ -157,6 +174,8 @@ export interface DeployedReleaseView {
   requestId: number;
   generatedAt: string;
   mediaCount: number;
+  /** Solo diagnostico; `null` cuando el build no lo supo. */
+  commit: string | null;
 }
 
 export function describeRelease(manifest: ReleaseManifest | null): DeployedReleaseView | null {
@@ -167,5 +186,6 @@ export function describeRelease(manifest: ReleaseManifest | null): DeployedRelea
     requestId: manifest.requestId,
     generatedAt: manifest.generatedAt,
     mediaCount: manifest.mediaIds.length,
+    commit: manifest.commit ?? null,
   };
 }

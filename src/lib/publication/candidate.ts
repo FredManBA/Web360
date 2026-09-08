@@ -31,7 +31,12 @@ import {
   type PublicationAction,
   type PublicationStatus,
 } from '../domain/vocabularies';
-import { buildReleaseCandidate, releaseIdFor, type ReleaseCandidate } from './release';
+import {
+  buildReleaseCandidate,
+  releaseIdFor,
+  type ReleaseCandidate,
+  type ReleaseMetadata,
+} from './release';
 
 export interface CandidateRequest {
   id: number;
@@ -120,11 +125,12 @@ export async function buildRequestedRelease(
   db: AdminDatabase,
   requestId: number,
   now: Date = new Date(),
+  metadata: ReleaseMetadata = {},
 ): Promise<AdminResult<ReleaseCandidate>> {
   const request = await loadCandidateRequest(db, requestId);
   if (!request.ok) return request;
 
-  const candidate = await buildReleaseCandidate(db, request.data, now);
+  const candidate = await buildReleaseCandidate(db, request.data, now, metadata);
 
   /*
    * La candidata tiene que poder demostrar de que peticion salio. Si esto no

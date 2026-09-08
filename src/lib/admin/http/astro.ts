@@ -13,6 +13,7 @@ import type { APIContext } from 'astro';
 
 import { getDb } from '../../../db/client';
 import { deployedReleaseManifest } from '../../publication/deployed-release';
+import { resolvePublishTrigger } from '../../publication/github-trigger';
 import type { AdminAuthEnv } from '../auth/authorize';
 import type { AdminHttpContext } from './handlers';
 
@@ -62,5 +63,14 @@ export function toAdminContext(context: APIContext): AdminHttpContext {
      * mas del contexto.
      */
     deployedRelease: deployedReleaseManifest(),
+
+    /*
+     * Quien construye y despliega. Con GitHub configurado, el ejecutor real;
+     * sin el, el manual de desarrollo. La eleccion se hace aqui, que es donde
+     * ya se conoce el entorno, y los handlers reciben un ejecutor y ya esta.
+     */
+    publishTrigger: resolvePublishTrigger(env as unknown as RuntimeVars, {
+      isDev: import.meta.env.DEV,
+    }),
   };
 }

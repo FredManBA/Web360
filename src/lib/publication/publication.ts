@@ -851,3 +851,135 @@ export async function reconcilePublication(
     deployedReleaseId,
   });
 }
+
+/* -------------------------------------------------------------------------- */
+/* Confirmacion de maquina                                                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Cierra una peticion como exito por peticion de quien la desplego.
+ *
+ * Es la misma comprobacion que hace un admin al reconciliar, y a proposito:
+ * quien llama dice QUE peticion cree haber desplegado, pero quien lo demuestra
+ * es el ARTEFACTO que atiende esta llamada. Si el manifiesto embebido no lleva
+ * ese numero, no se publica nada por muy correcta que fuera la credencial.
+ *
+ * De ahi la propiedad que importa: una credencial de maquina robada no sirve
+ * para publicar una propiedad cualquiera. Solo puede cerrar la operacion que
+ * el codigo desplegado ya esta sirviendo, que es justo la que iba a cerrarse
+ * de todas formas.
+ */
+export async function confirmDeployedRelease(
+  db: AdminDatabase,
+  requestId: number,
+  deployed: ReleaseManifest | null,
+  now: Date = new Date(),
+): Promise<AdminResult<ReconciliationResult>> {
+  const rows = await db
+    .select({ propertyId: publicationRequests.propertyId, status: publicationRequests.status })
+    .from(publicationRequests)
+    .where(eq(publicationRequests.id, requestId))
+    .limit(1);
+
+  const request = rows[0];
+  const deployedReleaseId = deployed?.releaseId ?? null;
+
+  // Peticion inexistente o ya terminada: no hay nada que cerrar, ni se repite.
+  if (request === undefined || !ACTIVE_PUBLICATION_REQUEST_STATUSES.includes(request.status)) {
+    return ok({
+      reconciled: false,
+      reason: 'nothing_to_reconcile',
+      publicationStatus: await publicationStatusOf(db, request?.propertyId ?? null),
+      request: null,
+      deployedReleaseId,
+    });
+  }
+
+  if (deployed === null) {
+    return ok({
+      reconciled: false,
+      reason: 'no_release_deployed',
+      publicationStatus: await publicationStatusOf(db, request.propertyId),
+      request: null,
+      deployedReleaseId,
+    });
+  }
+
+  /*
+   * El artefacto manda. Si dice llevar otra release, esta llamada no prueba
+   * nada sobre la que dice cerrar, y no se toca la base.
+   */
+  if (deployed.requestId !== requestId) {
+    return ok({
+      reconciled: false,
+      reason: 'release_mismatch',
+      publicationStatus: await publicationStatusOf(db, request.propertyId),
+      request: null,
+      deployedReleaseId,
+    });
+  }
+
+  // Misma puerta que el admin: una sola forma de cerrar una publicacion.
+  return reconcilePublication(db, request.propertyId, deployed, now);
+}
+
+/**
+ * Deja constancia de que el build o el despliegue fallaron.
+ *
+ * Quien lo dice es el proceso que lo intento, asi que aqui SI se acepta su
+ * palabra: un fallo no publica nada, no mueve la propiedad y no puede
+ * convertirse en un exito. Lo peor que puede hacer una credencial robada por
+ * esta puerta es dar por fallida una operacion que iba bien, y eso se arregla
+ * pidiendola otra vez.
+ *
+ * Solo actua sobre operaciones vivas: repetirlo no vuelve a escribir nada.
+ */
+export async function reportPublicationFailure(
+  db: AdminDatabase,
+  requestId: number,
+  reason: string | null = null,
+  now: Date = new Date(),
+): Promise<AdminResult<FinalizationResult>> {
+  const rows = await db
+    .select()
+    .from(publicationRequests)
+    .where(eq(publicationRequests.id, requestId))
+    .limit(1);
+
+  const request = rows[0];
+  if (request === undefined || !ACTIVE_PUBLICATION_REQUEST_STATUSES.includes(request.status)) {
+    return fail({
+      code: 'publication_request_not_found',
+      message: 'No hay ninguna operacion de publicacion viva con ese numero.',
+      field: 'requestId',
+    });
+  }
+
+  const clean = reason?.trim();
+
+  return applyOutcome(
+    db,
+    request,
+    {
+      ok: false,
+      ...(clean === undefined || clean.length === 0 ? {} : { error: clean }),
+    },
+    now,
+  );
+}
+
+/** El estado editorial de una propiedad, o `draft` si ya no existe. */
+async function publicationStatusOf(
+  db: AdminDatabase,
+  propertyId: number | null,
+): Promise<PublicationStatus> {
+  if (propertyId === null) return 'draft';
+
+  const rows = await db
+    .select({ publicationStatus: properties.publicationStatus })
+    .from(properties)
+    .where(eq(properties.id, propertyId))
+    .limit(1);
+
+  return rows[0]?.publicationStatus ?? 'draft';
+}

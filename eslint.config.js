@@ -10,4 +10,15 @@ export default defineConfig([
   js.configs.recommended,
   tseslint.configs.recommended,
   astro.configs.recommended,
+  {
+    /*
+     * Los scripts de `scripts/` corren en Node, fuera del bundle: alli
+     * `process` y `console` existen. Se declaran a mano en vez de anadir el
+     * paquete `globals` solo para esto.
+     */
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      globals: { process: 'readonly', console: 'readonly' },
+    },
+  },
 ]);
