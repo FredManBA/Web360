@@ -8,7 +8,9 @@ import PublicLayout from '../../layouts/PublicLayout.astro';
 import { featuredOf, hasPlacedProperties, homeCopy } from '../../lib/public/home';
 import { labelsFor } from '../../lib/public/labels';
 import { catalogueHref, catalogueOf } from '../../lib/public/read-model';
+import { sectionSeo } from '../../lib/public/seo';
 import { loadPublicSnapshot } from '../../lib/public/snapshot';
+import { organizationJsonLd } from '../../lib/public/structured-data';
 
 /*
  * Portada estatica, como el resto del sitio publico: sale del snapshot del
@@ -30,16 +32,30 @@ const copy = homeCopy(snapshot.site, locale, {
 
 const featured = featuredOf(properties);
 const showMap = hasPlacedProperties(properties);
+
+const seo = sectionSeo({
+  locale,
+  brand: copy.brand,
+  title: copy.seoTitle,
+  description: copy.seoDescription,
+  path: '/es/',
+  alternatePath: '/en/',
+  isHome: true,
+});
+
+/*
+ * La organizacion se declara solo con lo que hay configurado de verdad:
+ * si no hay ni nombre, no se emite nada.
+ */
+const jsonLd = organizationJsonLd({
+  site: snapshot.site,
+  contact: snapshot.contact,
+  locale,
+  url: Astro.site === undefined ? '/es/' : new URL('/es/', Astro.site).href,
+});
 ---
 
-<PublicLayout
-  locale={locale}
-  title={copy.seoTitle}
-  description={copy.seoDescription}
-  alternateHref="/en/"
-  canonical="/es/"
-  homeAlternates={true}
->
+<PublicLayout seo={seo} jsonLd={jsonLd}>
   <HomeHero copy={copy} locale={locale} showMap={showMap} />
 
   <div class="home">

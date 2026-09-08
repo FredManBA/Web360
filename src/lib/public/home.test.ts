@@ -303,24 +303,28 @@ describe('la raiz', () => {
 
 describe('el <head> de la portada', () => {
   it('cada idioma tiene su canonica y su alternate', () => {
-    expect(read(HOME_ES)).toContain('canonical="/es/"');
-    expect(read(HOME_ES)).toContain('alternateHref="/en/"');
-    expect(read(HOME_EN)).toContain('canonical="/en/"');
-    expect(read(HOME_EN)).toContain('alternateHref="/es/"');
+    expect(read(HOME_ES)).toContain("path: '/es/'");
+    expect(read(HOME_ES)).toContain("alternatePath: '/en/'");
+    expect(read(HOME_EN)).toContain("path: '/en/'");
+    expect(read(HOME_EN)).toContain("alternatePath: '/es/'");
+
+    // Y quien las pinta es una sola plantilla.
+    expect(read(LAYOUT)).toContain('rel="canonical"');
   });
 
   it('la portada declara tambien su propio idioma y el x-default', () => {
     const layout = read(LAYOUT);
 
-    expect(read(HOME_ES)).toContain('homeAlternates={true}');
+    expect(read(HOME_ES)).toContain('isHome: true');
     expect(layout).toContain('hreflang="x-default"');
   });
 
   it('las URL se vuelven absolutas solas el dia que haya dominio', () => {
-    const layout = read(LAYOUT);
-
     // Mientras no exista `site`, relativas: son validas y resuelven bien.
-    expect(layout).toContain('Astro.site === undefined ? path : new URL(path, Astro.site).href');
+    expect(read('src/lib/public/seo.ts')).toContain(
+      'site === undefined ? path : new URL(path, site).href',
+    );
+    expect(read(LAYOUT)).toContain('absoluteUrl(Astro.site, path)');
   });
 
   it('titulo y descripcion salen de la configuracion cuando existe', () => {

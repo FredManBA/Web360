@@ -12,6 +12,17 @@ export default defineConfig({
   // declara explicitamente `export const prerender = false`.
   output: 'static',
 
+  /*
+   * El dominio publico, cuando lo haya.
+   *
+   * Sale del entorno y no del codigo: el dominio es cosa del despliegue, no
+   * del repositorio, y asi el mismo build sirve para cualquiera. Sin la
+   * variable, `Astro.site` queda `undefined` y el sitio se construye igual:
+   * las URL del `<head>` salen relativas y el sitemap se queda vacio,
+   * explicando por que. Nunca se inventa un host.
+   */
+  site: process.env.CODELOBA_SITE_URL || undefined,
+
   // El catalogo publico se resuelve en el build: el plugin lee la base local
   // en Node y entrega el snapshot ya listo, porque el prerenderizado del
   // adaptador ocurre dentro de workerd y alli no hay acceso a ficheros.

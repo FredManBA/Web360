@@ -4,6 +4,7 @@ import PublicLayout from '../../layouts/PublicLayout.astro';
 import { labelsFor } from '../../lib/public/labels';
 import { mapHref } from '../../lib/public/navigation';
 import { catalogueOf } from '../../lib/public/read-model';
+import { brandOf, sectionSeo } from '../../lib/public/seo';
 import { loadPublicSnapshot } from '../../lib/public/snapshot';
 
 /*
@@ -15,15 +16,18 @@ const locale = 'en' as const;
 const labels = labelsFor(locale);
 
 const properties = catalogueOf(loadPublicSnapshot(), locale);
+
+const seo = sectionSeo({
+  locale,
+  brand: brandOf(loadPublicSnapshot().site, locale),
+  title: labels.mapTitle,
+  description: labels.mapDescription,
+  path: mapHref('en'),
+  alternatePath: mapHref('es'),
+});
 ---
 
-<PublicLayout
-  locale={locale}
-  title={labels.mapTitle}
-  description={labels.mapDescription}
-  section="map"
-  alternateHref={mapHref('es')}
->
+<PublicLayout seo={seo} section="map">
   <MapExplorer properties={properties} locale={locale} />
 </PublicLayout>
 

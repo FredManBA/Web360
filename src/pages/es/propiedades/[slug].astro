@@ -6,7 +6,9 @@ import {
   catalogueOf,
   type PublicPropertyDetail,
 } from '../../../lib/public/read-model';
+import { brandOf, propertySeo } from '../../../lib/public/seo';
 import { loadPublicSnapshot } from '../../../lib/public/snapshot';
+import { propertyJsonLd } from '../../../lib/public/structured-data';
 
 /*
  * Una ruta por cada propiedad publicada CON traduccion utilizable en este
@@ -27,20 +29,34 @@ export function getStaticPaths() {
 }
 
 const locale = 'es' as const;
-const channels = loadPublicSnapshot().contact;
+const snapshot = loadPublicSnapshot();
+const channels = snapshot.contact;
 const { property, alternate } = Astro.props as {
   property: PublicPropertyDetail;
   alternate: string | null;
 };
+
+const seo = propertySeo(property, locale, brandOf(snapshot.site, locale), alternate);
+
+/*
+ * Las imagenes del JSON-LD son las rutas publicas de siempre (`/media/N`),
+ * absolutas solo si hay dominio. Nunca una clave de R2.
+ */
+const url = (path: string): string =>
+  Astro.site === undefined ? path : new URL(path, Astro.site).href;
+
+const jsonLd = propertyJsonLd({
+  property,
+  locale,
+  url: url(property.href),
+  images: property.media.items
+    .map((item) => item.url)
+    .filter((item): item is string => item !== null)
+    .map(url),
+});
 ---
 
-<PublicLayout
-  locale={locale}
-  title={property.title}
-  description={property.marketingDescription ?? undefined}
-  section="properties"
-  alternateHref={alternate}
->
+<PublicLayout seo={seo} section="properties" jsonLd={jsonLd}>
   <div class="page">
     <PropertyDetail property={property} locale={locale} channels={channels} />
   </div>

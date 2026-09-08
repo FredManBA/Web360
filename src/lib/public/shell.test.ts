@@ -130,7 +130,7 @@ describe('el nombre del negocio', () => {
   it('el shell lo resuelve una sola vez, donde pasan todas las paginas', () => {
     const layout = read(LAYOUT);
 
-    expect(layout).toContain('loadPublicSnapshot().site.businessName');
+    expect(layout).toContain('snapshot.site.businessName');
     // Sin configurar, el sitio no se queda sin marca.
     expect(layout).toContain('labelsFor(locale).brandName');
     expect(layout).toContain('brand={brand}');
@@ -290,7 +290,7 @@ describe('pagina de catalogo', () => {
 
       expect(source).toContain('PublicLayout');
       expect(source).toContain('section="properties"');
-      expect(source).toContain('alternateHref=');
+      expect(source).toContain('alternatePath:');
     }
   });
 

@@ -4,6 +4,7 @@ import PropertyCard from '../../../components/public/PropertyCard.astro';
 import PublicLayout from '../../../layouts/PublicLayout.astro';
 import { labelsFor } from '../../../lib/public/labels';
 import { catalogueHref, catalogueOf } from '../../../lib/public/read-model';
+import { brandOf, sectionSeo } from '../../../lib/public/seo';
 import { loadPublicSnapshot } from '../../../lib/public/snapshot';
 
 /*
@@ -16,15 +17,18 @@ const labels = labelsFor(locale);
 
 const snapshot = loadPublicSnapshot();
 const properties = catalogueOf(snapshot, locale);
+
+const seo = sectionSeo({
+  locale,
+  brand: brandOf(loadPublicSnapshot().site, locale),
+  title: labels.catalogueTitle,
+  description: labels.catalogueDescription,
+  path: catalogueHref('es'),
+  alternatePath: catalogueHref('en'),
+});
 ---
 
-<PublicLayout
-  locale={locale}
-  title={labels.catalogueTitle}
-  description={labels.catalogueDescription}
-  section="properties"
-  alternateHref={catalogueHref('en')}
->
+<PublicLayout seo={seo} section="properties">
   <div class="page">
     <header class="page-head">
       <h1>{labels.catalogueTitle}</h1>

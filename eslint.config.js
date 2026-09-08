@@ -12,11 +12,11 @@ export default defineConfig([
   astro.configs.recommended,
   {
     /*
-     * Los scripts de `scripts/` corren en Node, fuera del bundle: alli
-     * `process` y `console` existen. Se declaran a mano en vez de anadir el
-     * paquete `globals` solo para esto.
+     * Los scripts de `scripts/` y la configuracion de Astro corren en Node,
+     * fuera del bundle: alli `process` y `console` existen. Se declaran a mano
+     * en vez de anadir el paquete `globals` solo para esto.
      */
-    files: ['scripts/**/*.mjs'],
+    files: ['scripts/**/*.mjs', 'astro.config.mjs'],
     languageOptions: {
       globals: { process: 'readonly', console: 'readonly' },
     },

@@ -5,6 +5,7 @@ import PublicLayout from '../../layouts/PublicLayout.astro';
 import { hasChannels } from '../../lib/public/contact';
 import { labelsFor } from '../../lib/public/labels';
 import { contactHref } from '../../lib/public/navigation';
+import { brandOf, sectionSeo } from '../../lib/public/seo';
 import { loadPublicSnapshot } from '../../lib/public/snapshot';
 
 /*
@@ -16,15 +17,18 @@ const locale = 'es' as const;
 const labels = labelsFor(locale);
 
 const channels = loadPublicSnapshot().contact;
+
+const seo = sectionSeo({
+  locale,
+  brand: brandOf(loadPublicSnapshot().site, locale),
+  title: labels.contactTitle,
+  description: labels.contactDescription,
+  path: contactHref('es'),
+  alternatePath: contactHref('en'),
+});
 ---
 
-<PublicLayout
-  locale={locale}
-  title={labels.contactTitle}
-  description={labels.contactDescription}
-  section="contact"
-  alternateHref={contactHref('en')}
->
+<PublicLayout seo={seo} section="contact">
   <div class="page">
     <header class="page-head">
       <h1>{labels.contactTitle}</h1>
