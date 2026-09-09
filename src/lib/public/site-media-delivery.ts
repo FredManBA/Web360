@@ -80,6 +80,15 @@ export async function serveSiteMedia(request: SiteMediaRequest): Promise<Respons
       'content-type': object.httpMetadata?.contentType ?? 'application/octet-stream',
       'content-length': String(object.size),
       'cache-control': SITE_MEDIA_CACHE_CONTROL,
+      /*
+       * Estos bytes los subio una persona y se sirven desde el propio
+       * dominio. `nosniff` obliga al navegador a creerse el `content-type`
+       * declarado en vez de adivinarlo: sin el, un archivo cuidadosamente
+       * preparado podria interpretarse como HTML y ejecutarse como si fuera
+       * del sitio. La subida ya comprueba el contenido; esto es la segunda
+       * cerradura.
+       */
+      'x-content-type-options': 'nosniff',
       ...(etag === null ? {} : { etag }),
     },
   });

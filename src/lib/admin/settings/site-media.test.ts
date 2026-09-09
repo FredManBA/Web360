@@ -321,6 +321,8 @@ describe('la entrega publica', () => {
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toBe('image/png');
     expect(response.headers.get('cache-control')).toContain('max-age');
+    // Estos bytes los subio alguien: el navegador no puede adivinar el tipo.
+    expect(response.headers.get('x-content-type-options')).toBe('nosniff');
   });
 
   it('un hueco vacio responde 404', async () => {

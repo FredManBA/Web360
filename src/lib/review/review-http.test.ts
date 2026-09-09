@@ -9,6 +9,8 @@
  * - los endpoints del panel, que siguen detras de Access.
  */
 
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 
 import { eq } from 'drizzle-orm';
@@ -123,6 +125,8 @@ describe('la media de revision', () => {
     // Un borrador no se cachea en ninguna parte.
     expect(response.headers.get('cache-control')).toBe('no-store');
     expect(response.headers.get('x-robots-tag')).toContain('noindex');
+    // Y el navegador no adivina el tipo de un archivo subido por alguien.
+    expect(response.headers.get('x-content-type-options')).toBe('nosniff');
   });
 
   it('sin token no sirve nada', async () => {
@@ -314,6 +318,21 @@ describe('la pagina de revision apunta al endpoint correcto', () => {
     expect(decisionEndpoint('/es/propiedades/lote')).toBeNull();
     expect(decisionEndpoint('/review/')).toBeNull();
     expect(decisionEndpoint('/review/abc/media/1')).toBeNull();
+  });
+
+  it('el token no puede salir en la cabecera `Referer`', () => {
+    /*
+     * La URL de esta pagina ES la credencial, y la ficha carga recursos de
+     * fuera —el video de YouTube—. Sin declararlo, que la ruta viaje o no en
+     * el `Referer` dependeria del navegador de turno.
+     */
+    const page = readFileSync(
+      path.resolve(process.cwd(), 'src/pages/review/[token].astro'),
+      'utf8',
+    );
+
+    expect(page).toContain('<meta name="referrer" content="no-referrer" />');
+    expect(page).toContain('noindex, nofollow, noarchive');
   });
 });
 

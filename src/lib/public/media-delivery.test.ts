@@ -116,6 +116,14 @@ describe('archivos de una propiedad publicada', () => {
     expect(bytes.byteLength).toBe(SAMPLE_JPEG.byteLength);
   });
 
+  it('el navegador no adivina el tipo: estos bytes los subio alguien', async () => {
+    const { mediaId } = await publishedWithImage();
+
+    const response = await serve(mediaId);
+
+    expect(response.headers.get('x-content-type-options')).toBe('nosniff');
+  });
+
   it('el cacheo publico es distinto del del admin', () => {
     // El admin responde `no-store`; esto es contenido ya publicado.
     expect(PUBLIC_MEDIA_CACHE_CONTROL).toContain('public');

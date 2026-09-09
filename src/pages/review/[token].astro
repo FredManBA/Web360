@@ -76,6 +76,19 @@ const property = detailFor(locale);
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     {/* Nunca en un buscador: esto es un borrador con un enlace privado. */}
     <meta name="robots" content="noindex, nofollow, noarchive" />
+    {
+      /*
+       * El token va en la URL, asi que la URL es una credencial. Sin esto, el
+       * navegador la mandaria en la cabecera `Referer` de cualquier recurso
+       * externo que cargue la ficha —el video de YouTube, por ejemplo— y el
+       * enlace privado acabaria en el registro de un tercero.
+       *
+       * Los navegadores actuales ya recortan la ruta al salir del dominio,
+       * pero eso es su comportamiento por defecto, no una garantia: aqui se
+       * declara y deja de depender de cual sea.
+       */
+    }
+    <meta name="referrer" content="no-referrer" />
     <title>{resolved === null ? 'Revisión' : `Revisión · ${resolved.propertyCode}`}</title>
   </head>
 
