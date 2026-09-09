@@ -146,6 +146,21 @@ describe('los pasos', () => {
     expect(stepIndex('run: npm run build')).toBeLessThan(stepIndex('wrangler deploy'));
   });
 
+  /*
+   * El build necesita el origen del sitio para escribir URLs absolutas. Sin
+   * el, `astro.config.mjs` deja `site` sin definir y el sitemap sale vacio,
+   * con canonical y hreflang relativos. Paso desapercibido hasta la primera
+   * publicacion real.
+   */
+  it('el build recibe el origen del sitio', () => {
+    const build = WORKFLOW.slice(
+      stepIndex('Construir la versión candidata'),
+      stepIndex('Comprobar que el artefacto es el de esta operación'),
+    );
+
+    expect(build).toContain('CODELOBA_SITE_URL: ${{ vars.CODELOBA_SITE_URL }}');
+  });
+
   it('NO aplica migraciones de la base', () => {
     expect(WORKFLOW).not.toContain('migrations apply');
     expect(WORKFLOW).not.toContain('db:migrate');
@@ -163,13 +178,56 @@ describe('los pasos', () => {
 /* -------------------------------------------------------------------------- */
 
 describe('como se confirma el resultado', () => {
+  /*
+   * El finalize corre a segundos del deploy y puede alcanzar una instancia
+   * con la version anterior, que responde 409. Lo delega en un script que
+   * reintenta ESE caso y solo ese; un `curl` suelto se daba por vencido al
+   * primer intento.
+   */
+  it('el finalize reintenta la propagacion, y lo hace con logica propia', () => {
+    const paso = WORKFLOW.slice(
+      stepIndex('Confirmar el resultado a la aplicación'),
+      stepIndex('Avisar de que no se llegó a desplegar'),
+    );
+
+    expect(paso).toContain('npm run publication:finalize');
+    expect(paso).not.toContain('curl');
+  });
+
+  it('no se reintenta a ciegas: nada de --retry-all-errors', () => {
+    expect(WORKFLOW).not.toContain('--retry-all-errors');
+    expect(WORKFLOW).not.toContain('--retry ');
+  });
+
+  it('el aviso de no-desplegado NO reintenta: ahi un 409 significa otra cosa', () => {
+    const aviso = WORKFLOW.slice(stepIndex('Avisar de que no se llegó a desplegar'));
+
+    expect(aviso).toContain('curl');
+    expect(aviso).not.toContain('publication:finalize');
+  });
+
   it('llama al endpoint de maquina con el secreto en la cabecera', () => {
     expect(WORKFLOW).toContain('/api/publication/machine');
     expect(WORKFLOW).toContain('x-publication-machine-secret');
   });
 
+  /*
+   * La misma garantia de siempre, ahora en dos sitios: el workflow no le pasa
+   * al script mas que el numero de la operacion —ni la propiedad ni la
+   * accion, que se leen de la base— y el script no manda mas que eso.
+   */
   it('manda solo la identidad de la operacion y el resultado', () => {
-    expect(WORKFLOW).toContain('\\"requestId\\": $REQUEST_ID, \\"ok\\": true');
+    const paso = WORKFLOW.slice(
+      stepIndex('Confirmar el resultado a la aplicación'),
+      stepIndex('Avisar de que no se llegó a desplegar'),
+    );
+
+    expect(paso).toContain('REQUEST_ID: ${{ inputs.publicationRequestId }}');
+    expect(paso).not.toContain('propertyId');
+    expect(paso).not.toContain('action');
+
+    const script = read('scripts/publication-finalize.mjs');
+    expect(script).toContain('JSON.stringify({ requestId, ok: true })');
   });
 
   it('el parte de fallo solo se manda si NO se llego a desplegar', () => {
@@ -237,6 +295,7 @@ describe('los scripts del despliegue', () => {
   it('estan declarados en package.json', () => {
     expect(PACKAGE.scripts['publication:verify']).toContain('verify-release.mjs');
     expect(PACKAGE.scripts['publication:wrangler-config']).toContain('wrangler-config.mjs');
+    expect(PACKAGE.scripts['publication:finalize']).toContain('publication-finalize.mjs');
   });
 
   it('la verificacion compara el manifiesto con la operacion pedida', () => {

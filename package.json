@@ -27,6 +27,7 @@
     "db:seed:remote": "wrangler d1 execute codeloba-db --remote --file=src/db/seed/seed.sql",
     "cf:typegen": "wrangler types",
     "publication:verify": "node scripts/verify-release.mjs",
+    "publication:finalize": "node scripts/publication-finalize.mjs",
     "publication:wrangler-config": "node scripts/wrangler-config.mjs"
   },
   "dependencies": {

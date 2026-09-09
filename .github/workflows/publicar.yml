@@ -99,6 +99,10 @@ jobs:
           CF_D1_DATABASE_ID: ${{ secrets.CF_D1_DATABASE_ID }}
           CF_API_TOKEN: ${{ secrets.CF_D1_READ_TOKEN }}
           PUBLIC_MAPBOX_TOKEN: ${{ secrets.PUBLIC_MAPBOX_TOKEN }}
+          # `astro.config.mjs` la lee como `site`. Sin ella el sitemap sale
+          # vacio y canonical, hreflang y og:url quedan relativos, que en esos
+          # tres sitios no vale: tienen que ser absolutos.
+          CODELOBA_SITE_URL: ${{ vars.CODELOBA_SITE_URL }}
         run: npm run build
 
       - name: Comprobar que el artefacto es el de esta operación
@@ -125,14 +129,12 @@ jobs:
           SITE_URL: ${{ vars.CODELOBA_SITE_URL }}
           MACHINE_SECRET: ${{ secrets.PUBLICATION_MACHINE_SECRET }}
           REQUEST_ID: ${{ inputs.publicationRequestId }}
-        # La aplicación solo lo dará por bueno si el artefacto que responde
-        # lleva dentro el manifiesto de esta misma operación.
-        run: |
-          curl --fail-with-body --silent --show-error \
-            --request POST "$SITE_URL/api/publication/machine" \
-            --header "content-type: application/json" \
-            --header "x-publication-machine-secret: $MACHINE_SECRET" \
-            --data "{\"requestId\": $REQUEST_ID, \"ok\": true}"
+        # La aplicación solo lo da por bueno si el artefacto que responde
+        # lleva dentro el manifiesto de esta misma operación, así que justo
+        # después de desplegar puede contestar 409 mientras la versión nueva
+        # termina de propagarse. El script reintenta ESE caso y sólo ése;
+        # cualquier otro código falla en el acto.
+        run: npm run publication:finalize
 
       - name: Avisar de que no se llegó a desplegar
         # Solo cuando el fallo ocurrió ANTES del despliegue. Si ya se había

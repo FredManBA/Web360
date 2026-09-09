@@ -18,7 +18,12 @@ export default defineConfig([
      */
     files: ['scripts/**/*.mjs', 'astro.config.mjs'],
     languageOptions: {
-      globals: { process: 'readonly', console: 'readonly' },
+      globals: {
+        process: 'readonly',
+        console: 'readonly',
+        setTimeout: 'readonly',
+        fetch: 'readonly',
+      },
     },
   },
 ]);
