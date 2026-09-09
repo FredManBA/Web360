@@ -31,8 +31,14 @@ export interface PageSeo {
   title: string;
   /** `null` cuando no hay nada honesto que decir. */
   description: string | null;
-  /** Ruta canonica de ESTA pagina, siempre la de su propio idioma. */
-  path: string;
+  /**
+   * Ruta canonica de ESTA pagina, siempre la de su propio idioma.
+   *
+   * `null` cuando la pagina no representa ningun contenido: una respuesta 404
+   * no tiene URL canonica, y declarar una la presentaria como si fuera una
+   * pagina de verdad.
+   */
+  path: string | null;
   /** La misma pagina en el otro idioma. `null` si esa version no existe. */
   alternatePath: string | null;
   /**
@@ -146,7 +152,7 @@ export interface SectionSeoInput {
   brand: string;
   title: string;
   description: string | null;
-  path: string;
+  path: string | null;
   alternatePath: string | null;
   isHome?: boolean;
   /** Imagen social configurada del sitio, si la hay. */
@@ -169,6 +175,33 @@ export function sectionSeo(input: SectionSeoInput): PageSeo {
      */
     imagePath: input.socialImage ?? null,
     imageAlt: input.socialImage === null || input.socialImage === undefined ? null : input.brand,
+    type: 'website',
+  };
+}
+
+/**
+ * Una respuesta que no es contenido: el 404.
+ *
+ * Sin canonica y sin alternates —no hay nada que canonicalizar ni ninguna
+ * traduccion de "esto no existe"— y con `noindex, follow`: que no se indexe,
+ * pero que los buscadores sigan los enlaces de recuperacion que ofrece.
+ */
+export function notFoundSeo(input: {
+  locale: Locale;
+  brand: string;
+  title: string;
+  description: string | null;
+}): PageSeo {
+  return {
+    locale: input.locale,
+    title: pageTitle(input.title, input.brand),
+    description: trimDescription(input.description),
+    path: null,
+    alternatePath: null,
+    isHome: false,
+    indexable: false,
+    imagePath: null,
+    imageAlt: null,
     type: 'website',
   };
 }

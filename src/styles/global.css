@@ -2528,3 +2528,79 @@ a {
     padding: var(--space-lg) var(--space-md);
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/* Pagina no encontrada                                                       */
+/* -------------------------------------------------------------------------- */
+
+/*
+ * Un 404 no es un error del sistema: es alguien que buscaba algo. Se le da
+ * aire, se le explica en una frase y se le ofrecen las dos salidas que sirven.
+ */
+.not-found {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  align-items: flex-start;
+  max-width: var(--content-width);
+  min-height: 55vh;
+  margin: 0 auto;
+  padding: var(--space-2xl) var(--space-md);
+}
+
+/* El numero es una senal, no algo que leer en voz alta. */
+.not-found-code {
+  margin: 0;
+  color: var(--sand-deep);
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 12vw, 6rem);
+  line-height: 1;
+}
+
+.not-found h1 {
+  margin: 0;
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+}
+
+.not-found-lead {
+  max-width: 46ch;
+  margin: 0;
+  color: var(--ink-soft);
+}
+
+.not-found-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+.not-found-cta {
+  padding: var(--space-xs) var(--space-lg);
+  border: 1px solid var(--jungle);
+  border-radius: 999px;
+  background: var(--jungle);
+  color: var(--ivory);
+  text-decoration: none;
+}
+
+.not-found-cta:hover {
+  background: var(--jungle-soft);
+}
+
+.not-found-cta-quiet {
+  border-color: var(--line);
+  background: transparent;
+  color: var(--ink);
+}
+
+.not-found-cta-quiet:hover {
+  border-color: var(--sand-deep);
+  background: transparent;
+  color: var(--sand-deep);
+}
+
+.not-found-other {
+  margin: var(--space-sm) 0 0;
+  font-size: 0.95rem;
+}

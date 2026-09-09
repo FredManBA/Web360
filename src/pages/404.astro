@@ -1,0 +1,80 @@
+---
+/**
+ * Pagina no encontrada.
+ *
+ * Es la unica pagina del sitio publico que se resuelve en el Worker, y por una
+ * razon concreta: para saber en que idioma hablarle a alguien hay que mirar la
+ * URL que pidio, y una pagina prerenderizada no puede. El resto del sitio
+ * sigue siendo estatico.
+ *
+ * Que hace exactamente:
+ *
+ * - `/es/lo-que-sea` responde en espanol, `/en/whatever` en ingles, y
+ *   cualquier otra cosa en el idioma por defecto ofreciendo tambien el otro;
+ * - NO redirige. En `/` una redireccion tiene sentido porque no hay nada que
+ *   ver; desde una ruta desconocida mandaria a la gente a otra URL que
+ *   tampoco pidieron, y encadenar redirecciones desde rutas inventadas es la
+ *   forma facil de acabar en un bucle;
+ * - conserva el 404 de verdad. Responder 200 a contenido que no existe seria
+ *   mentirle al navegador y a los buscadores.
+ *
+ * Ni Mapbox, ni el visor 360, ni JavaScript pesado: aqui no hay nada que
+ * visualizar. Solo el shell publico y dos enlaces para salir.
+ */
+import PublicLayout from '../layouts/PublicLayout.astro';
+import type { Locale } from '../lib/domain/vocabularies';
+import { labelsFor } from '../lib/public/labels';
+import { catalogueHref } from '../lib/public/read-model';
+import { brandOf, homeHref, notFoundSeo, otherLocale } from '../lib/public/seo';
+import { loadPublicSnapshot } from '../lib/public/snapshot';
+import { DEFAULT_LOCALE } from '../lib/public/home';
+import { localeFromPath } from '../lib/public/not-found';
+
+export const prerender = false;
+
+/*
+ * El idioma sale de la ruta que se pidio. Cuando no lleva prefijo no hay nada
+ * que deducir, asi que se responde en el idioma por defecto y se ofrece el
+ * otro de forma explicita, en vez de decidir por nadie.
+ */
+const fromPath = localeFromPath(Astro.url.pathname);
+const locale: Locale = fromPath ?? DEFAULT_LOCALE;
+const labels = labelsFor(locale);
+const other = labelsFor(otherLocale(locale));
+
+const seo = notFoundSeo({
+  locale,
+  brand: brandOf(loadPublicSnapshot().site, locale),
+  title: labels.notFoundTitle,
+  description: labels.notFoundLead,
+});
+
+Astro.response.status = 404;
+---
+
+<PublicLayout seo={seo}>
+  <section class="not-found">
+    <p class="not-found-code" aria-hidden="true">404</p>
+    <h1>{labels.notFoundTitle}</h1>
+    <p class="not-found-lead">{labels.notFoundLead}</p>
+
+    <div class="not-found-actions">
+      <a class="not-found-cta" href={homeHref(locale)}>{labels.notFoundHome}</a>
+      <a class="not-found-cta not-found-cta-quiet" href={catalogueHref(locale)}>
+        {labels.notFoundCatalogue}
+      </a>
+    </div>
+
+    {
+      /*
+       * Sin prefijo en la URL no se sabe que idioma queria: se ofrece el otro
+       * escrito en su propio idioma.
+       */
+      fromPath === null && (
+        <p class="not-found-other">
+          <a href={homeHref(otherLocale(locale))}>{other.notFoundHome}</a>
+        </p>
+      )
+    }
+  </section>
+</PublicLayout>

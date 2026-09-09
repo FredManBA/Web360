@@ -165,6 +165,12 @@ export interface PublicLabels {
   homeMapLead: string;
   homeContactTitle: string;
   homeContactLead: string;
+  /* -- Pagina no encontrada ---------------------------------------------- */
+  notFoundTitle: string;
+  notFoundLead: string;
+  notFoundHome: string;
+  notFoundCatalogue: string;
+
   /** Marca por defecto, mientras `site_settings` este vacio. */
   brandName: string;
   /** Solo para el `/`, que elige idioma con JavaScript. */
@@ -320,6 +326,12 @@ const ES: PublicLabels = {
   homeMapLead: 'De Guanacaste al Pacífico sur. Mira qué hay en la zona que te interesa.',
   homeContactTitle: '¿Hablamos?',
   homeContactLead: 'Cuéntanos qué buscas y te respondemos por donde prefieras.',
+  notFoundTitle: 'Esta página no existe',
+  notFoundLead:
+    'Puede que la propiedad ya no esté publicada, o que el enlace tenga una errata. Desde aquí sigues teniendo todo el catálogo.',
+  notFoundHome: 'Ir a la portada',
+  notFoundCatalogue: 'Ver las propiedades',
+
   brandName: 'Loba',
   chooseLanguage: 'Elige idioma',
 };
@@ -471,6 +483,12 @@ const EN: PublicLabels = {
   homeMapLead: 'From Guanacaste to the southern Pacific. See what is in the area you care about.',
   homeContactTitle: 'Shall we talk?',
   homeContactLead: 'Tell us what you are after and we will reply however you prefer.',
+  notFoundTitle: 'This page does not exist',
+  notFoundLead:
+    'The property may no longer be published, or the link may have a typo. You still have the whole catalogue from here.',
+  notFoundHome: 'Go to the home page',
+  notFoundCatalogue: 'See the properties',
+
   brandName: 'Loba',
   chooseLanguage: 'Choose a language',
 };

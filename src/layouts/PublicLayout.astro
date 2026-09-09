@@ -41,7 +41,11 @@ const other = otherLocale(locale);
 const snapshot = loadPublicSnapshot();
 const brand = snapshot.site.businessName ?? labelsFor(locale).brandName;
 
-const canonical = url(seo.path);
+/*
+ * Una pagina que no representa contenido —el 404— no tiene canonica. Sin
+ * ella tampoco hay `og:url` ni alternates: no habria a que apuntar.
+ */
+const canonical = seo.path === null ? null : url(seo.path);
 const image = seo.imagePath === null ? null : url(seo.imagePath);
 
 /*
@@ -61,7 +65,7 @@ const favicon = snapshot.site.media.favicon;
 
     {favicon && <link rel="icon" href={favicon} />}
 
-    <link rel="canonical" href={canonical} />
+    {canonical && <link rel="canonical" href={canonical} />}
     <meta name="robots" content={seo.indexable ? 'index, follow' : 'noindex, follow'} />
 
     {
@@ -70,7 +74,7 @@ const favicon = snapshot.site.media.favicon;
        * existen: un `alternate` a una traduccion que no esta seria mandar a
        * la gente a un 404. Por eso se declaran los dos juntos o ninguno.
        */
-      seo.alternatePath && (
+      seo.alternatePath && canonical && (
         <>
           <link rel="alternate" hreflang={locale} href={canonical} />
           <link rel="alternate" hreflang={other} href={url(seo.alternatePath)} />
@@ -89,7 +93,7 @@ const favicon = snapshot.site.media.favicon;
     <meta property="og:type" content={seo.type} />
     <meta property="og:site_name" content={brand} />
     <meta property="og:title" content={seo.title} />
-    <meta property="og:url" content={canonical} />
+    {canonical && <meta property="og:url" content={canonical} />}
     <meta property="og:locale" content={ogLocale(locale)} />
     {seo.alternatePath && <meta property="og:locale:alternate" content={ogLocale(other)} />}
     {seo.description && <meta property="og:description" content={seo.description} />}

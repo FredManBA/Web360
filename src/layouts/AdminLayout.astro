@@ -29,6 +29,17 @@ const sections = [
   </head>
 
   <body class="admin">
+    {
+      /*
+       * Primer elemento enfocable de la pagina, igual que en el sitio publico
+       * y con la misma regla de `global.css`: invisible hasta que recibe el
+       * foco. El panel repite la barra lateral en todas las pantallas, y sin
+       * esto llegar al contenido con el teclado obliga a recorrerla entera
+       * cada vez.
+       */
+    }
+    <a class="skip-link" href="#admin-main">Saltar al contenido</a>
+
     <div class="admin-shell">
       <!-- Cabecera compacta, solo visible en movil. -->
       <div class="admin-topbar">
