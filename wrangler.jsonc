@@ -3,7 +3,7 @@
 
   // El adaptador @astrojs/cloudflare inyecta automaticamente `main` y el
   // binding de assets durante el build, por eso no se declaran aqui.
-  "name": "codeloba",
+  "name": "properties",
   "compatibility_date": "2026-09-03",
   "compatibility_flags": ["nodejs_compat"],
 
