@@ -72,6 +72,23 @@ jobs:
         # `ci` y no `install`: instala exactamente el lock, sin resolver nada.
         run: npm ci
 
+      - name: Escribir el identificador de la D1 en la configuración
+        # ANTES de construir, y no después.
+        #
+        # `@astrojs/cloudflare` resuelve la configuración de Wrangler durante
+        # el build y la congela en `dist/server/wrangler.json`; `wrangler
+        # deploy` sigue el puntero de `.wrangler/deploy/config.json` y lee ESE
+        # fichero, no `wrangler.jsonc`. Si el placeholder seguía puesto al
+        # construir, ahí se queda: el despliegue muere con «binding DB of type
+        # d1 must have a valid `database_id` specified» y haberlo escrito
+        # después no arregla nada.
+        #
+        # Solo se toca la copia del runner, que se tira al acabar. El
+        # repositorio conserva el placeholder.
+        env:
+          CF_D1_DATABASE_ID: ${{ secrets.CF_D1_DATABASE_ID }}
+        run: npm run publication:wrangler-config
+
       - name: Construir la versión candidata
         env:
           # Se lee la D1 de producción, que es de donde tiene que salir el
@@ -88,11 +105,6 @@ jobs:
         env:
           CODELOBA_PUBLICATION_REQUEST: ${{ inputs.publicationRequestId }}
         run: npm run publication:verify
-
-      - name: Escribir el identificador de la D1 en la configuración
-        env:
-          CF_D1_DATABASE_ID: ${{ secrets.CF_D1_DATABASE_ID }}
-        run: npm run publication:wrangler-config
 
       - name: Desplegar a Cloudflare
         env:

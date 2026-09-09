@@ -76,6 +76,12 @@ identificador real no se versiona. El paso
 `npm run publication:wrangler-config` lo escribe **dentro del runner** a partir
 de `CF_D1_DATABASE_ID`, y el repositorio se queda como estaba.
 
+Ese paso va **antes del build**, y el orden no es indiferente:
+`@astrojs/cloudflare` resuelve la configuración de Wrangler mientras construye
+y la congela en `dist/server/wrangler.json`, que es lo que `wrangler deploy`
+termina leyendo. Escribir el identificador después de construir no llega a
+tiempo, y el despliegue falla quejándose del binding `DB`.
+
 ## Cómo se activa el disparador real
 
 En cuanto el Worker tenga las cuatro variables `CODELOBA_GITHUB_*`, el panel

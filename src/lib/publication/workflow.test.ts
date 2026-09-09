@@ -95,6 +95,50 @@ describe('los pasos', () => {
     expect(stepIndex('publication:verify')).toBeLessThan(stepIndex('wrangler deploy'));
   });
 
+  /*
+   * El orden completo, en un solo test, porque el fallo que motivo esto no
+   * fue que un paso estuviera mal escrito sino que estaba en el sitio
+   * equivocado.
+   */
+  it('va en el unico orden que funciona', () => {
+    const pasos = [
+      'actions/checkout',
+      'npm ci',
+      'publication:wrangler-config',
+      'run: npm run build',
+      'publication:verify',
+      'wrangler deploy',
+      '/api/publication/machine',
+    ].map((paso) => ({ paso, donde: stepIndex(paso) }));
+
+    for (const { paso, donde } of pasos) {
+      expect(donde, `falta el paso ${paso}`).toBeGreaterThan(-1);
+    }
+
+    const posiciones = pasos.map((p) => p.donde);
+    expect(posiciones).toEqual([...posiciones].sort((a, b) => a - b));
+  });
+
+  /*
+   * El bug de 7B, escrito como test: `@astrojs/cloudflare` congela la
+   * configuracion de Wrangler durante el build, asi que escribir el
+   * identificador despues no llega a tiempo y el deploy muere quejandose del
+   * binding DB.
+   */
+  it('escribe el identificador de la D1 ANTES de construir', () => {
+    expect(stepIndex('publication:wrangler-config')).toBeLessThan(stepIndex('run: npm run build'));
+  });
+
+  it('despliega el mismo artefacto que verifico, sin reconstruir', () => {
+    const entreVerifyYDeploy = WORKFLOW.slice(
+      stepIndex('publication:verify'),
+      stepIndex('wrangler deploy'),
+    );
+
+    expect(entreVerifyYDeploy).not.toContain('npm run build');
+    expect(entreVerifyYDeploy).not.toContain('astro build');
+  });
+
   it('construye una sola vez, y nunca despues del deploy', () => {
     const builds = WORKFLOW.match(/run: npm run build/g) ?? [];
 
@@ -214,6 +258,29 @@ describe('los scripts del despliegue', () => {
 
   it('el repositorio sigue con el placeholder, no con un id real', () => {
     expect(read('wrangler.jsonc')).toContain('REPLACE_WITH_D1_DATABASE_ID');
+  });
+
+  /*
+   * El paso de configuracion modifica un fichero rastreado. Solo es aceptable
+   * porque pasa en el workspace del runner, que se tira: si el workflow
+   * pudiera devolver ese cambio al repositorio, el identificador acabaria
+   * versionado.
+   */
+  it('el workflow no puede devolver al repositorio el fichero que modifica', () => {
+    expect(WORKFLOW).toContain('permissions:\n  contents: read');
+    expect(WORKFLOW).not.toContain('git commit');
+    expect(WORKFLOW).not.toContain('git push');
+    expect(WORKFLOW).not.toContain('git-auto-commit');
+    expect(WORKFLOW).not.toContain('create-pull-request');
+  });
+
+  it('el id solo entra por el entorno, nunca escrito en el workflow', () => {
+    const asignaciones = WORKFLOW.match(/CF_D1_DATABASE_ID:.*/g) ?? [];
+
+    expect(asignaciones.length).toBeGreaterThan(0);
+    for (const linea of asignaciones) {
+      expect(linea).toBe('CF_D1_DATABASE_ID: ${{ secrets.CF_D1_DATABASE_ID }}');
+    }
   });
 });
 
