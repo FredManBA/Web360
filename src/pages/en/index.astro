@@ -41,6 +41,7 @@ const seo = sectionSeo({
   path: '/en/',
   alternatePath: '/es/',
   isHome: true,
+  socialImage: snapshot.site.media.social,
 });
 
 /*
@@ -56,7 +57,7 @@ const jsonLd = organizationJsonLd({
 ---
 
 <PublicLayout seo={seo} jsonLd={jsonLd}>
-  <HomeHero copy={copy} locale={locale} showMap={showMap} />
+  <HomeHero copy={copy} locale={locale} showMap={showMap} image={snapshot.site.media.hero} />
 
   <div class="home">
     <section class="home-section home-featured" aria-labelledby="featured-title">

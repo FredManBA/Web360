@@ -214,6 +214,18 @@ a {
   line-height: 1;
 }
 
+/*
+ * El logo ocupa el mismo hueco que la inicial a la que sustituye, asi que la
+ * cabecera mide igual con logo y sin el. `contain` respeta la proporcion del
+ * archivo, sea cuadrado o alargado.
+ */
+.site-brand-logo {
+  width: auto;
+  max-width: 8rem;
+  height: 2.25rem;
+  object-fit: contain;
+}
+
 .site-brand-name {
   font-family: var(--font-display);
   font-size: 1.5rem;
@@ -324,6 +336,15 @@ a {
   max-width: var(--content-width);
   margin: 0 auto;
   padding: var(--space-lg) var(--space-md);
+}
+
+/* En el pie va encima del nombre, mas discreto que en la cabecera. */
+.site-footer-logo {
+  width: auto;
+  max-width: 9rem;
+  height: 2.75rem;
+  margin-bottom: var(--space-xs);
+  object-fit: contain;
 }
 
 .site-footer-brand {
@@ -1721,6 +1742,38 @@ a {
   color: var(--ivory);
 }
 
+/*
+ * La fotografia de portada, cuando esta configurada.
+ *
+ * Ocupa el hueco que el hero ya tenia —`min-height` no cambia—, asi que nada
+ * se mueve cuando termina de cargar. `object-fit: cover` la recorta sin
+ * deformarla en cualquier proporcion de pantalla.
+ */
+.hero-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/*
+ * Con foto, el degradado pasa a ir ENCIMA: es lo que mantiene el texto
+ * legible sea cual sea la imagen. Sin el, un cielo claro dejaria el titulo
+ * ilegible, y no se puede depender de que la foto venga oscura.
+ */
+.hero-has-image::after {
+  position: absolute;
+  content: '';
+  inset: 0;
+  background: linear-gradient(
+    170deg,
+    rgb(22 48 37 / 78%) 0%,
+    rgb(22 48 37 / 55%) 45%,
+    rgb(22 48 37 / 82%) 100%
+  );
+}
+
 /* Curvas de nivel: lineas finas que no llegan a leerse como un patron. */
 .hero-terrain {
   position: absolute;
@@ -1739,8 +1792,10 @@ a {
   pointer-events: none;
 }
 
+/* El contenido queda por encima de la foto y de su degradado. */
 .hero-inner {
   position: relative;
+  z-index: 1;
   width: 100%;
   max-width: var(--content-width);
   margin: 0 auto;

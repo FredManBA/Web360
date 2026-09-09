@@ -149,6 +149,8 @@ export interface SectionSeoInput {
   path: string;
   alternatePath: string | null;
   isHome?: boolean;
+  /** Imagen social configurada del sitio, si la hay. */
+  socialImage?: string | null;
 }
 
 /** Portada, catalogo, mapa y contacto: paginas del sitio, siempre indexables. */
@@ -161,8 +163,12 @@ export function sectionSeo(input: SectionSeoInput): PageSeo {
     alternatePath: input.alternatePath,
     isHome: input.isHome === true,
     indexable: true,
-    imagePath: null,
-    imageAlt: null,
+    /*
+     * Estas paginas no tienen una portada propia, asi que si el sitio tiene
+     * imagen social configurada, es la suya.
+     */
+    imagePath: input.socialImage ?? null,
+    imageAlt: input.socialImage === null || input.socialImage === undefined ? null : input.brand,
     type: 'website',
   };
 }
@@ -177,13 +183,14 @@ export function sectionSeo(input: SectionSeoInput): PageSeo {
  *
  * La imagen social es la portada publica —una ruta `/media/N`, nunca una clave
  * de R2—, que es la unica imagen de la propiedad que ya es publica de todas
- * formas.
+ * formas. Si la ficha no tiene ninguna, se recurre a la del sitio.
  */
 export function propertySeo(
   property: PublicPropertyDetail,
   locale: Locale,
   brand: string,
   alternatePath: string | null,
+  socialImage: string | null = null,
 ): PageSeo {
   const social = property.media.cover ?? property.media.hero;
 
@@ -202,8 +209,13 @@ export function propertySeo(
      * visibilidad, incluida la de vendida: si esta aqui, se indexa.
      */
     indexable: true,
-    imagePath: social?.url ?? null,
-    imageAlt: social?.altText ?? property.title,
+    /*
+     * La portada de la propiedad manda: es la imagen de ESTA ficha. La del
+     * sitio solo entra cuando no hay ninguna, para no compartir un enlace sin
+     * imagen.
+     */
+    imagePath: social?.url ?? socialImage,
+    imageAlt: social === null || social === undefined ? brand : (social.altText ?? property.title),
     type: 'article',
   };
 }

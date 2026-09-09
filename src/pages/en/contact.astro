@@ -21,6 +21,7 @@ const channels = loadPublicSnapshot().contact;
 const seo = sectionSeo({
   locale,
   brand: brandOf(loadPublicSnapshot().site, locale),
+  socialImage: loadPublicSnapshot().site.media.social,
   title: labels.contactTitle,
   description: labels.contactDescription,
   path: contactHref('en'),

@@ -43,6 +43,13 @@
       "when": 1788891305238,
       "tag": "0005_abandoned_publication_requests",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1788913499365,
+      "tag": "0006_site_home_hero",
+      "breakpoints": true
     }
   ]
 }

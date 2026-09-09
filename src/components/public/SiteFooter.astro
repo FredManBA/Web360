@@ -6,15 +6,35 @@ interface Props {
   locale: Locale;
   /** Nombre configurado del negocio; el shell no lo decide. */
   brand: string;
+  /** Logo configurado, si lo hay. */
+  logo?: string | null;
 }
 
-const { locale, brand } = Astro.props;
+const { locale, brand, logo = null } = Astro.props;
 const labels = labelsFor(locale);
 const year = new Date().getFullYear();
 ---
 
 <footer class="site-footer">
   <div class="site-footer-inner">
+    {
+      /*
+       * Con logo, se ensena encima del nombre; sin el, el nombre solo. El
+       * nombre no desaparece nunca: es lo que identifica al negocio para
+       * quien no ve la imagen.
+       */
+      logo !== null && (
+        <img
+          class="site-footer-logo"
+          src={logo}
+          alt=""
+          width="48"
+          height="48"
+          loading="lazy"
+          decoding="async"
+        />
+      )
+    }
     <p class="site-footer-brand">{brand}</p>
     <p class="site-footer-note">{labels.footerNote}</p>
     <p class="site-footer-legal">© {year} {brand}</p>

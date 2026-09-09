@@ -36,7 +36,13 @@ const { property, alternate } = Astro.props as {
   alternate: string | null;
 };
 
-const seo = propertySeo(property, locale, brandOf(snapshot.site, locale), alternate);
+const seo = propertySeo(
+  property,
+  locale,
+  brandOf(snapshot.site, locale),
+  alternate,
+  snapshot.site.media.social,
+);
 
 /*
  * Las imagenes del JSON-LD son las rutas publicas de siempre (`/media/N`),

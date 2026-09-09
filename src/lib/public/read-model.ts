@@ -46,6 +46,7 @@ import {
 import { formatArea } from '../domain/area';
 import { getPublicCoordinates } from '../domain/location';
 import { formatMoney } from '../domain/money';
+import type { SiteMediaSlot } from '../domain/site-media';
 import { isPubliclyVisible } from '../domain/visibility';
 import type {
   CommercialStatus,
@@ -264,10 +265,26 @@ export interface PublicSiteTexts {
   seoDescription: string | null;
 }
 
+/**
+ * Las imagenes del sitio, como RUTAS.
+ *
+ * Nunca la clave del objeto en R2: eso se queda en la base y en el servidor.
+ * Lo que sale de aqui es lo mismo que ya viaja en el HTML —una ruta que
+ * cualquiera puede pedir—, con una version detras para que reemplazar una
+ * imagen no deje la anterior en la cache de nadie.
+ */
+export interface PublicSiteMedia {
+  logo: string | null;
+  favicon: string | null;
+  social: string | null;
+  hero: string | null;
+}
+
 export interface PublicSite {
   /** Nombre comercial; la marca, no un canal de contacto. */
   businessName: string | null;
   texts: Record<Locale, PublicSiteTexts>;
+  media: PublicSiteMedia;
 }
 
 const EMPTY_TEXTS: PublicSiteTexts = {
@@ -278,9 +295,17 @@ const EMPTY_TEXTS: PublicSiteTexts = {
   seoDescription: null,
 };
 
+export const EMPTY_SITE_MEDIA: PublicSiteMedia = {
+  logo: null,
+  favicon: null,
+  social: null,
+  hero: null,
+};
+
 export const EMPTY_SITE: PublicSite = {
   businessName: null,
   texts: { es: EMPTY_TEXTS, en: EMPTY_TEXTS },
+  media: EMPTY_SITE_MEDIA,
 };
 
 export interface PublicSnapshot {
@@ -951,7 +976,19 @@ async function buildSnapshot(db: AdminDatabase, options: SnapshotOptions): Promi
  */
 async function readSiteTexts(db: AdminDatabase): Promise<PublicSite> {
   const settings = await db
-    .select({ id: siteSettings.id, businessName: siteSettings.businessName })
+    .select({
+      id: siteSettings.id,
+      businessName: siteSettings.businessName,
+      updatedAt: siteSettings.updatedAt,
+      /*
+       * Las claves se leen SOLO para saber si el hueco esta lleno. No entran
+       * en el snapshot: lo que se publica es la ruta.
+       */
+      logoObjectKey: siteSettings.logoObjectKey,
+      faviconObjectKey: siteSettings.faviconObjectKey,
+      defaultSocialImageObjectKey: siteSettings.defaultSocialImageObjectKey,
+      homeHeroObjectKey: siteSettings.homeHeroObjectKey,
+    })
     .from(siteSettings)
     .orderBy(asc(siteSettings.id))
     .limit(1);
@@ -988,9 +1025,24 @@ async function readSiteTexts(db: AdminDatabase): Promise<PublicSite> {
     };
   };
 
+  /*
+   * La version cambia cuando cambia la configuracion, asi que reemplazar una
+   * imagen estrena URL y nadie se queda con la anterior.
+   */
+  const version = current === undefined ? null : Math.floor(current.updatedAt.getTime() / 1000);
+
+  const mediaUrl = (slot: SiteMediaSlot, key: string | null | undefined): string | null =>
+    key === null || key === undefined ? null : `/site-media/${slot}?v=${version}`;
+
   return {
     businessName: clean(current?.businessName),
     texts: { es: textsFor('es'), en: textsFor('en') },
+    media: {
+      logo: mediaUrl('logo', current?.logoObjectKey),
+      favicon: mediaUrl('favicon', current?.faviconObjectKey),
+      social: mediaUrl('social', current?.defaultSocialImageObjectKey),
+      hero: mediaUrl('hero', current?.homeHeroObjectKey),
+    },
   };
 }
 

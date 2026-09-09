@@ -20,6 +20,7 @@ const properties = catalogueOf(loadPublicSnapshot(), locale);
 const seo = sectionSeo({
   locale,
   brand: brandOf(loadPublicSnapshot().site, locale),
+  socialImage: loadPublicSnapshot().site.media.social,
   title: labels.mapTitle,
   description: labels.mapDescription,
   path: mapHref('en'),

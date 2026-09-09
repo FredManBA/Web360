@@ -9,9 +9,11 @@ interface Props {
   alternateHref?: string | null;
   /** Nombre configurado del negocio; el shell no lo decide. */
   brand: string;
+  /** Logo configurado. Sin el, el distintivo sigue siendo la inicial. */
+  logo?: string | null;
 }
 
-const { locale, section, alternateHref = null, brand } = Astro.props;
+const { locale, section, alternateHref = null, brand, logo = null } = Astro.props;
 
 const labels = labelsFor(locale);
 const items = navigationFor(locale);
@@ -24,7 +26,20 @@ const other = languages[1];
 <header class="site-header">
   <div class="site-header-inner">
     <a class="site-brand" href={`/${locale}/`}>
-      <span class="site-brand-mark" aria-hidden="true">{brand.trim().charAt(0)}</span>
+      {
+        /*
+         * Con logo configurado, el logo; sin el, la inicial de siempre. El
+         * nombre se queda al lado en los dos casos: es lo que se lee, y lo que
+         * lee quien no ve la imagen.
+         */
+        logo === null ? (
+          <span class="site-brand-mark" aria-hidden="true">
+            {brand.trim().charAt(0)}
+          </span>
+        ) : (
+          <img class="site-brand-logo" src={logo} alt="" width="40" height="40" decoding="async" />
+        )
+      }
       <span class="site-brand-name">{brand}</span>
     </a>
 

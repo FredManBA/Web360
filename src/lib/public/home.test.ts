@@ -79,6 +79,7 @@ function site(texts: Partial<PublicSite['texts']['es']> = {}, businessName?: str
       es: { ...EMPTY_SITE.texts.es, ...texts },
       en: EMPTY_SITE.texts.en,
     },
+    media: EMPTY_SITE.media,
   };
 }
 
@@ -193,6 +194,7 @@ describe('los textos de la portada', () => {
         es: { ...EMPTY_SITE.texts.es, heroTitle: 'En espanol' },
         en: { ...EMPTY_SITE.texts.en, heroTitle: 'In English' },
       },
+      media: EMPTY_SITE.media,
     };
 
     expect(homeCopy(both, 'es', DEFAULTS).heroTitle).toBe('En espanol');
@@ -404,27 +406,50 @@ describe('la portada', () => {
 describe('el hero', () => {
   it('no se cuelga de la foto de ninguna propiedad', () => {
     /*
-     * Todavia no hay media global configurable. Atar la portada a la foto de
-     * un lote la romperia el dia que ese lote deje de estar publicado.
+     * La portada usa la imagen del SITIO, que se configura en el panel. Atarla
+     * a la foto de un lote la romperia el dia que ese lote deje de estar
+     * publicado.
      *
-     * Se mira el codigo, no el comentario de cabecera, que precisamente
-     * explica por que no se usa `property_media`.
+     * Se mira el codigo, no el comentario de cabecera.
      */
     const hero = read(HERO);
     const code = hero.slice(hero.indexOf('---', 3));
 
     expect(code).not.toContain('property_media');
-    expect(code).not.toContain('media.');
-    expect(code).not.toContain('<img');
+    expect(code).not.toContain('catalogueOf');
+
+    // La imagen llega por props, y quien la pasa es la portada.
+    expect(hero).toContain('image?: string | null');
+    for (const page of [HOME_ES, HOME_EN]) {
+      expect(read(page)).toContain('image={snapshot.site.media.hero}');
+    }
   });
 
-  it('el fondo se dibuja: ni una peticion de red', () => {
+  it('con imagen, ni se pierde legibilidad ni se mueve nada al cargar', () => {
     const css = read(CSS);
+    const hero = read(HERO);
+
+    // El degradado va encima de la foto: el texto no depende de como sea.
+    expect(css).toContain('.hero-has-image::after');
+    // El hueco lo fija el hero, y la foto se recorta dentro.
+    expect(css).toContain('object-fit: cover');
+    expect(css).toContain('min-height: min(78vh, 40rem)');
+    // Es la imagen mas importante de la pagina: se pide cuanto antes.
+    expect(hero).toContain('fetchpriority="high"');
+    expect(hero).not.toContain('loading="lazy"');
+  });
+
+  it('sin imagen configurada, el fondo se dibuja: ni una peticion de red', () => {
+    const css = read(CSS);
+    const hero = read(HERO);
 
     expect(css).toContain('.hero-terrain');
     expect(css).toContain('repeating-radial-gradient');
     // Ninguna imagen que descargar.
     expect(css).not.toContain('.hero-terrain {\n  background-image: url(');
+
+    // Y el <img> solo aparece cuando hay algo que ensenar.
+    expect(hero).toContain('image !== null && (');
   });
 
   it('lleva marca, mensaje y camino a Propiedades', () => {

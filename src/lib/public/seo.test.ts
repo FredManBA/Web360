@@ -283,6 +283,60 @@ describe('el SEO de una ficha', () => {
 });
 
 /* -------------------------------------------------------------------------- */
+/* La imagen social del sitio                                                 */
+/* -------------------------------------------------------------------------- */
+
+describe('la imagen social configurada', () => {
+  const SOCIAL = '/site-media/social?v=123';
+
+  it('la usan las paginas que no tienen portada propia', () => {
+    const seo = sectionSeo({
+      locale: 'es',
+      brand: 'Loba',
+      title: 'Mapa',
+      description: null,
+      path: '/es/mapa',
+      alternatePath: '/en/map',
+      socialImage: SOCIAL,
+    });
+
+    expect(seo.imagePath).toBe(SOCIAL);
+    expect(seo.imageAlt).toBe('Loba');
+  });
+
+  it('sin configurar, esas paginas no declaran imagen', () => {
+    const seo = sectionSeo({
+      locale: 'es',
+      brand: 'Loba',
+      title: 'Mapa',
+      description: null,
+      path: '/es/mapa',
+      alternatePath: '/en/map',
+    });
+
+    expect(seo.imagePath).toBeNull();
+  });
+
+  it('la portada de la propiedad MANDA sobre la del sitio', async () => {
+    await property();
+
+    const seo = propertySeo(await detail(), 'es', 'Loba', null, SOCIAL);
+
+    expect(seo.imagePath).toMatch(/^\/media\/\d+$/);
+    expect(seo.imagePath).not.toBe(SOCIAL);
+  });
+
+  it('y solo entra cuando la ficha no tiene ninguna', async () => {
+    await property({ withImage: false });
+
+    const seo = propertySeo(await detail(), 'es', 'Loba', null, SOCIAL);
+
+    expect(seo.imagePath).toBe(SOCIAL);
+    expect(seo.imageAlt).toBe('Loba');
+  });
+});
+
+/* -------------------------------------------------------------------------- */
 /* Idiomas                                                                    */
 /* -------------------------------------------------------------------------- */
 

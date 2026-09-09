@@ -43,6 +43,12 @@ const brand = snapshot.site.businessName ?? labelsFor(locale).brandName;
 
 const canonical = url(seo.path);
 const image = seo.imagePath === null ? null : url(seo.imagePath);
+
+/*
+ * El favicon configurado, si lo hay. Sin el no se declara ninguno y el
+ * navegador hace lo de siempre: pedir `/favicon.ico` y quedarse sin icono.
+ */
+const favicon = snapshot.site.media.favicon;
 ---
 
 <!doctype html>
@@ -52,6 +58,8 @@ const image = seo.imagePath === null ? null : url(seo.imagePath);
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{seo.title}</title>
     {seo.description && <meta name="description" content={seo.description} />}
+
+    {favicon && <link rel="icon" href={favicon} />}
 
     <link rel="canonical" href={canonical} />
     <meta name="robots" content={seo.indexable ? 'index, follow' : 'noindex, follow'} />
@@ -97,12 +105,18 @@ const image = seo.imagePath === null ? null : url(seo.imagePath);
     {jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} is:inline />}
   </head>
   <body>
-    <SiteHeader locale={locale} section={section} alternateHref={seo.alternatePath} brand={brand} />
+    <SiteHeader
+      locale={locale}
+      section={section}
+      alternateHref={seo.alternatePath}
+      brand={brand}
+      logo={snapshot.site.media.logo}
+    />
 
     <main id="contenido">
       <slot />
     </main>
 
-    <SiteFooter locale={locale} brand={brand} />
+    <SiteFooter locale={locale} brand={brand} logo={snapshot.site.media.logo} />
   </body>
 </html>

@@ -1,0 +1,1 @@
+ALTER TABLE `site_settings` ADD `home_hero_object_key` text;

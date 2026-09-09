@@ -1963,3 +1963,81 @@
 .publication-abandon {
   margin-left: auto;
 }
+
+/* -------------------------------------------------------------------------- */
+/* Imagenes del sitio                                                         */
+/* -------------------------------------------------------------------------- */
+
+.site-media-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+}
+
+.site-media-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.9rem 1rem 1rem;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-sm);
+}
+
+.site-media-slot h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.site-media-hint,
+.site-media-rule {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+/*
+ * El hueco de la vista previa es fijo: asi la tarjeta no da un salto cuando
+ * la imagen termina de cargar, y un logo alargado no descoloca al de al lado.
+ * El fondo a cuadros deja ver la transparencia de un PNG.
+ */
+.site-media-preview,
+.site-media-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 8rem;
+  border-radius: var(--admin-radius-sm);
+  background-color: #f4f2ee;
+  background-image:
+    linear-gradient(45deg, #e7e4de 25%, transparent 25%),
+    linear-gradient(-45deg, #e7e4de 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #e7e4de 75%),
+    linear-gradient(-45deg, transparent 75%, #e7e4de 75%);
+  background-position:
+    0 0,
+    0 8px,
+    8px -8px,
+    -8px 0;
+  background-size: 16px 16px;
+}
+
+.site-media-preview {
+  width: 100%;
+  object-fit: contain;
+}
+
+.site-media-empty {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.site-media-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: auto;
+}
+
+/* La etiqueta hace de boton para el input de archivo, que va oculto. */
+.site-media-actions label {
+  cursor: pointer;
+}

@@ -147,6 +147,18 @@ export const prerender = false;
       ))
     }
 
+    <section class="admin-panel" aria-labelledby="settings-media">
+      <h2 id="settings-media">Imágenes del sitio</h2>
+      <p class="editor-help">
+        La portada de la Home, el logo, la imagen que se ve al compartir enlaces y el icono de la
+        pestaña. Son del sitio, no de ninguna propiedad.
+      </p>
+
+      <div id="site-media">
+        <p class="admin-muted">Cargando imágenes…</p>
+      </div>
+    </section>
+
     <section class="admin-panel" aria-labelledby="settings-social">
       <h2 id="settings-social">Redes sociales</h2>
 
@@ -175,6 +187,8 @@ export const prerender = false;
 
 <script>
   import { initSettingsPage } from '../../lib/admin/ui/settings-page';
+  import { initSiteMediaPanel } from '../../lib/admin/ui/site-media-panel';
 
   initSettingsPage();
+  initSiteMediaPanel();
 </script>

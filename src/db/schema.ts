@@ -1008,9 +1008,22 @@ export const siteSettings = sqliteTable(
 
     defaultCurrencyCode: text('default_currency_code'),
 
+    /*
+     * Media global del sitio.
+     *
+     * Solo la CLAVE del objeto en R2, y solo aqui: nunca sale del servidor.
+     * El sitio publico recibe rutas derivadas (`/site-media/<slot>`), que es
+     * lo unico que necesita para pintarlas.
+     *
+     * No es `property_media` y no debe serlo: esto no pertenece a ninguna
+     * propiedad, no se ordena, no tiene roles y no desaparece cuando se
+     * despublica un lote.
+     */
     logoObjectKey: text('logo_object_key'),
     faviconObjectKey: text('favicon_object_key'),
     defaultSocialImageObjectKey: text('default_social_image_object_key'),
+    /** Fotografia de portada de la Home. */
+    homeHeroObjectKey: text('home_hero_object_key'),
 
     createdAt,
     updatedAt,
