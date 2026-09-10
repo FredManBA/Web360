@@ -131,7 +131,16 @@ function markerElement(point: MapPoint, texts: MapTexts): HTMLButtonElement {
   return element;
 }
 
-/** Ficha flotante del marcador. Repite lo que ya esta en el listado. */
+/**
+ * Ficha flotante del marcador. Repite lo que ya esta en el listado.
+ *
+ * El texto va envuelto en `.map-popup-body` para poder ponerlo AL LADO de la
+ * miniatura en vez de debajo. Con la foto encima el globo medía unos 335 px y
+ * no cabia ni arriba ni abajo del marcador: el mapa de una ficha mide 414 px
+ * en escritorio y 269 en movil. Mapbox lo abria hacia abajo igualmente y el
+ * `overflow: hidden` del contenedor se comia el enlace, que es justo lo unico
+ * que el globo aporta y no esta ya en la pagina.
+ */
 function popupHtml(point: MapPoint, texts: MapTexts): string {
   const place =
     point.place === null ? '' : `<p class="map-popup-place">${escapeHtml(point.place)}</p>`;
@@ -141,9 +150,14 @@ function popupHtml(point: MapPoint, texts: MapTexts): string {
       ? ''
       : `<span class="map-popup-area">${escapeHtml(point.areaText)}</span>`;
 
+  /*
+   * Va DENTRO de la fila de datos, no en una propia: cada fila que se ahorra
+   * son ~22 px, y el globo compite por un hueco de 101 px en el mapa de una
+   * ficha en movil. La informacion no se pierde, solo deja de ocupar linea.
+   */
   const approximate =
     point.precision === 'approximate'
-      ? `<p class="map-popup-approximate">${escapeHtml(texts.approximate)}</p>`
+      ? `<span class="map-popup-approximate">${escapeHtml(texts.approximate)}</span>`
       : '';
 
   const image =
@@ -153,12 +167,12 @@ function popupHtml(point: MapPoint, texts: MapTexts): string {
 
   return (
     `<div class="map-popup">${image}` +
+    '<div class="map-popup-body">' +
     `<h3 class="map-popup-title">${escapeHtml(point.title)}</h3>` +
     place +
-    `<p class="map-popup-facts"><span class="map-popup-price">${escapeHtml(point.priceText)}</span>${area}</p>` +
-    approximate +
+    `<p class="map-popup-facts"><span class="map-popup-price">${escapeHtml(point.priceText)}</span>${area}${approximate}</p>` +
     `<a class="map-popup-link" href="${escapeHtml(point.href)}">${escapeHtml(texts.openProperty)}</a>` +
-    '</div>'
+    '</div></div>'
   );
 }
 
@@ -197,6 +211,13 @@ export async function createPublicMap(options: PublicMapOptions): Promise<Public
     if (options.compact === true) {
       // En una ficha el mapa no debe secuestrar el scroll de la pagina.
       map.scrollZoom.disable();
+
+      /*
+       * Y es el mas bajo de todos: en movil deja 101 px alrededor del
+       * marcador. La marca permite al CSS apretar el globo solo aqui, en vez
+       * de recortar tambien donde sobra sitio.
+       */
+      options.container.classList.add('map-compact');
     }
 
     translateControls(options.container, options.texts);

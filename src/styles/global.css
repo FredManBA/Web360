@@ -1348,28 +1348,54 @@ a {
 /* Ficha flotante del marcador                                                */
 /* -------------------------------------------------------------------------- */
 
+/*
+ * La ficha va en horizontal: miniatura a un lado, texto al otro.
+ *
+ * No es una decision estetica. Mapbox coloca el globo donde quepa, y si no
+ * cabe ni arriba ni abajo del marcador lo abre igualmente y el contenedor lo
+ * recorta. Con la foto encima el globo pasaba de 330 px, y el mapa de una
+ * propiedad mide 414 px en escritorio y 269 en movil, asi que el enlace del
+ * final quedaba fuera. En horizontal la altura la marca el texto, no la foto.
+ */
 .map-popup {
   display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
+  align-items: flex-start;
+  gap: var(--space-2xs);
   font-family: var(--font-base);
 }
 
+.map-popup-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 0.2rem;
+  /* Sin esto el texto largo estira la caja en vez de cortarse. */
+  min-width: 0;
+}
+
 .map-popup-image {
-  width: 100%;
-  aspect-ratio: 16 / 10;
-  margin-bottom: var(--space-2xs);
+  flex: 0 0 auto;
+  width: 68px;
+  height: 68px;
   border-radius: var(--radius);
   object-fit: cover;
 }
 
 .map-popup-title {
-  font-size: 1rem;
+  font-size: 0.95rem;
+  /* Dos lineas como mucho: lo que importa del globo es el enlace. */
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .map-popup-place {
+  overflow: hidden;
   color: var(--ink-soft);
   font-size: 0.85rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .map-popup-facts {
@@ -1387,11 +1413,31 @@ a {
   color: var(--ink-soft);
 }
 
+/* Comparte fila con precio y superficie, no linea propia. */
 .map-popup-approximate {
   color: var(--sand-deep);
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+
+/*
+ * El mapa de una ficha es el mas bajo del sitio: en movil deja 101 px libres
+ * alrededor del marcador. Aqui se recorta lo que la propia pagina ya dice
+ * —la ubicacion esta dos parrafos mas arriba— para que el enlace, que es lo
+ * unico que el globo aporta, no se quede fuera del contenedor.
+ */
+.map-compact .map-popup-place {
+  display: none;
+}
+
+.map-compact .map-popup-title {
+  -webkit-line-clamp: 1;
+}
+
+.mapboxgl-popup-content {
+  /* Mapbox pone 15px abajo; con mapas de 269 px de alto, cada pixel cuenta. */
+  padding-bottom: 10px;
 }
 
 .map-popup-link {
@@ -2459,11 +2505,26 @@ a {
   }
 
   /*
-   * En un mapa pequeno la ficha flotante no cabe con fotografia: se sale del
-   * contenedor y se corta. La foto se queda solo en la tarjeta del listado,
-   * que esta justo debajo y se ve entera.
+   * Los mapas de movil son los mas bajos del sitio: el general deja 146 px
+   * alrededor del marcador y el de una ficha, 101. El globo se queda con lo
+   * imprescindible —de que propiedad habla y como llegar a ella— porque todo
+   * lo demas esta a un dedo de distancia: la tarjeta del listado justo debajo
+   * en el mapa general, y la propia pagina en la ficha.
    */
   .map-popup-image {
+    display: none;
+  }
+
+  .map-popup-place {
+    display: none;
+  }
+
+  .map-popup-title {
+    -webkit-line-clamp: 1;
+  }
+
+  /* En la ficha, precio y superficie estan a dos parrafos del mapa. */
+  .map-compact .map-popup-facts {
     display: none;
   }
 
