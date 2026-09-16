@@ -146,7 +146,7 @@ describe('una consulta desde una ficha', () => {
 
     expect(result.ok).toBe(true);
     expect((await storedRows())[0]?.propertyId).toBe(propertyId);
-    if (result.ok) expect(result.stored?.propertyCode).toMatch(/^LOBA-/);
+    if (result.ok) expect(result.stored?.propertyCode).toMatch(/^CR360-/);
   });
 
   it('una propiedad no publica se rechaza y no guarda nada', async () => {

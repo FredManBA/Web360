@@ -332,7 +332,7 @@ const ES: PublicLabels = {
   notFoundHome: 'Ir a la portada',
   notFoundCatalogue: 'Ver las propiedades',
 
-  brandName: 'Loba',
+  brandName: 'Costa Rica 360',
   chooseLanguage: 'Elige idioma',
 };
 
@@ -489,7 +489,7 @@ const EN: PublicLabels = {
   notFoundHome: 'Go to the home page',
   notFoundCatalogue: 'See the properties',
 
-  brandName: 'Loba',
+  brandName: 'Costa Rica 360',
   chooseLanguage: 'Choose a language',
 };
 

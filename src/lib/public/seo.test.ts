@@ -562,7 +562,7 @@ describe('el JSON-LD de la portada', () => {
   it('la marca cae al nombre por defecto del idioma cuando no hay configuracion', async () => {
     const snap = await snapshot();
 
-    expect(brandOf(snap.site, 'es')).toBe('Loba');
+    expect(brandOf(snap.site, 'es')).toBe('Costa Rica 360');
   });
 });
 

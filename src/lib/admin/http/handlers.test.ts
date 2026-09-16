@@ -249,13 +249,13 @@ describe('GET /api/admin/properties', () => {
 /* -------------------------------------------------------------------------- */
 
 describe('POST /api/admin/properties', () => {
-  it('(6) crea el borrador con LOBA-001 y responde 201', async () => {
+  it('(6) crea el borrador con CR360-001 y responde 201', async () => {
     const response = await handleCreateProperty(ctx(jsonRequest('POST', '/x', {})));
 
     expect(response.status).toBe(201);
     const body = (await response.json()) as { ok: boolean; data: { code: string } };
     expect(body.ok).toBe(true);
-    expect(body.data.code).toBe('LOBA-001');
+    expect(body.data.code).toBe('CR360-001');
   });
 
   it('admite cuerpo vacio', async () => {
@@ -330,7 +330,7 @@ describe('GET /api/admin/properties/:id', () => {
 
     expect(response.status).toBe(200);
     const body = (await response.json()) as { data: { property: { code: string } } };
-    expect(body.data.property.code).toBe('LOBA-001');
+    expect(body.data.property.code).toBe('CR360-001');
   });
 
   it('(9) rechaza un id invalido con 422', async () => {

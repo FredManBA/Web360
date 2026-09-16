@@ -85,8 +85,8 @@ export function homeCopy(site: PublicSite, locale: Locale, defaults: HomeDefault
     tagline: texts.tagline,
     /*
      * El titulo de la pestana lleva la marca detras cuando no hay un SEO
-     * escrito a mano: "Loba" solo no dice a que se dedica, y el titulo
-     * configurado se respeta tal cual.
+     * escrito a mano: "Costa Rica 360" solo no dice a que se dedica, y el
+     * titulo configurado se respeta tal cual.
      */
     seoTitle: texts.seoTitle ?? `${brand} · ${defaults.seoTitle}`,
     seoDescription: pick(texts.seoDescription, defaults.seoDescription),

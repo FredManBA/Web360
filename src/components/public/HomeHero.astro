@@ -65,7 +65,11 @@ const labels = labelsFor(locale);
 
   <div class="hero-inner">
     <p class="hero-brand">
-      <span class="hero-brand-mark" aria-hidden="true">L</span>
+      {
+        /* La inicial sale de la marca, como en la cabecera: escrita a mano se
+          quedaba en la del nombre anterior. */
+      }
+      <span class="hero-brand-mark" aria-hidden="true">{copy.brand.trim().charAt(0)}</span>
       {copy.brand}
     </p>
 

@@ -87,7 +87,7 @@ describe('el SEO de un 404', () => {
   });
 
   it('lleva la marca en el titulo, como el resto del sitio', () => {
-    expect(seo.title).toBe('Esta página no existe · Loba');
+    expect(seo.title).toBe('Esta página no existe · Costa Rica 360');
   });
 });
 

@@ -51,17 +51,17 @@ async function createDraft(): Promise<number> {
 /* -------------------------------------------------------------------------- */
 
 describe('createPropertyDraft', () => {
-  it('(1) el primer borrador recibe LOBA-001', async () => {
+  it('(1) el primer borrador recibe CR360-001', async () => {
     const created = await createPropertyDraft(db);
     expect(created.ok).toBe(true);
-    if (created.ok) expect(created.data.code).toBe('LOBA-001');
+    if (created.ok) expect(created.data.code).toBe('CR360-001');
   });
 
-  it('(2) el segundo recibe LOBA-002', async () => {
+  it('(2) el segundo recibe CR360-002', async () => {
     await createPropertyDraft(db);
     const second = await createPropertyDraft(db);
     expect(second.ok).toBe(true);
-    if (second.ok) expect(second.data.code).toBe('LOBA-002');
+    if (second.ok) expect(second.data.code).toBe('CR360-002');
   });
 
   it('nace como borrador disponible, con los defaults del esquema', async () => {
@@ -80,35 +80,35 @@ describe('createPropertyDraft', () => {
   });
 
   it('no reutiliza el hueco de un codigo intermedio eliminado', async () => {
-    await createPropertyDraft(db); // LOBA-001
-    const second = await createPropertyDraft(db); // LOBA-002
-    await createPropertyDraft(db); // LOBA-003
+    await createPropertyDraft(db); // CR360-001
+    const second = await createPropertyDraft(db); // CR360-002
+    await createPropertyDraft(db); // CR360-003
     if (!second.ok) throw new Error('setup');
 
     sqlite.prepare('DELETE FROM properties WHERE id = ?').run(second.data.id);
 
     const fourth = await createPropertyDraft(db);
     expect(fourth.ok).toBe(true);
-    if (fourth.ok) expect(fourth.data.code).toBe('LOBA-004');
+    if (fourth.ok) expect(fourth.data.code).toBe('CR360-004');
   });
 
   it('documenta el limite: borrar el codigo MAS ALTO si lo libera', async () => {
     /*
-     * Derivar del maximo existente no puede saber que hubo un LOBA-002 si su
+     * Derivar del maximo existente no puede saber que hubo un CR360-002 si su
      * fila desaparecio. Evitarlo exigiria una secuencia persistida, es decir
      * una columna o tabla nueva, y esta fase no debe tocar el esquema.
      *
      * En la practica no ocurre: el producto no elimina propiedades, solo las
      * archiva, y una propiedad archivada conserva su fila y su codigo.
      */
-    await createPropertyDraft(db); // LOBA-001
-    const second = await createPropertyDraft(db); // LOBA-002
+    await createPropertyDraft(db); // CR360-001
+    const second = await createPropertyDraft(db); // CR360-002
     if (!second.ok) throw new Error('setup');
 
     sqlite.prepare('DELETE FROM properties WHERE id = ?').run(second.data.id);
 
     const third = await createPropertyDraft(db);
-    if (third.ok) expect(third.data.code).toBe('LOBA-002');
+    if (third.ok) expect(third.data.code).toBe('CR360-002');
   });
 
   it('archivar NO libera el codigo', async () => {
@@ -118,7 +118,7 @@ describe('createPropertyDraft', () => {
 
     const second = await createPropertyDraft(db);
     expect(second.ok).toBe(true);
-    if (second.ok) expect(second.data.code).toBe('LOBA-002');
+    if (second.ok) expect(second.data.code).toBe('CR360-002');
   });
 
   it('admite tipo y titulo iniciales, y genera el slug', async () => {
@@ -190,7 +190,7 @@ describe('codigo editado a mano', () => {
 
     const second = await createPropertyDraft(db);
     expect(second.ok).toBe(true);
-    if (second.ok) expect(second.data.code).toBe('LOBA-001');
+    if (second.ok) expect(second.data.code).toBe('CR360-001');
   });
 });
 
@@ -207,7 +207,7 @@ describe('listProperties', () => {
     const list = await listProperties(db);
 
     expect(list).toHaveLength(1);
-    expect(list[0]?.code).toBe('LOBA-001');
+    expect(list[0]?.code).toBe('CR360-001');
     expect(list[0]?.titleEs).toBe('Lote uno');
     expect(list[0]?.titleEn).toBe('Lot one');
     expect(list[0]?.publicationStatus).toBe('draft');
@@ -262,7 +262,7 @@ describe('getPropertyForEdit', () => {
     expect(found.ok).toBe(true);
     if (!found.ok) return;
 
-    expect(found.data.property.code).toBe('LOBA-001');
+    expect(found.data.property.code).toBe('CR360-001');
     expect(found.data.propertyType?.systemKey).toBe('lot');
     expect(found.data.propertyType?.names.es).toBe('Lote');
     expect(found.data.propertyType?.names.en).toBe('Lot');
@@ -298,7 +298,7 @@ describe('updateProperty', () => {
 
     expect(updated.data.isFeatured).toBe(false);
     expect(updated.data.locality).toBe('Jaco');
-    expect(updated.data.code).toBe('LOBA-001');
+    expect(updated.data.code).toBe('CR360-001');
   });
 
   it('limpia un texto cuando se envia null', async () => {
