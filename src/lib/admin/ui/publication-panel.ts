@@ -113,9 +113,14 @@ const PUBLICATION_LABELS: Record<string, string> = {
   archived: 'Archivada',
 };
 
-const ACTION_LABELS: Record<string, string> = {
+export const ACTION_LABELS: Record<string, string> = {
   publish: 'Publicación',
   unpublish: 'Retirada',
+  /*
+   * "Del sitio" y no "global": quien mira la pantalla no piensa en alcances,
+   * piensa en que ha cambiado el nombre del negocio y quiere verlo publicado.
+   */
+  publish_site: 'Publicación del sitio',
 };
 
 /**
