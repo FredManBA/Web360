@@ -259,8 +259,19 @@ describe('el parte de exito', () => {
     const victima = await approvedProperty('lote-victima');
     const desplegada = await approvedProperty('lote-desplegada');
 
-    const suya = await askToPublish(victima);
+    /*
+     * De una en una: solo cabe UNA operacion viva en todo el sistema. La de la
+     * otra propiedad se cierra antes de pedir la de la victima; para el
+     * ataque da igual, porque lo que el atacante ensena es el ARTEFACTO de
+     * esa release, no su peticion.
+     */
     const otra = await askToPublish(desplegada);
+    await db
+      .update(publicationRequests)
+      .set({ status: 'abandoned' })
+      .where(eq(publicationRequests.id, otra.requestId));
+
+    const suya = await askToPublish(victima);
 
     /*
      * El atacante tiene el secreto y pide cerrar la operacion de la victima,

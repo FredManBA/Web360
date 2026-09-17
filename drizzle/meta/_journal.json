@@ -50,6 +50,13 @@
       "when": 1788913499365,
       "tag": "0006_site_home_hero",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1789604705858,
+      "tag": "0007_site_publication_requests",
+      "breakpoints": true
     }
   ]
 }

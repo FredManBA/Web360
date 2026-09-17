@@ -24,9 +24,14 @@
  * —viaja con el artefacto del build— y se resuelve en `deployed-release.ts`.
  */
 
-import type { PublicationAction } from '../domain/vocabularies';
+import {
+  isSitePublicationAction,
+  SITE_PUBLICATION_ACTION,
+  type PropertyPublicationAction,
+} from '../domain/vocabularies';
 import {
   buildCandidateSnapshot,
+  buildPublicSnapshot,
   mediaIdFromPublicUrl,
   type PublicMediaItem,
   type PublicSnapshot,
@@ -71,11 +76,16 @@ export interface ReleaseCandidate {
   manifest: ReleaseManifest;
 }
 
-export interface ReleaseRequest {
-  id: number;
-  propertyId: number;
-  action: PublicationAction;
-}
+/**
+ * De que operacion sale una version.
+ *
+ * Union y no un `propertyId` nullable: asi el compilador obliga a decidir en
+ * cada sitio, en vez de dejar que alguien haga `request.propertyId!` y se
+ * lleve la sorpresa en produccion.
+ */
+export type ReleaseRequest =
+  | { id: number; action: PropertyPublicationAction; propertyId: number }
+  | { id: number; action: typeof SITE_PUBLICATION_ACTION; propertyId: null };
 
 /** Datos que no salen de la base y que solo sirven para diagnosticar. */
 export interface ReleaseMetadata {
@@ -83,8 +93,15 @@ export interface ReleaseMetadata {
   commit?: string | undefined;
 }
 
-/** Identificador legible y estable de la version que produce una peticion. */
+/**
+ * Identificador legible y estable de la version que produce una peticion.
+ *
+ * Una publicacion de sitio no nombra propiedad porque no habla de ninguna:
+ * `site-r12`, frente a `publish-p3-r11`.
+ */
 export function releaseIdFor(request: ReleaseRequest): string {
+  if (isSitePublicationAction(request.action)) return `site-r${request.id}`;
+
   return `${request.action}-p${request.propertyId}-r${request.id}`;
 }
 
@@ -133,11 +150,19 @@ export async function buildReleaseCandidate(
   now: Date = new Date(),
   metadata: ReleaseMetadata = {},
 ): Promise<ReleaseCandidate> {
-  const snapshot = await buildCandidateSnapshot(
-    db,
-    { propertyId: request.propertyId, action: request.action },
-    now,
-  );
+  /*
+   * Publicar el sitio no simula ningun cambio editorial: se construye el
+   * sitio tal como esta AHORA en la base. Las propiedades publicadas entran
+   * con su media, y ninguna cambia de estado.
+   */
+  const snapshot =
+    request.action === SITE_PUBLICATION_ACTION
+      ? await buildPublicSnapshot(db, now)
+      : await buildCandidateSnapshot(
+          db,
+          { propertyId: request.propertyId, action: request.action },
+          now,
+        );
 
   return {
     snapshot,

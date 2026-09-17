@@ -28,7 +28,9 @@ import { properties, publicationRequests } from '../../db/schema';
 import { fail, ok, type AdminDatabase, type AdminResult } from '../admin/types';
 import {
   ACTIVE_PUBLICATION_REQUEST_STATUSES,
-  type PublicationAction,
+  isSitePublicationAction,
+  SITE_PUBLICATION_ACTION,
+  type PropertyPublicationAction,
   type PublicationStatus,
 } from '../domain/vocabularies';
 import {
@@ -38,16 +40,30 @@ import {
   type ReleaseMetadata,
 } from './release';
 
-export interface CandidateRequest {
-  id: number;
-  propertyId: number;
-  action: PublicationAction;
-  /** Estado editorial de la propiedad en el momento de leerla. */
-  publicationStatus: PublicationStatus;
-}
+/**
+ * La peticion que se va a construir.
+ *
+ * Union y no un `propertyId` nullable: una operacion de propiedad SIEMPRE
+ * tiene propiedad y estado editorial, y una del sitio no tiene ninguno de los
+ * dos. Escrito asi, el compilador no deja confundirlos.
+ */
+export type CandidateRequest =
+  | {
+      id: number;
+      action: PropertyPublicationAction;
+      propertyId: number;
+      /** Estado editorial de la propiedad en el momento de leerla. */
+      publicationStatus: PublicationStatus;
+    }
+  | { id: number; action: typeof SITE_PUBLICATION_ACTION; propertyId: null };
 
-/** Estado editorial que exige cada accion para tener sentido. */
-const REQUIRED_STATUS: Record<PublicationAction, PublicationStatus> = {
+/**
+ * Estado editorial que exige cada accion de propiedad para tener sentido.
+ *
+ * `publish_site` no esta, y no por olvido: no mira ninguna propiedad, asi que
+ * no hay estado que exigir. El tipo lo deja dicho.
+ */
+const REQUIRED_STATUS: Record<PropertyPublicationAction, PublicationStatus> = {
   publish: 'approved',
   unpublish: 'published',
 };
@@ -79,7 +95,12 @@ export async function loadCandidateRequest(
       publicationStatus: properties.publicationStatus,
     })
     .from(publicationRequests)
-    .innerJoin(properties, eq(publicationRequests.propertyId, properties.id))
+    /*
+     * `left` y no `inner`: una peticion de sitio no tiene propiedad con la que
+     * juntarse, y con `inner` desapareceria de la consulta como si no
+     * existiera.
+     */
+    .leftJoin(properties, eq(publicationRequests.propertyId, properties.id))
     .where(
       and(
         eq(publicationRequests.id, requestId),
@@ -98,6 +119,29 @@ export async function loadCandidateRequest(
     });
   }
 
+  if (isSitePublicationAction(row.action)) {
+    /*
+     * Publicar el sitio no exige nada de ninguna propiedad. El CHECK de la
+     * base ya garantiza que estas filas no llevan `property_id`; comprobarlo
+     * aqui tambien es lo que permite devolver el tipo estrecho sin mentir.
+     */
+    if (row.propertyId !== null) {
+      return fail({
+        code: 'publication_failed',
+        message: `La peticion ${requestId} publica el sitio y no deberia nombrar una propiedad.`,
+      });
+    }
+
+    return ok({ id: row.id, action: row.action, propertyId: null });
+  }
+
+  if (row.propertyId === null || row.publicationStatus === null) {
+    return fail({
+      code: 'publication_failed',
+      message: `La peticion ${requestId} pide "${row.action}" y no encuentra su propiedad.`,
+    });
+  }
+
   if (row.publicationStatus !== REQUIRED_STATUS[row.action]) {
     return fail({
       code: 'publication_not_allowed',
@@ -110,8 +154,8 @@ export async function loadCandidateRequest(
 
   return ok({
     id: row.id,
-    propertyId: row.propertyId,
     action: row.action,
+    propertyId: row.propertyId,
     publicationStatus: row.publicationStatus,
   });
 }

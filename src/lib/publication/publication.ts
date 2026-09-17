@@ -45,6 +45,7 @@ import {
 } from '../domain/publication';
 import {
   ACTIVE_PUBLICATION_REQUEST_STATUSES,
+  isSitePublicationAction,
   type PublicationAction,
   type PublicationRequestStatus,
   type PublicationStatus,
@@ -69,7 +70,8 @@ export const MAX_ERROR_SUMMARY = 200;
 
 export interface PublicationRequestView {
   id: number;
-  propertyId: number;
+  /** `null` cuando la operacion habla del sitio y no de una propiedad. */
+  propertyId: number | null;
   action: PublicationAction;
   status: PublicationRequestStatus;
   jobRef: string | null;
@@ -122,7 +124,11 @@ export interface PublicationTicket {
 
 export interface FinalizationResult {
   request: PublicationRequestView;
-  publicationStatus: PublicationStatus;
+  /**
+   * Estado en que queda la propiedad, o `null` si la operacion no hablaba de
+   * ninguna. Devolver un estado inventado seria peor que no devolver ninguno.
+   */
+  publicationStatus: PublicationStatus | null;
 }
 
 /** Cuantas operaciones pasadas se enseñan en el panel. */
@@ -599,15 +605,31 @@ async function applyOutcome(
     }
 
     // El estado editorial no se ha tocado: la web anterior sigue siendo la buena.
-    const current = await db
-      .select({ publicationStatus: properties.publicationStatus })
-      .from(properties)
-      .where(eq(properties.id, request.propertyId))
-      .limit(1);
-
     return ok({
       request: failed,
-      publicationStatus: current[0]?.publicationStatus ?? 'draft',
+      publicationStatus: await publicationStatusOf(db, request.propertyId),
+    });
+  }
+
+  /*
+   * Publicar el sitio no mueve NADA editorial. Se cierra la operacion y ya:
+   * la web se reconstruyo con lo que la base ya decia, y ninguna propiedad
+   * cambia de estado por haber republicado el sitio.
+   */
+  if (isSitePublicationAction(request.action)) {
+    const done = await finishRequest(db, request.id, { kind: 'succeeded' }, now);
+
+    if (done === null) {
+      return fail({ code: 'publication_failed', message: 'No se pudo cerrar la peticion.' });
+    }
+
+    return ok({ request: done, publicationStatus: null });
+  }
+
+  if (request.propertyId === null) {
+    return fail({
+      code: 'publication_failed',
+      message: `La peticion ${request.id} pide "${request.action}" sin propiedad.`,
     });
   }
 
@@ -663,7 +685,8 @@ export type ReconciliationReason =
 export interface ReconciliationResult {
   reconciled: boolean;
   reason: ReconciliationReason;
-  publicationStatus: PublicationStatus;
+  /** `null` cuando la operacion mirada no hablaba de ninguna propiedad. */
+  publicationStatus: PublicationStatus | null;
   /** La operacion mirada, tal como queda despues. */
   request: PublicationRequestView | null;
   /** La release que dice llevar el artefacto que responde. */
@@ -919,7 +942,35 @@ export async function confirmDeployedRelease(
     });
   }
 
-  // Misma puerta que el admin: una sola forma de cerrar una publicacion.
+  /*
+   * Una operacion de sitio no se puede buscar por propiedad, asi que entra por
+   * `applyOutcome`, que es la MISMA puerta por la que pasa todo lo demas: una
+   * sola forma de cerrar una publicacion, aunque se llegue por dos caminos.
+   */
+  if (request.propertyId === null) {
+    const fila = await db
+      .select()
+      .from(publicationRequests)
+      .where(eq(publicationRequests.id, requestId))
+      .limit(1);
+
+    const completa = fila[0];
+    if (completa === undefined) {
+      return fail({ code: 'publication_failed', message: 'No se pudo leer la peticion.' });
+    }
+
+    const cerrada = await applyOutcome(db, completa, { ok: true }, now);
+    if (!cerrada.ok) return cerrada;
+
+    return ok({
+      reconciled: true,
+      reason: 'applied',
+      publicationStatus: cerrada.data.publicationStatus,
+      request: cerrada.data.request,
+      deployedReleaseId,
+    });
+  }
+
   return reconcilePublication(db, request.propertyId, deployed, now);
 }
 
@@ -972,8 +1023,9 @@ export async function reportPublicationFailure(
 async function publicationStatusOf(
   db: AdminDatabase,
   propertyId: number | null,
-): Promise<PublicationStatus> {
-  if (propertyId === null) return 'draft';
+): Promise<PublicationStatus | null> {
+  // Sin propiedad no hay estado que contar, y 'draft' seria una invencion.
+  if (propertyId === null) return null;
 
   const rows = await db
     .select({ publicationStatus: properties.publicationStatus })

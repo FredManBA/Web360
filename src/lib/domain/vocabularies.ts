@@ -72,11 +72,33 @@ export type SystemPropertyTypeKey = (typeof SYSTEM_PROPERTY_TYPE_KEYS)[number];
  * Que se le pide al flujo de publicacion.
  *
  * `publish` lleva una propiedad aprobada al sitio publico; `unpublish` la
- * retira y la devuelve a `approved`. No hay un tercer verbo: archivar sigue
- * siendo una decision editorial que no toca la web publicada.
+ * retira y la devuelve a `approved`. Archivar no esta aqui: sigue siendo una
+ * decision editorial que no toca la web publicada.
+ *
+ * `publish_site` es de otra naturaleza y por eso se distingue en el tipo, no
+ * solo en el valor: no habla de ninguna propiedad. Reconstruye el sitio
+ * entero para que los cambios globales —marca, textos, media del sitio—
+ * lleguen al HTML, que es estatico y no se entera de que la base cambio.
+ * **No mueve el estado editorial de nada.** No tiene pareja: "despublicar el
+ * sitio" no es una operacion que nadie quiera a un clic.
  */
-export const PUBLICATION_ACTIONS = ['publish', 'unpublish'] as const;
+export const PROPERTY_PUBLICATION_ACTIONS = ['publish', 'unpublish'] as const;
+export type PropertyPublicationAction = (typeof PROPERTY_PUBLICATION_ACTIONS)[number];
+
+export const SITE_PUBLICATION_ACTION = 'publish_site';
+
+export const PUBLICATION_ACTIONS = [
+  ...PROPERTY_PUBLICATION_ACTIONS,
+  SITE_PUBLICATION_ACTION,
+] as const;
 export type PublicationAction = (typeof PUBLICATION_ACTIONS)[number];
+
+/** Si la accion habla de una propiedad concreta o del sitio entero. */
+export function isSitePublicationAction(
+  action: PublicationAction,
+): action is typeof SITE_PUBLICATION_ACTION {
+  return action === SITE_PUBLICATION_ACTION;
+}
 
 /**
  * Vida de una peticion de publicacion.

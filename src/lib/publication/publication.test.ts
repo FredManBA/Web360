@@ -320,7 +320,12 @@ describe('pedir publicacion', () => {
     const first = await approvedProperty('lote-uno');
     const second = await approvedProperty('lote-dos');
 
-    expect(await askToPublish(first)).not.toBe(await askToPublish(second));
+    const uno = await askToPublish(first);
+
+    // Solo cabe una operacion viva: la primera se cierra antes de pedir otra.
+    await db.update(publicationRequests).set({ status: 'abandoned' });
+
+    expect(uno).not.toBe(await askToPublish(second));
   });
 
   it('retirar exige que este publicada', async () => {

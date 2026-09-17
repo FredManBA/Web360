@@ -1252,9 +1252,17 @@ export const publicationRequests = sqliteTable(
   {
     id: integer('id').primaryKey({ autoIncrement: true }),
 
-    propertyId: integer('property_id')
-      .notNull()
-      .references(() => properties.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+    /**
+     * La propiedad de la que habla la operacion, o `null` si habla del sitio.
+     *
+     * Nullable solo por `publish_site`: reconstruir el sitio entero no es de
+     * ninguna propiedad en particular. Para `publish` y `unpublish` sigue
+     * siendo obligatorio, y eso lo garantiza el CHECK de abajo, no el tipo.
+     */
+    propertyId: integer('property_id').references(() => properties.id, {
+      onDelete: 'cascade',
+      onUpdate: 'cascade',
+    }),
 
     action: text('action', { enum: PUBLICATION_ACTIONS }).notNull(),
 
@@ -1265,6 +1273,23 @@ export const publicationRequests = sqliteTable(
      * persona decidio dejar de esperar. Por eso no se mete en `failed`.
      */
     status: text('status', { enum: PUBLICATION_REQUEST_STATUSES }).notNull().default('pending'),
+
+    /**
+     * El candado, derivado de `status`. Nunca se escribe a mano.
+     *
+     * Vale 1 mientras la operacion esta viva y NULL en cuanto termina. Con un
+     * UNIQUE encima eso significa "como mucho una viva en toda la tabla",
+     * porque SQLite considera distintos los NULL entre si y por tanto admite
+     * tantas filas terminadas como haga falta.
+     *
+     * Es una columna generada y no un campo mas porque asi no hay dos fuentes
+     * de verdad: lo mantiene SQLite a partir del estado, y no existe forma de
+     * que se desincronice.
+     */
+    activeLock: integer('active_lock').generatedAlwaysAs(
+      sql`CASE WHEN status IN ('pending', 'building') THEN 1 END`,
+      { mode: 'virtual' },
+    ),
 
     /** Hash del token de callback. Nunca el token. */
     callbackTokenHash: text('callback_token_hash').notNull(),
@@ -1307,24 +1332,38 @@ export const publicationRequests = sqliteTable(
     unique('publication_requests_callback_token_hash_unique').on(table.callbackTokenHash),
 
     /*
-     * Como mucho una operacion viva por propiedad.
+     * Como mucho una operacion viva EN TODO EL SISTEMA.
      *
-     * Es la constraint que impide el escenario incoherente de verdad: pedir
-     * "publicar" y "retirar" a la vez, o dos publicaciones en paralelo cuyos
-     * callbacks lleguen en cualquier orden. El indice es PARCIAL porque el
-     * historial si admite muchas filas terminadas por propiedad. Solo cuentan
-     * como vivas `pending` y `building`: un abandono libera la propiedad en el
-     * acto, igual que un exito o un fallo.
+     * Antes el candado era por propiedad, y eso bastaba mientras todas las
+     * operaciones hablaran de una propiedad. Ya no: cada build genera el sitio
+     * ENTERO, asi que dos operaciones vivas cualesquiera producen artefactos
+     * incompatibles y la que despliegue segunda pisa a la primera, que queda
+     * confirmada sin estar en linea. Da igual que sean dos propiedades
+     * distintas o una propiedad y el sitio.
+     *
+     * El candado es `active_lock`, que vale 1 solo mientras la fila esta viva:
+     * un UNIQUE sobre el deja pasar una y bloquea la siguiente. Un abandono
+     * libera el sistema en el acto, igual que un exito o un fallo.
      */
-    uniqueIndex('publication_requests_active_per_property_idx')
-      .on(table.propertyId)
-      .where(sql`status IN ('pending', 'building')`),
+    uniqueIndex('publication_requests_single_active_idx').on(table.activeLock),
 
     index('publication_requests_property_created_at_idx').on(table.propertyId, table.createdAt),
 
     check(
       'publication_requests_action_check',
       sql`${table.action} IN (${sql.raw(sqlList(PUBLICATION_ACTIONS))})`,
+    ),
+
+    /*
+     * Cada accion con su alcance, y sin terceras posibilidades: una operacion
+     * de propiedad SIEMPRE nombra una, y una del sitio NUNCA lo hace. Sin
+     * esto, `property_id` nullable abriria la puerta a un `publish` huerfano
+     * que el resto del codigo daria por imposible.
+     */
+    check(
+      'publication_requests_scope_check',
+      sql`(${table.action} = 'publish_site' AND ${table.propertyId} IS NULL)
+          OR (${table.action} <> 'publish_site' AND ${table.propertyId} IS NOT NULL)`,
     ),
     check(
       'publication_requests_status_check',
