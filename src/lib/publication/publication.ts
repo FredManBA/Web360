@@ -46,6 +46,7 @@ import {
 import {
   ACTIVE_PUBLICATION_REQUEST_STATUSES,
   isSitePublicationAction,
+  SITE_PUBLICATION_ACTION,
   type PublicationAction,
   type PublicationRequestStatus,
   type PublicationStatus,
@@ -223,6 +224,13 @@ async function loadForPublication(
   };
 }
 
+/**
+ * La operacion viva, si la hay.
+ *
+ * Sin filtrar por propiedad: desde que cada build genera el sitio entero, el
+ * candado de la base garantiza que como mucho hay UNA en todo el sistema. Que
+ * sea de una propiedad o del sitio da igual para decidir si cabe otra.
+ */
 async function activeRequestOf(
   db: AdminDatabase,
   propertyId: number,
@@ -236,6 +244,18 @@ async function activeRequestOf(
         inArray(publicationRequests.status, [...ACTIVE_PUBLICATION_REQUEST_STATUSES]),
       ),
     )
+    .limit(1);
+
+  return rows[0];
+}
+
+async function activeRequest(
+  db: AdminDatabase,
+): Promise<typeof publicationRequests.$inferSelect | undefined> {
+  const rows = await db
+    .select()
+    .from(publicationRequests)
+    .where(inArray(publicationRequests.status, [...ACTIVE_PUBLICATION_REQUEST_STATUSES]))
     .limit(1);
 
   return rows[0];
@@ -361,13 +381,68 @@ export async function requestPublication(
     }
   }
 
-  const active = await activeRequestOf(db, propertyId);
+  const active = await activeRequest(db);
   if (active !== undefined) {
-    return fail({
-      code: 'publication_in_progress',
-      message: 'Esta propiedad ya tiene una operacion de publicacion en curso.',
-    });
+    return fail({ code: 'publication_in_progress', message: inProgressMessage(active) });
   }
+
+  return startRequest(db, { propertyId, action, trigger, now });
+}
+
+/**
+ * Pide reconstruir el sitio entero.
+ *
+ * No mira ninguna propiedad ni valida ninguna ficha, porque no habla de
+ * ninguna: existe para que un cambio global —la marca, un texto, el hero—
+ * llegue al HTML, que es estatico y no se entera de que la base cambio.
+ *
+ * Lo unico que comprueba es el candado: si ya hay cualquier operacion viva,
+ * aqui no se anota una segunda.
+ */
+export async function requestSitePublication(
+  db: AdminDatabase,
+  input: { trigger: PublishTrigger; now?: Date },
+): Promise<AdminResult<PublicationTicket>> {
+  const now = input.now ?? new Date();
+
+  const active = await activeRequest(db);
+  if (active !== undefined) {
+    return fail({ code: 'publication_in_progress', message: inProgressMessage(active) });
+  }
+
+  return startRequest(db, {
+    propertyId: null,
+    action: SITE_PUBLICATION_ACTION,
+    trigger: input.trigger,
+    now,
+  });
+}
+
+/** El mismo mensaje lo den quien lo den, y diciendo QUE esta en curso. */
+function inProgressMessage(active: typeof publicationRequests.$inferSelect): string {
+  return active.propertyId === null
+    ? 'Ya hay una publicacion del sitio en curso.'
+    : `Ya hay una operacion de publicacion en curso (propiedad ${active.propertyId}).`;
+}
+
+/**
+ * Anota la peticion y avisa a quien construye.
+ *
+ * Es la parte que comparten publicar una propiedad, retirarla y reconstruir
+ * el sitio: las tres se anotan igual, estrenan token igual y se lanzan igual.
+ * Lo que las distingue —que validaciones exige cada una— ocurre ANTES de
+ * llegar aqui.
+ */
+async function startRequest(
+  db: AdminDatabase,
+  input: {
+    propertyId: number | null;
+    action: PublicationAction;
+    trigger: PublishTrigger;
+    now: Date;
+  },
+): Promise<AdminResult<PublicationTicket>> {
+  const { propertyId, action, trigger, now } = input;
 
   const token = generateSecretToken();
 
@@ -395,7 +470,7 @@ export async function requestPublication(
     if (isUniqueViolation(error)) {
       return fail({
         code: 'publication_in_progress',
-        message: 'Esta propiedad ya tiene una operacion de publicacion en curso.',
+        message: 'Ya hay una operacion de publicacion en curso.',
       });
     }
 
@@ -452,6 +527,124 @@ export async function requestPublication(
   }
 
   return ok({ request: requestView(row), manual: result.manual ?? null });
+}
+
+/* -------------------------------------------------------------------------- */
+/* El sitio                                                                   */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Lo que el panel necesita saber de la publicacion del sitio.
+ *
+ * Deliberadamente corto: la operacion viva si la hay, la ultima terminada
+ * para poder contar como acabo, y que se puede hacer ahora. Ni historial ni
+ * versiones: esto no es un CMS.
+ */
+export interface SitePublicationStateView {
+  /** La operacion de sitio viva, o `null`. */
+  current: PublicationRequestView | null;
+  /** La ultima terminada, para poder contar como acabo. */
+  last: PublicationRequestView | null;
+  /**
+   * Si se puede pedir una ahora. `false` tambien cuando la operacion viva es
+   * de una propiedad: el candado es de todo el sistema.
+   */
+  canPublish: boolean;
+  canReconcile: boolean;
+  canAbandon: boolean;
+  /** Lo que bloquea pedir otra, cuando lo que bloquea es una propiedad. */
+  blockedByPropertyId: number | null;
+}
+
+export async function getSitePublicationState(
+  db: AdminDatabase,
+  deployed: ReleaseManifest | null = null,
+): Promise<AdminResult<SitePublicationStateView>> {
+  const rows = await db
+    .select()
+    .from(publicationRequests)
+    .where(eq(publicationRequests.action, SITE_PUBLICATION_ACTION))
+    .orderBy(desc(publicationRequests.id))
+    .limit(HISTORY_LIMIT);
+
+  const site = rows.map(requestView);
+  const current = site.find((request) => request.isActive) ?? null;
+  const last = site.find((request) => !request.isActive) ?? null;
+
+  // Puede haber una viva de propiedad, que bloquea igual.
+  const viva = await activeRequest(db);
+
+  return ok({
+    current,
+    last,
+    canPublish: viva === undefined,
+    /*
+     * Solo tiene sentido preguntar si ya se desplego mientras se espera; y
+     * abandonar, solo mientras no haya forma de saberlo. Si el artefacto
+     * desplegado ES el de esta operacion, la hay, y lo que toca es reconciliar.
+     */
+    canReconcile: current !== null,
+    canAbandon: current !== null && !(deployed !== null && deployed.requestId === current.id),
+    blockedByPropertyId: viva?.propertyId ?? null,
+  });
+}
+
+/**
+ * Abandona la publicacion del sitio en curso.
+ *
+ * Mismo significado que en una propiedad: no afirma que el build fallara,
+ * solo que nadie va a seguir esperando. No cambia nada de ninguna ficha.
+ */
+export async function abandonSitePublication(
+  db: AdminDatabase,
+  deployed: ReleaseManifest | null,
+  reason: string | null = null,
+  now: Date = new Date(),
+): Promise<AdminResult<AbandonResult>> {
+  const rows = await db
+    .select()
+    .from(publicationRequests)
+    .where(
+      and(
+        eq(publicationRequests.action, SITE_PUBLICATION_ACTION),
+        inArray(publicationRequests.status, [...ACTIVE_PUBLICATION_REQUEST_STATUSES]),
+      ),
+    )
+    .limit(1);
+
+  const active = rows[0];
+  if (active === undefined) {
+    return fail({
+      code: 'publication_request_not_found',
+      message: 'No hay ninguna publicacion del sitio en curso.',
+    });
+  }
+
+  if (deployed !== null && deployed.requestId === active.id) {
+    return fail({
+      code: 'publication_must_reconcile',
+      message: 'Esta operacion ya esta desplegada: reconciliala en vez de abandonarla.',
+    });
+  }
+
+  const clean = reason?.trim();
+
+  const abandoned = await finishRequest(
+    db,
+    active.id,
+    {
+      kind: 'abandoned',
+      reason: clean === undefined || clean.length === 0 ? DEFAULT_ABANDON_REASON : clean,
+    },
+    now,
+  );
+
+  if (abandoned === null) {
+    return fail({ code: 'publication_failed', message: 'No se pudo cerrar la peticion.' });
+  }
+
+  // Ninguna propiedad se ha movido, porque esta operacion no habla de ninguna.
+  return ok({ request: abandoned, publicationStatus: null });
 }
 
 /* -------------------------------------------------------------------------- */
@@ -726,7 +919,8 @@ export const MAX_ABANDON_REASON = 200;
 
 export interface AbandonResult {
   request: PublicationRequestView;
-  publicationStatus: PublicationStatus;
+  /** `null` cuando la operacion abandonada no hablaba de ninguna propiedad. */
+  publicationStatus: PublicationStatus | null;
 }
 
 /**

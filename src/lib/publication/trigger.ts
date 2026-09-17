@@ -22,7 +22,8 @@ import type { PublicationAction } from '../domain/vocabularies';
 /** Lo que se le encarga a quien construye. */
 export interface PublishTriggerJob {
   requestId: number;
-  propertyId: number;
+  /** `null` cuando el trabajo es reconstruir el sitio y no una ficha. */
+  propertyId: number | null;
   action: PublicationAction;
   /** La credencial con la que se confirmara el resultado. En claro. */
   callbackToken: string;

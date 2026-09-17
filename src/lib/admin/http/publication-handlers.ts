@@ -21,10 +21,14 @@ import { z } from 'zod';
 import { describeRelease } from '../../publication/release';
 import {
   abandonPublication,
+  abandonSitePublication,
+  confirmDeployedRelease,
   MAX_ABANDON_REASON,
   getPublicationState,
+  getSitePublicationState,
   reconcilePublication,
   requestPublication,
+  requestSitePublication,
   type PublicationTicket,
 } from '../../publication/publication';
 import { manualPublishTrigger, type PublishTrigger } from '../../publication/trigger';
@@ -225,6 +229,101 @@ export function handleAbandonPublication(ctx: AdminHttpContext): Promise<Respons
       publication: state.data,
       deployed: describeRelease(ctx.deployedRelease ?? null),
     });
+  });
+}
+
+/* -------------------------------------------------------------------------- */
+/* El sitio                                                                   */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Estado y acciones de la publicacion del sitio.
+ *
+ * Una sola ruta para las tres cosas —consultar, pedir y cerrar— porque no hay
+ * identificador que poner en la URL: el candado global garantiza que como
+ * mucho hay una operacion viva, asi que "la del sitio" no es ambigua.
+ *
+ * Reconciliar y abandonar reutilizan exactamente las mismas funciones que una
+ * propiedad; lo unico que cambia es por donde se busca la operacion.
+ */
+async function siteResponse(ctx: AdminHttpContext, extra: object = {}): Promise<Response> {
+  const state = await getSitePublicationState(ctx.db, ctx.deployedRelease ?? null);
+  if (!state.ok) return jsonFromAdminError(state.error);
+
+  return jsonSuccess({
+    ...extra,
+    site: state.data,
+    deployed: describeRelease(ctx.deployedRelease ?? null),
+  });
+}
+
+export function handleGetSitePublication(ctx: AdminHttpContext): Promise<Response> {
+  return handle(ctx, () => siteResponse(ctx));
+}
+
+export function handleRequestSitePublication(ctx: AdminHttpContext): Promise<Response> {
+  return handle(ctx, async () => {
+    /* Sin cuerpo: no hay nada que elegir. Reconstruir el sitio es una sola cosa. */
+    const result = await requestSitePublication(ctx.db, {
+      trigger: ctx.publishTrigger ?? defaultTrigger(ctx),
+    });
+
+    if (!result.ok) return jsonFromAdminError(result.error);
+
+    return siteResponse(ctx, { manual: result.data.manual });
+  });
+}
+
+export function handleReconcileSitePublication(ctx: AdminHttpContext): Promise<Response> {
+  return handle(ctx, async () => {
+    const state = await getSitePublicationState(ctx.db, ctx.deployedRelease ?? null);
+    if (!state.ok) return jsonFromAdminError(state.error);
+
+    const current = state.data.current;
+    if (current === null) {
+      return jsonError(
+        'publication_request_not_found',
+        'No hay ninguna publicacion del sitio en curso.',
+        404,
+      );
+    }
+
+    /*
+     * La MISMA funcion que usa el endpoint de maquina: la prueba de que el
+     * despliegue ocurrio es el artefacto que atiende esta peticion.
+     */
+    const result = await confirmDeployedRelease(ctx.db, current.id, ctx.deployedRelease ?? null);
+    if (!result.ok) return jsonFromAdminError(result.error);
+
+    return siteResponse(ctx, {
+      reconciliation: {
+        reconciled: result.data.reconciled,
+        reason: result.data.reason,
+        deployedReleaseId: result.data.deployedReleaseId,
+      },
+    });
+  });
+}
+
+export function handleAbandonSitePublication(ctx: AdminHttpContext): Promise<Response> {
+  return handle(ctx, async () => {
+    const body = await readJsonBody(ctx.request, { allowEmpty: true });
+    if (!body.ok) return body.response;
+
+    const parsed = abandonSchema.safeParse(body.value);
+    if (!parsed.success) {
+      return jsonError('validation_failed', 'Motivo invalido.', 422, { field: 'reason' });
+    }
+
+    const result = await abandonSitePublication(
+      ctx.db,
+      ctx.deployedRelease ?? null,
+      parsed.data.reason ?? null,
+    );
+
+    if (!result.ok) return jsonFromAdminError(result.error);
+
+    return siteResponse(ctx, { abandoned: result.data.request });
   });
 }
 
