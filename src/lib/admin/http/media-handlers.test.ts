@@ -16,6 +16,7 @@ import { createMemoryBucket, type MemoryBucket } from '../media/bucket';
 import { applySeed, createTestDatabase } from '../test-database';
 import type { AdminBatchDatabase } from '../types';
 import { SAMPLE_JPEG, SAMPLE_PDF, toArrayBuffer } from '../media/test-files';
+import { addMedia, type ApiMedia, type MediaEditorState } from '../ui/media-editor-state';
 import type { AdminHttpContext } from './handlers';
 import {
   handleCreateMedia,
@@ -802,5 +803,164 @@ describe('servir un archivo de R2 en el panel', () => {
     const response = await handleGetMediaFile(ctx(jsonRequest('GET'), { id, mediaId: '0' }));
 
     expect(response.status).toBe(422);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Contrato con el panel                                                      */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * La respuesta REAL del handler, sin inventar nada, pasa directamente a la
+ * funcion con la que el panel pinta un archivo.
+ *
+ * Existe porque los dos lados se probaban por separado: el panel con
+ * respuestas fabricadas que siempre traian `translations`, y el handler con
+ * las suyas. Cada uno pasaba y juntos fallaban: el panel leia
+ * `translations.es` de una respuesta que no las tenia.
+ */
+describe('contrato con el panel', () => {
+  async function dataOf(response: Response): Promise<ApiMedia> {
+    const body = (await response.json()) as { ok: boolean; data: ApiMedia };
+    expect(body.ok).toBe(true);
+    return body.data;
+  }
+
+  const emptyState = (): MediaEditorState => ({ groups: [], media: [] });
+
+  /** El archivo tal y como aparece en el listado. */
+  async function listedById(id: string, mediaId: number): Promise<ApiMedia | undefined> {
+    const response = await handleGetMedia(ctx(jsonRequest('GET'), { id }));
+    const body = (await response.json()) as {
+      data: { groups: { media: ApiMedia[] }[]; ungrouped: ApiMedia[] };
+    };
+
+    return [...body.data.ungrouped, ...body.data.groups.flatMap((group) => group.media)].find(
+      (item) => item.id === mediaId,
+    );
+  }
+
+  it('la respuesta de una subida la pinta el panel tal cual', async () => {
+    const id = await newProperty();
+
+    const response = await handleUploadMedia(
+      ctx(
+        uploadRequest(id, sampleFile(SAMPLE_JPEG), {
+          mediaKind: 'image',
+          titleEs: 'Fachada',
+          altTextEn: 'Front view',
+        }),
+        { id },
+      ),
+    );
+    expect(response.status).toBe(201);
+
+    const media = await dataOf(response);
+    const state = emptyState();
+
+    const entry = addMedia(state, media);
+
+    expect(entry.mediaKind).toBe('image');
+    expect(entry.draft.titleEs).toBe('Fachada');
+    expect(entry.draft.altTextEn).toBe('Front view');
+    expect(state.media).toHaveLength(1);
+  });
+
+  it('la respuesta del alta de YouTube la pinta el panel tal cual', async () => {
+    const id = await newProperty();
+
+    const response = await handleCreateMedia(
+      ctx(
+        jsonRequest('POST', {
+          mediaKind: 'video',
+          sourceProvider: 'youtube',
+          youtubeVideoId: 'dQw4w9WgXcQ',
+          titleEs: 'Recorrido en dron',
+        }),
+        { id },
+      ),
+    );
+    expect(response.status).toBe(201);
+
+    const media = await dataOf(response);
+    const entry = addMedia(emptyState(), media);
+
+    expect(entry.sourceProvider).toBe('youtube');
+    expect(entry.youtubeVideoId).toBe('dQw4w9WgXcQ');
+    expect(entry.draft.titleEs).toBe('Recorrido en dron');
+  });
+
+  it('un archivo sin textos llega con `translations` vacio, no ausente', async () => {
+    const id = await newProperty();
+
+    const media = await dataOf(
+      await handleUploadMedia(ctx(uploadRequest(id, sampleFile(SAMPLE_JPEG)), { id })),
+    );
+
+    expect(media.translations).toEqual({});
+    expect(() => addMedia(emptyState(), media)).not.toThrow();
+  });
+
+  it('las traducciones llegan por idioma, con titulo, texto alternativo y pie', async () => {
+    const id = await newProperty();
+
+    const media = await dataOf(
+      await handleUploadMedia(
+        ctx(
+          uploadRequest(id, sampleFile(SAMPLE_JPEG), {
+            mediaKind: 'image',
+            titleEs: 'Vista al mar',
+            captionEs: 'Desde la terraza',
+            titleEn: 'Ocean view',
+          }),
+          { id },
+        ),
+      ),
+    );
+
+    expect(media.translations.es).toEqual({
+      title: 'Vista al mar',
+      altText: null,
+      caption: 'Desde la terraza',
+    });
+    expect(media.translations.en).toEqual({ title: 'Ocean view', altText: null, caption: null });
+  });
+
+  it('subir, dar de alta un video y listar devuelven la misma forma de media', async () => {
+    const id = await newProperty();
+    const groupId = await newGroup(id, 'Exteriores');
+
+    const subido = await dataOf(
+      await handleUploadMedia(
+        ctx(
+          uploadRequest(id, sampleFile(SAMPLE_JPEG), {
+            mediaKind: 'panorama',
+            groupId: String(groupId),
+            titleEs: 'Terraza',
+          }),
+          { id },
+        ),
+      ),
+    );
+
+    const video = await dataOf(
+      await handleCreateMedia(
+        ctx(
+          jsonRequest('POST', {
+            mediaKind: 'video',
+            sourceProvider: 'youtube',
+            youtubeVideoId: 'dQw4w9WgXcQ',
+          }),
+          { id },
+        ),
+      ),
+    );
+
+    // Un solo contrato: lo que devuelve crear es lo que devolvera listar.
+    expect(subido).toEqual(await listedById(id, subido.id));
+    expect(video).toEqual(await listedById(id, video.id));
+
+    expect(subido.mediaKind).toBe('panorama');
+    expect(subido.groupId).toBe(groupId);
   });
 });

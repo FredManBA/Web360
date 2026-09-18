@@ -16,12 +16,12 @@ import {
   addMedia,
   applyCatalogCover,
   applyHero,
+  canStartUploads,
   catalogCoverId,
   clearFinishedUploads,
   createUploadItem,
   formatFileSize,
   groupDisplayName,
-  hasActiveUploads,
   heroId,
   isEmpty,
   isGroupDirty,
@@ -31,18 +31,27 @@ import {
   mediaKindLabel,
   mediaOfGroup,
   mediaPatch,
+  pendingUploadCount,
   removeGroup,
   removeMedia,
   runUploadQueue,
   stateFromApi,
   summarizeUploads,
   ungroupedMedia,
+  UPLOAD_FAILED_TEXT,
+  UPLOADED_NOT_SHOWN_TEXT,
   type ApiMedia,
   type ApiMediaView,
   type UploadAttempt,
+  type UploadConfig,
   type UploadItem,
 } from './media-editor-state';
-import { deleteGroupMessage, deleteMediaMessage } from './media-editor';
+import {
+  deleteGroupMessage,
+  deleteMediaMessage,
+  uploadPanelMarkup,
+  type UploadPanelView,
+} from './media-editor';
 
 function read(relative: string): string {
   return readFileSync(path.resolve(process.cwd(), relative), 'utf8');
@@ -408,21 +417,32 @@ describe('portada de ficha y de catalogo', () => {
 /* Cola de subidas                                                            */
 /* -------------------------------------------------------------------------- */
 
+/** Lo que se elige por defecto en el panel. */
+const IMAGE_CONFIG: UploadConfig = { mediaKind: 'image', groupId: null };
+
+/** Cola con archivos que llevan cada uno SU configuracion. */
+function queueWith(entries: readonly { name: string; config: UploadConfig }[]): {
+  queue: UploadItem[];
+  files: Map<string, File>;
+} {
+  const queue: UploadItem[] = [];
+  const files = new Map<string, File>();
+
+  entries.forEach(({ name, config }, index) => {
+    const key = `upload-${index + 1}`;
+    queue.push(createUploadItem(key, { name, size: 1024 }, config));
+    files.set(key, new File([new Uint8Array([1, 2, 3])], name));
+  });
+
+  return { queue, files };
+}
+
+function queueOf(...names: string[]): { queue: UploadItem[]; files: Map<string, File> } {
+  return queueWith(names.map((name) => ({ name, config: IMAGE_CONFIG })));
+}
+
 describe('cola de subidas', () => {
-  function queueOf(...names: string[]): { queue: UploadItem[]; files: Map<string, File> } {
-    const queue: UploadItem[] = [];
-    const files = new Map<string, File>();
-
-    names.forEach((name, index) => {
-      const key = `upload-${index + 1}`;
-      queue.push(createUploadItem(key, { name, size: 1024 }));
-      files.set(key, new File([new Uint8Array([1, 2, 3])], name));
-    });
-
-    return { queue, files };
-  }
-
-  function runner(send: (file: File) => Promise<UploadAttempt>) {
+  function runner(send: (file: File, config: UploadConfig) => Promise<UploadAttempt>) {
     const uploaded: ApiMedia[] = [];
     let progress = 0;
 
@@ -433,7 +453,9 @@ describe('cola de subidas', () => {
       },
       runner: {
         send,
-        onUploaded: (media: ApiMedia) => uploaded.push(media),
+        onUploaded: (media: ApiMedia): void => {
+          uploaded.push(media);
+        },
         onProgress: () => {
           progress += 1;
         },
@@ -533,12 +555,12 @@ describe('cola de subidas', () => {
     expect(summarizeUploads(queue)).toEqual({ total: 3, done: 1, failed: 1 });
   });
 
-  it('queda trabajo mientras haya algo en espera o subiendo', () => {
-    const { queue } = queueOf('a.jpg');
-
-    expect(hasActiveUploads(queue)).toBe(true);
+  it('cuenta los archivos que esperan a que se pulse "Subir"', () => {
+    const { queue } = queueOf('a.jpg', 'b.jpg', 'c.jpg');
     queue[0]!.status = 'done';
-    expect(hasActiveUploads(queue)).toBe(false);
+    queue[1]!.status = 'error';
+
+    expect(pendingUploadCount(queue)).toBe(1);
   });
 
   it('limpiar la lista deja los errores a la vista', () => {
@@ -561,6 +583,233 @@ describe('cola de subidas', () => {
 
     expect(queue[0]?.status).toBe('error');
     expect(queue[1]?.status).toBe('done');
+  });
+
+  it('una excepcion despues del 201 no deja la fila subiendo ni corta la cola', async () => {
+    const { queue, files } = queueOf('a.jpg', 'b.jpg');
+    let id = 0;
+
+    const control = runner(() => {
+      id += 1;
+      return Promise.resolve({ ok: true, media: apiMedia({ id }) });
+    });
+
+    // El primero se sube bien, pero el panel falla al pintarlo.
+    let pintados = 0;
+    control.runner.onUploaded = () => {
+      pintados += 1;
+      if (pintados === 1) throw new TypeError("Cannot read properties of undefined (reading 'es')");
+    };
+
+    await expect(runUploadQueue(queue, files, control.runner)).resolves.toBeUndefined();
+
+    expect(queue.map((item) => item.status)).toEqual(['error', 'done']);
+    // No dice "no se pudo subir": se guardo, y decir lo contrario invita a duplicarlo.
+    expect(queue[0]?.error).toBe(UPLOADED_NOT_SHOWN_TEXT);
+    expect(queue.some((item) => item.status === 'uploading')).toBe(false);
+  });
+
+  it('si el envio lanza, el archivo queda en error y la cola sigue', async () => {
+    const { queue, files } = queueOf('a.jpg', 'b.jpg');
+
+    const control = runner((file) =>
+      file.name === 'a.jpg'
+        ? Promise.reject(new Error('respuesta invalida'))
+        : Promise.resolve({ ok: true, media: apiMedia() }),
+    );
+
+    await expect(runUploadQueue(queue, files, control.runner)).resolves.toBeUndefined();
+
+    expect(queue.map((item) => item.status)).toEqual(['error', 'done']);
+    expect(queue[0]?.error).toBe(UPLOAD_FAILED_TEXT);
+  });
+
+  it('un error de la API libera la cola: se puede volver a subir', async () => {
+    const { queue, files } = queueOf('a.jpg');
+
+    const control = runner(() =>
+      Promise.resolve({ ok: false, message: 'El almacenamiento no respondió.' }),
+    );
+    await runUploadQueue(queue, files, control.runner);
+
+    expect(queue[0]?.status).toBe('error');
+    expect(queue.some((item) => item.status === 'uploading')).toBe(false);
+
+    // La cola no queda tomada: un archivo nuevo vuelve a habilitar la subida.
+    queue.push(createUploadItem('upload-2', { name: 'b.jpg', size: 1024 }, IMAGE_CONFIG));
+    expect(canStartUploads(queue, false)).toBe(true);
+  });
+
+  it('cada archivo se sube con su propio tipo y su propio grupo', async () => {
+    const { queue, files } = queueWith([
+      { name: 'salon.jpg', config: { mediaKind: 'panorama', groupId: null } },
+      { name: 'fachada.jpg', config: { mediaKind: 'image', groupId: 7 } },
+      { name: 'plano.pdf', config: { mediaKind: 'document', groupId: 3 } },
+    ]);
+
+    const enviados: [string, UploadConfig][] = [];
+    const control = runner((file, config) => {
+      enviados.push([file.name, config]);
+      return Promise.resolve({ ok: true, media: apiMedia() });
+    });
+
+    await runUploadQueue(queue, files, control.runner);
+
+    expect(enviados).toEqual([
+      ['salon.jpg', { mediaKind: 'panorama', groupId: null }],
+      ['fachada.jpg', { mediaKind: 'image', groupId: 7 }],
+      ['plano.pdf', { mediaKind: 'document', groupId: 3 }],
+    ]);
+  });
+
+  it('dos recorridos a la vez nunca suben el mismo archivo dos veces', async () => {
+    const { queue, files } = queueOf('a.jpg', 'b.jpg', 'c.jpg');
+    const enviados: string[] = [];
+
+    const control = runner(async (file) => {
+      enviados.push(file.name);
+      await Promise.resolve();
+      return { ok: true, media: apiMedia() };
+    });
+
+    await Promise.all([
+      runUploadQueue(queue, files, control.runner),
+      runUploadQueue(queue, files, control.runner),
+    ]);
+
+    expect([...enviados].sort()).toEqual(['a.jpg', 'b.jpg', 'c.jpg']);
+    expect(queue.map((item) => item.status)).toEqual(['done', 'done', 'done']);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Panel de subida                                                            */
+/* -------------------------------------------------------------------------- */
+
+describe('panel de subida', () => {
+  const GROUPS = [
+    { id: 3, name: 'Exteriores' },
+    { id: 7, name: 'Interiores' },
+  ];
+
+  function panel(overrides: Partial<UploadPanelView> = {}): string {
+    return uploadPanelMarkup({
+      queue: [],
+      uploading: false,
+      kind: 'image',
+      groupId: null,
+      groups: GROUPS,
+      ...overrides,
+    });
+  }
+
+  /** La etiqueta del boton "Subir", tal y como se pinta. */
+  function startButton(html: string): string {
+    const tag = /<button[^>]*id="upload-start"[^>]*>/.exec(html)?.[0];
+    if (tag === undefined) throw new Error('no se pinto el boton de subir');
+    return tag;
+  }
+
+  const isDisabled = (html: string): boolean => /\sdisabled[\s>]/.test(startButton(html));
+
+  it('con un archivo en espera, el boton se puede pulsar', () => {
+    const { queue } = queueOf('foto 10MB (salón)_ñ.jpg');
+
+    const html = panel({ queue });
+
+    expect(isDisabled(html)).toBe(false);
+    expect(html).toContain('Subir 1 archivo(s)');
+  });
+
+  it('mientras se sube, el boton esta deshabilitado', () => {
+    const { queue } = queueOf('a.jpg', 'b.jpg');
+    queue[0]!.status = 'uploading';
+
+    // Aunque quede otro en espera: la subida en marcha ya lo recogera.
+    expect(isDisabled(panel({ queue, uploading: true }))).toBe(true);
+  });
+
+  it('sin nada pendiente, el boton esta deshabilitado', () => {
+    expect(isDisabled(panel())).toBe(true);
+
+    const { queue } = queueOf('a.jpg', 'b.jpg');
+    queue[0]!.status = 'done';
+    queue[1]!.status = 'error';
+
+    expect(isDisabled(panel({ queue }))).toBe(true);
+  });
+
+  it('la regla del boton no depende de nada mas que la cola y la subida en marcha', () => {
+    const { queue } = queueOf('a.jpg');
+
+    expect(canStartUploads(queue, false)).toBe(true);
+    expect(canStartUploads(queue, true)).toBe(false);
+    expect(canStartUploads([], false)).toBe(false);
+  });
+
+  it('elegir Panorama y despues el archivo conserva Panorama', () => {
+    // Lo que hace el editor: guarda el tipo elegido y crea la fila con el.
+    const view: UploadPanelView = {
+      queue: [],
+      uploading: false,
+      kind: 'panorama',
+      groupId: null,
+      groups: GROUPS,
+    };
+    const item = createUploadItem(
+      'upload-1',
+      { name: 'salon-360.jpg', size: 20 * 1024 * 1024 },
+      { mediaKind: view.kind, groupId: view.groupId },
+    );
+
+    // Elegir el archivo repinta el panel entero.
+    const html = uploadPanelMarkup({ ...view, queue: [item] });
+
+    expect(html).toContain('<option value="panorama" selected>');
+    expect(html).not.toContain('<option value="image" selected>');
+    expect(item.mediaKind).toBe('panorama');
+    expect(html).toContain('data-kind="panorama"');
+  });
+
+  it('elegir un grupo y despues el archivo conserva el grupo', () => {
+    const item = createUploadItem(
+      'upload-1',
+      { name: 'cocina.jpg', size: 1024 },
+      { mediaKind: 'image', groupId: 7 },
+    );
+
+    const html = panel({ queue: [item], groupId: 7 });
+
+    expect(html).toContain('<option value="7" selected>');
+    expect(html).not.toContain('<option value="" selected>');
+    expect(item.groupId).toBe(7);
+  });
+
+  it('archivos anadidos con configuraciones distintas conservan cada uno la suya', () => {
+    const primero = createUploadItem('upload-1', { name: 'fachada.jpg', size: 1 }, IMAGE_CONFIG);
+    const segundo = createUploadItem(
+      'upload-2',
+      { name: 'terraza-360.jpg', size: 1 },
+      { mediaKind: 'panorama', groupId: 3 },
+    );
+
+    // El selector ya muestra la segunda eleccion; la primera fila no cambia.
+    const html = panel({ queue: [primero, segundo], kind: 'panorama', groupId: 3 });
+
+    expect(primero).toMatchObject({ mediaKind: 'image', groupId: null });
+    expect(segundo).toMatchObject({ mediaKind: 'panorama', groupId: 3 });
+    expect(html).toContain('data-kind="image"');
+    expect(html).toContain('data-kind="panorama"');
+  });
+
+  it('cada fila dice con que tipo se va a subir', () => {
+    const { queue } = queueWith([
+      { name: 'salon.jpg', config: { mediaKind: 'panorama', groupId: null } },
+    ]);
+
+    expect(panel({ queue })).toContain(
+      `<span class="upload-kind">${mediaKindLabel('panorama')}</span>`,
+    );
   });
 });
 
@@ -856,9 +1105,14 @@ describe('integracion de la seccion', () => {
     expect(script).toContain('media-dropzone');
   });
 
-  it('el boton de subir se bloquea mientras queda trabajo', () => {
-    expect(script).toContain("hasActiveUploads(queue) ? ' disabled' : ''");
+  it('arrancar la cola esta protegido contra una segunda ejecucion', () => {
+    // El comportamiento del boton se prueba en "panel de subida"; aqui solo la guarda.
     expect(script).toContain('if (uploading) return;');
+  });
+
+  it('la cola se libera siempre, pase lo que pase', () => {
+    // Lo unico del cierre que no se puede probar sin DOM; la cola en si, abajo.
+    expect(script).toMatch(/finally\s*\{\s*uploading = false;/);
   });
 
   it('se edita con campos, nunca con una tabla', () => {

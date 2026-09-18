@@ -21,12 +21,12 @@ import {
   addMedia,
   applyCatalogCover,
   applyHero,
+  canStartUploads,
   clearFinishedUploads,
   createUploadItem,
   formatFileSize,
   groupDisplayName,
   groupPatch,
-  hasActiveUploads,
   isEmpty,
   isGroupDirty,
   isMediaDirty,
@@ -36,12 +36,14 @@ import {
   mediaKindLabel,
   mediaOfGroup,
   mediaPatch,
+  pendingUploadCount,
   removeGroup,
   removeMedia,
   runUploadQueue,
   stateFromApi,
   summarizeUploads,
   ungroupedMedia,
+  UPLOADED_NOT_SHOWN_TEXT,
   type EntityState,
   type GroupNameView,
   type MediaDraft,
@@ -100,6 +102,129 @@ function byId<T extends object>(id: string): T | null {
   return document.getElementById(id) as T | null;
 }
 
+/* -------------------------------------------------------------------------- */
+/* Panel de subida                                                            */
+/* -------------------------------------------------------------------------- */
+
+/** Un grupo tal y como aparece en un selector. */
+export interface GroupChoice {
+  id: number;
+  name: string;
+}
+
+function groupOptionsMarkup(groups: readonly GroupChoice[], selected: number | null): string {
+  const options = groups.map((group) => {
+    const isSelected = selected === group.id ? ' selected' : '';
+    return `<option value="${group.id}"${isSelected}>${escapeHtml(group.name)}</option>`;
+  });
+
+  const noneSelected = selected === null ? ' selected' : '';
+  return `<option value=""${noneSelected}>Sin grupo</option>${options.join('')}`;
+}
+
+function kindOptionsMarkup(selected: MediaKind): string {
+  return MEDIA_KINDS.map(
+    (kind) =>
+      `<option value="${kind}"${kind === selected ? ' selected' : ''}>${escapeHtml(
+        mediaKindLabel(kind),
+      )}</option>`,
+  ).join('');
+}
+
+function uploadQueueMarkup(queue: readonly UploadItem[]): string {
+  if (queue.length === 0) return '';
+
+  const rows = queue
+    .map((item) => {
+      const label =
+        item.status === 'error'
+          ? escapeHtml(item.error ?? 'No se pudo subir.')
+          : { pending: 'En espera', uploading: 'Subiendo…', done: 'Subido', error: '' }[
+              item.status
+            ];
+
+      return `
+          <li class="upload-item" data-status="${item.status}" data-kind="${item.mediaKind}">
+            <span class="upload-name">${escapeHtml(item.fileName)}</span>
+            <span class="upload-kind">${escapeHtml(mediaKindLabel(item.mediaKind))}</span>
+            <span class="upload-size">${escapeHtml(formatFileSize(item.sizeBytes) ?? '')}</span>
+            <span class="upload-state">${label}</span>
+          </li>`;
+    })
+    .join('');
+
+  const summary = summarizeUploads(queue);
+
+  return `
+      <div class="upload-queue-box">
+        <p class="admin-muted" id="upload-summary">
+          ${summary.done} de ${summary.total} subidos${summary.failed > 0 ? ` · ${summary.failed} con error` : ''}
+        </p>
+        <ul class="upload-queue" aria-live="polite" aria-labelledby="upload-summary">${rows}</ul>
+      </div>`;
+}
+
+/** Todo lo que decide como se pinta el panel de subida. */
+export interface UploadPanelView {
+  queue: readonly UploadItem[];
+  /** Hay una subida en marcha. */
+  uploading: boolean;
+  /** Tipo y grupo elegidos para los PROXIMOS archivos que se anadan. */
+  kind: MediaKind;
+  groupId: number | null;
+  groups: readonly GroupChoice[];
+}
+
+/**
+ * El panel de subida, como cadena.
+ *
+ * Funcion pura: recibe el estado y devuelve el HTML. El tipo y el grupo que
+ * aparecen elegidos salen del estado del editor, no del `<select>` anterior,
+ * que el repintado destruye.
+ */
+export function uploadPanelMarkup(view: UploadPanelView): string {
+  const pending = pendingUploadCount(view.queue);
+  const disabled = canStartUploads(view.queue, view.uploading) ? '' : ' disabled';
+
+  return `
+    <section class="media-upload" aria-labelledby="media-upload-heading">
+      <h3 id="media-upload-heading">Subir archivos</h3>
+
+      <div class="media-grid">
+        <div class="admin-field">
+          <label for="upload-kind">Tipo de archivo</label>
+          <select id="upload-kind">${kindOptionsMarkup(view.kind)}</select>
+        </div>
+        <div class="admin-field">
+          <label for="upload-group">Grupo</label>
+          <select id="upload-group">${groupOptionsMarkup(view.groups, view.groupId)}</select>
+        </div>
+      </div>
+
+      <div class="media-dropzone" id="media-dropzone">
+        <label class="admin-field" for="upload-input">
+          Selecciona archivos o arrástralos aquí
+          <input type="file" id="upload-input" multiple
+            aria-describedby="upload-help" />
+        </label>
+        <p class="editor-help" id="upload-help">
+          Puedes elegir varios a la vez. Cada archivo se sube por separado: si uno falla, los
+          demás continúan.
+        </p>
+      </div>
+
+      <div class="media-actions">
+        <button type="button" class="admin-button admin-button-primary" id="upload-start"
+          data-action="start-upload"${disabled}>
+          ${pending > 0 ? `Subir ${pending} archivo(s)` : 'Subir archivos'}
+        </button>
+        <button type="button" class="admin-button" data-action="clear-queue">Limpiar lista</button>
+      </div>
+
+      ${uploadQueueMarkup(view.queue)}
+    </section>`;
+}
+
 function headingMarkup(name: GroupNameView): string {
   const note = name.missingSpanish
     ? ' <span class="admin-lang-note" title="Falta el nombre en español">Falta ES</span>'
@@ -130,6 +255,16 @@ export function initMediaEditor(
   let pendingFiles = new Map<string, File>();
   let uploading = false;
   let queueCounter = 0;
+
+  /**
+   * Tipo y grupo elegidos para los proximos archivos.
+   *
+   * Viven aqui y no en los `<select>`: el panel se repinta entero y un
+   * selector recien pintado no recuerda lo que se habia elegido en el
+   * anterior.
+   */
+  let uploadKind: MediaKind = 'image';
+  let uploadGroupId: number | null = null;
 
   /* ---------------------------------------------------------------------- */
   /* Puertos del coordinador                                                */
@@ -238,16 +373,11 @@ export function initMediaEditor(
     return `<p class="editor-save-status media-status" data-state="${entryState}">${escapeHtml(label)}</p>`;
   };
 
-  const groupOptions = (selected: number | null): string => {
-    const options = state.groups.map((group) => {
-      const name = groupDisplayName(group.draft).text;
-      const isSelected = selected === group.id ? ' selected' : '';
-      return `<option value="${group.id}"${isSelected}>${escapeHtml(name)}</option>`;
-    });
+  const groupChoices = (): GroupChoice[] =>
+    state.groups.map((group) => ({ id: group.id, name: groupDisplayName(group.draft).text }));
 
-    const noneSelected = selected === null ? ' selected' : '';
-    return `<option value=""${noneSelected}>Sin grupo</option>${options.join('')}`;
-  };
+  const groupOptions = (selected: number | null): string =>
+    groupOptionsMarkup(groupChoices(), selected);
 
   /** Distintivo visual por tipo, a falta de miniatura real. */
   const kindGlyph = (kind: MediaKind): string => {
@@ -398,83 +528,14 @@ export function initMediaEditor(
       </section>`;
   };
 
-  const uploadQueueMarkup = (): string => {
-    if (queue.length === 0) return '';
-
-    const rows = queue
-      .map((item) => {
-        const label =
-          item.status === 'error'
-            ? escapeHtml(item.error ?? 'No se pudo subir.')
-            : { pending: 'En espera', uploading: 'Subiendo…', done: 'Subido', error: '' }[
-                item.status
-              ];
-
-        return `
-          <li class="upload-item" data-status="${item.status}">
-            <span class="upload-name">${escapeHtml(item.fileName)}</span>
-            <span class="upload-size">${escapeHtml(formatFileSize(item.sizeBytes) ?? '')}</span>
-            <span class="upload-state">${label}</span>
-          </li>`;
-      })
-      .join('');
-
-    const summary = summarizeUploads(queue);
-
-    return `
-      <div class="upload-queue-box">
-        <p class="admin-muted" id="upload-summary">
-          ${summary.done} de ${summary.total} subidos${summary.failed > 0 ? ` · ${summary.failed} con error` : ''}
-        </p>
-        <ul class="upload-queue" aria-live="polite" aria-labelledby="upload-summary">${rows}</ul>
-      </div>`;
-  };
-
-  const kindOptions = (): string =>
-    MEDIA_KINDS.map(
-      (kind) =>
-        `<option value="${kind}"${kind === 'image' ? ' selected' : ''}>${escapeHtml(
-          mediaKindLabel(kind),
-        )}</option>`,
-    ).join('');
-
-  const uploadPanel = (): string => `
-    <section class="media-upload" aria-labelledby="media-upload-heading">
-      <h3 id="media-upload-heading">Subir archivos</h3>
-
-      <div class="media-grid">
-        <div class="admin-field">
-          <label for="upload-kind">Tipo de archivo</label>
-          <select id="upload-kind">${kindOptions()}</select>
-        </div>
-        <div class="admin-field">
-          <label for="upload-group">Grupo</label>
-          <select id="upload-group">${groupOptions(null)}</select>
-        </div>
-      </div>
-
-      <div class="media-dropzone" id="media-dropzone">
-        <label class="admin-field" for="upload-input">
-          Selecciona archivos o arrástralos aquí
-          <input type="file" id="upload-input" multiple
-            aria-describedby="upload-help" />
-        </label>
-        <p class="editor-help" id="upload-help">
-          Puedes elegir varios a la vez. Cada archivo se sube por separado: si uno falla, los
-          demás continúan.
-        </p>
-      </div>
-
-      <div class="media-actions">
-        <button type="button" class="admin-button admin-button-primary" id="upload-start"
-          data-action="start-upload"${hasActiveUploads(queue) ? ' disabled' : ''}>
-          ${queue.filter((item) => item.status === 'pending').length > 0 ? `Subir ${queue.filter((item) => item.status === 'pending').length} archivo(s)` : 'Subir archivos'}
-        </button>
-        <button type="button" class="admin-button" data-action="clear-queue">Limpiar lista</button>
-      </div>
-
-      ${uploadQueueMarkup()}
-    </section>`;
+  const uploadPanel = (): string =>
+    uploadPanelMarkup({
+      queue,
+      uploading,
+      kind: uploadKind,
+      groupId: uploadGroupId,
+      groups: groupChoices(),
+    });
 
   const youtubePanel = (): string => `
     <section class="media-youtube" aria-labelledby="media-youtube-heading">
@@ -642,6 +703,12 @@ export function initMediaEditor(
       coordinator.unregister(mediaGroupPortKey(entry.id));
       removeGroup(state, entry.id);
       sectionError = null;
+
+      // Lo mismo para lo elegido y lo que espera en la cola.
+      if (uploadGroupId === entry.id) uploadGroupId = null;
+      for (const item of queue) {
+        if (item.status === 'pending' && item.groupId === entry.id) item.groupId = null;
+      }
     } else {
       entry.state = 'error';
       entry.error = result.message;
@@ -659,7 +726,8 @@ export function initMediaEditor(
       queueCounter += 1;
       const key = `upload-${queueCounter}`;
       pendingFiles.set(key, file);
-      queue.push(createUploadItem(key, file));
+      // Cada archivo se queda con el tipo y el grupo elegidos AHORA.
+      queue.push(createUploadItem(key, file, { mediaKind: uploadKind, groupId: uploadGroupId }));
     }
 
     render();
@@ -669,38 +737,48 @@ export function initMediaEditor(
    * Arranca la cola.
    *
    * `uploading` impide arrancarla dos veces: el boton ademas queda
-   * deshabilitado mientras quede trabajo, asi que un doble clic no duplica
-   * ninguna subida. El recorrido en si vive en `runUploadQueue`.
+   * deshabilitado mientras la subida esta en marcha, asi que un doble clic no
+   * duplica ninguna subida. El recorrido en si vive en `runUploadQueue`.
+   *
+   * El tipo y el grupo NO se leen aqui de los selectores: cada archivo lleva
+   * los suyos desde que entro en la cola.
+   *
+   * `finally`, porque pase lo que pase la cola tiene que quedar libre: si
+   * `uploading` se quedara en `true`, el panel no volveria a subir nada hasta
+   * recargar la pagina.
    */
   const startUploads = async (): Promise<void> => {
     if (uploading) return;
 
-    const mediaKind = selectValue('upload-kind') as MediaKind;
-    const groupId = groupFromSelect('upload-group');
-
     uploading = true;
     render();
 
-    await runUploadQueue(queue, pendingFiles, {
-      send: async (file) => {
-        const result = await api.upload({ file, mediaKind, groupId });
-        return result.ok
-          ? { ok: true, media: result.data }
-          : { ok: false, message: result.message };
-      },
+    try {
+      await runUploadQueue(queue, pendingFiles, {
+        send: async (file, config) => {
+          const result = await api.upload({
+            file,
+            mediaKind: config.mediaKind,
+            groupId: config.groupId,
+          });
+          return result.ok
+            ? { ok: true, media: result.data }
+            : { ok: false, message: result.message };
+        },
 
-      onUploaded: (media) => {
-        // El `File` se suelta al limpiar la lista, no aqui: la fila sigue
-        // visible como "Subido" hasta que el administrador la retire.
-        const entry = addMedia(state, media);
-        registerMediaPort(entry.id);
-      },
+        onUploaded: (media) => {
+          // El `File` se suelta al limpiar la lista, no aqui: la fila sigue
+          // visible como "Subido" hasta que el administrador la retire.
+          const entry = addMedia(state, media);
+          registerMediaPort(entry.id);
+        },
 
-      onProgress: render,
-    });
-
-    uploading = false;
-    render();
+        onProgress: render,
+      });
+    } finally {
+      uploading = false;
+      render();
+    }
   };
 
   const clearQueue = (): void => {
@@ -751,8 +829,17 @@ export function initMediaEditor(
       return;
     }
 
+    let entry: MediaEntry;
+    try {
+      entry = addMedia(state, result.data);
+    } catch {
+      // Igual que en la cola: el video ya esta guardado, solo fallo pintarlo.
+      sectionError = UPLOADED_NOT_SHOWN_TEXT;
+      render();
+      return;
+    }
+
     sectionError = null;
-    const entry = addMedia(state, result.data);
     registerMediaPort(entry.id);
     render();
     focusField(`media-${entry.id}-title-es`);
@@ -871,6 +958,22 @@ export function initMediaEditor(
     if (target instanceof HTMLElement && target.id === 'upload-input') {
       const files = (target as HTMLInputElement).files;
       if (files !== null && files.length > 0) enqueue([...files]);
+      return;
+    }
+
+    /*
+     * Tipo y grupo de los proximos archivos: se guardan en el estado del
+     * editor, que es lo que el siguiente repintado vuelve a marcar.
+     */
+    if (target instanceof HTMLElement && target.id === 'upload-kind') {
+      const value = (target as HTMLInputElement | HTMLSelectElement).value;
+      if ((MEDIA_KINDS as readonly string[]).includes(value)) uploadKind = value as MediaKind;
+      return;
+    }
+
+    if (target instanceof HTMLElement && target.id === 'upload-group') {
+      const value = (target as HTMLInputElement | HTMLSelectElement).value;
+      uploadGroupId = value === '' ? null : Number(value);
       return;
     }
 

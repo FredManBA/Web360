@@ -26,7 +26,8 @@ import {
 import type { MediaKind } from '../../domain/vocabularies';
 import { fail, ok, type AdminBatchDatabase, type AdminResult } from '../types';
 import type { MediaBucket } from './bucket';
-import { createMedia, deleteMedia, loadMediaRow, type MediaRecord, type MediaTexts } from './media';
+import type { MediaView } from './get-media';
+import { createMedia, deleteMedia, loadMediaRow, type MediaTexts } from './media';
 
 export interface UploadMediaInput extends MediaTexts {
   groupId?: number | null;
@@ -70,7 +71,7 @@ export async function uploadMedia(
   bucket: MediaBucket,
   propertyId: number,
   input: UploadMediaInput,
-): Promise<AdminResult<MediaRecord>> {
+): Promise<AdminResult<MediaView>> {
   const bytes = new Uint8Array(input.bytes);
 
   const { problems, detectedMimeType } = checkUpload({
@@ -114,7 +115,7 @@ export async function uploadMedia(
     });
   }
 
-  let created: AdminResult<MediaRecord>;
+  let created: AdminResult<MediaView>;
 
   try {
     created = await createMedia(db, propertyId, {

@@ -11,7 +11,7 @@
  * se confia en el orden natural de SQLite.
  */
 
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 
 import {
   properties,
@@ -79,6 +79,88 @@ function byOrder<T extends { sortOrder: number; id: number }>(a: T, b: T): numbe
   return a.sortOrder === b.sortOrder ? a.id - b.id : a.sortOrder - b.sortOrder;
 }
 
+/**
+ * La forma de UN archivo que ve el panel.
+ *
+ * Es el unico serializador de media del admin: lo usan el listado, la subida
+ * y el alta de YouTube. Que cada respuesta armara su propia forma es lo que
+ * rompio el panel —la subida devolvia menos campos de los que el editor lee—,
+ * asi que la regla es que no haya una segunda.
+ */
+export function toMediaView(
+  row: typeof propertyMedia.$inferSelect,
+  translations: Partial<Record<Locale, MediaTranslationView>>,
+): MediaView {
+  return {
+    id: row.id,
+    groupId: row.propertyMediaGroupId,
+
+    mediaKind: row.mediaKind,
+    sourceProvider: row.sourceProvider,
+
+    objectKey: row.objectKey,
+    mimeType: row.mimeType,
+    fileSizeBytes: row.fileSizeBytes,
+    youtubeVideoId: row.youtubeVideoId,
+
+    width: row.width,
+    height: row.height,
+    durationSeconds: row.durationSeconds,
+
+    sortOrder: row.sortOrder,
+    isHero: row.isHero,
+    isCatalogCover: row.isCatalogCover,
+
+    translations,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+/**
+ * Un archivo concreto, con la misma forma que en el listado.
+ *
+ * Lo que devuelven la subida y el alta de YouTube: quien acaba de crear un
+ * archivo recibe exactamente lo que recibiria al volver a cargar la lista.
+ */
+export async function loadMediaView(
+  db: AdminDatabase,
+  propertyId: number,
+  mediaId: number,
+): Promise<AdminResult<MediaView>> {
+  const rows = await db
+    .select()
+    .from(propertyMedia)
+    .where(and(eq(propertyMedia.id, mediaId), eq(propertyMedia.propertyId, propertyId)))
+    .limit(1);
+
+  const row = rows[0];
+  if (row === undefined) {
+    return fail({ code: 'media_not_found', message: 'El archivo no existe.', field: 'mediaId' });
+  }
+
+  const texts = await db
+    .select({
+      locale: propertyMediaTranslations.locale,
+      title: propertyMediaTranslations.title,
+      altText: propertyMediaTranslations.altText,
+      caption: propertyMediaTranslations.caption,
+    })
+    .from(propertyMediaTranslations)
+    .where(eq(propertyMediaTranslations.propertyMediaId, mediaId));
+
+  const translations: Partial<Record<Locale, MediaTranslationView>> = {};
+  for (const text of texts) {
+    translations[text.locale] = {
+      title: text.title,
+      altText: text.altText,
+      caption: text.caption,
+    };
+  }
+
+  return ok(toMediaView(row, translations));
+}
+
 export async function getPropertyMedia(
   db: AdminDatabase,
   propertyId: number,
@@ -142,32 +224,9 @@ export async function getPropertyMedia(
     textsByMedia.set(row.mediaId, entry);
   }
 
-  const toMediaView = (row: typeof propertyMedia.$inferSelect): MediaView => ({
-    id: row.id,
-    groupId: row.propertyMediaGroupId,
-
-    mediaKind: row.mediaKind,
-    sourceProvider: row.sourceProvider,
-
-    objectKey: row.objectKey,
-    mimeType: row.mimeType,
-    fileSizeBytes: row.fileSizeBytes,
-    youtubeVideoId: row.youtubeVideoId,
-
-    width: row.width,
-    height: row.height,
-    durationSeconds: row.durationSeconds,
-
-    sortOrder: row.sortOrder,
-    isHero: row.isHero,
-    isCatalogCover: row.isCatalogCover,
-
-    translations: textsByMedia.get(row.id) ?? {},
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-  });
-
-  const media = mediaRows.map(toMediaView).sort(byOrder);
+  const media = mediaRows
+    .map((row) => toMediaView(row, textsByMedia.get(row.id) ?? {}))
+    .sort(byOrder);
 
   const groups: MediaGroupView[] = groupRows
     .map((row) => ({

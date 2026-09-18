@@ -36,6 +36,7 @@ import {
   type AdminDatabase,
   type AdminResult,
 } from '../types';
+import { loadMediaView, type MediaView } from './get-media';
 import { loadMediaGroup } from './media-groups';
 
 /* -------------------------------------------------------------------------- */
@@ -268,11 +269,17 @@ async function nextMediaSortOrder(
 /* Crear                                                                      */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * Registra un archivo y lo devuelve con la forma del listado.
+ *
+ * No con la de `MediaRecord`: quien crea un archivo es el panel, que lo pinta
+ * con los mismos campos que cuando lo lee de la lista, textos incluidos.
+ */
 export async function createMedia(
   db: AdminDatabase,
   propertyId: number,
   input: CreateMediaInput,
-): Promise<AdminResult<MediaRecord>> {
+): Promise<AdminResult<MediaView>> {
   const owner = await db
     .select({ id: properties.id })
     .from(properties)
@@ -347,7 +354,8 @@ export async function createMedia(
 
   await writeMediaTexts(db, media.id, input);
 
-  return ok(toRecord(media));
+  // Se relee con el serializador del listado: una sola forma de media.
+  return loadMediaView(db, propertyId, media.id);
 }
 
 /* -------------------------------------------------------------------------- */

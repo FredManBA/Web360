@@ -426,7 +426,20 @@ export function addMedia(state: MediaEditorState, media: ApiMedia): MediaEntry {
 
 export type UploadStatus = 'pending' | 'uploading' | 'done' | 'error';
 
-export interface UploadItem {
+/**
+ * Como se registra un archivo: su tipo y su grupo.
+ *
+ * Se fija al anadirlo a la cola y viaja con el. Leerlo de los `<select>` al
+ * pulsar "Subir" no vale: el panel se repinta al elegir archivos y los
+ * selectores vuelven a su valor por defecto, asi que un panorama acababa
+ * registrado como imagen.
+ */
+export interface UploadConfig {
+  mediaKind: MediaKind;
+  groupId: number | null;
+}
+
+export interface UploadItem extends UploadConfig {
   /** Identificador local; no tiene nada que ver con el de la base. */
   key: string;
   fileName: string;
@@ -435,14 +448,49 @@ export interface UploadItem {
   error: string | null;
 }
 
-export function createUploadItem(key: string, file: { name: string; size: number }): UploadItem {
-  return { key, fileName: file.name, sizeBytes: file.size, status: 'pending', error: null };
+export function createUploadItem(
+  key: string,
+  file: { name: string; size: number },
+  config: UploadConfig,
+): UploadItem {
+  return {
+    key,
+    fileName: file.name,
+    sizeBytes: file.size,
+    mediaKind: config.mediaKind,
+    groupId: config.groupId,
+    status: 'pending',
+    error: null,
+  };
 }
 
-/** Cierto mientras quede algun archivo por subir o subiendose. */
-export function hasActiveUploads(queue: readonly UploadItem[]): boolean {
-  return queue.some((item) => item.status === 'pending' || item.status === 'uploading');
+/** Cuantos archivos esperan a que se pulse "Subir". */
+export function pendingUploadCount(queue: readonly UploadItem[]): number {
+  return queue.filter((item) => item.status === 'pending').length;
 }
+
+/**
+ * Si el boton "Subir" debe estar disponible.
+ *
+ * Hay algo que subir y no hay una subida en marcha. Un archivo en espera es
+ * justo la razon de que el boton exista: contarlo como "trabajo en curso" es
+ * lo que lo dejaba deshabilitado en cuanto se elegia un archivo.
+ */
+export function canStartUploads(queue: readonly UploadItem[], uploading: boolean): boolean {
+  return !uploading && pendingUploadCount(queue) > 0;
+}
+
+/** Cuando la subida no llego a hacerse, o no se sabe como acabo. */
+export const UPLOAD_FAILED_TEXT = 'No se pudo subir el archivo.';
+
+/**
+ * El archivo SI se guardo, pero el panel no pudo pintarlo.
+ *
+ * Se dice asi y no "no se pudo subir": lo contrario invitaria a subirlo otra
+ * vez y dejaria un duplicado.
+ */
+export const UPLOADED_NOT_SHOWN_TEXT =
+  'El archivo se guardó, pero no pudimos mostrarlo. Recarga la página para verlo.';
 
 export interface UploadSummary {
   total: number;
@@ -471,8 +519,8 @@ export function clearFinishedUploads(queue: readonly UploadItem[]): UploadItem[]
 export type UploadAttempt = { ok: true; media: ApiMedia } | { ok: false; message: string };
 
 export interface UploadRunner {
-  /** Sube un archivo. Cada llamada es independiente de las demas. */
-  send: (file: File) => Promise<UploadAttempt>;
+  /** Sube un archivo con SU tipo y SU grupo. Cada llamada es independiente. */
+  send: (file: File, config: UploadConfig) => Promise<UploadAttempt>;
   /** Se anota lo que si llego a subirse, en el momento en que llega. */
   onUploaded: (media: ApiMedia) => void;
   /** Permite repintar el progreso entre archivo y archivo. */
@@ -485,6 +533,10 @@ export interface UploadRunner {
  * En serie a proposito: cada archivo lleva su propia peticion, no se satura la
  * conexion y el resultado de uno no afecta al siguiente. Un fallo NO detiene
  * la cola ni deshace lo ya subido; se queda anotado en su fila.
+ *
+ * Tampoco una EXCEPCION la detiene. Todo archivo que empieza a subirse acaba
+ * en `done` o en `error`, nunca se queda en `uploading`: una fila atascada ahi
+ * dejaba la cola entera bloqueada hasta recargar la pagina.
  */
 export async function runUploadQueue(
   queue: UploadItem[],
@@ -506,12 +558,24 @@ export async function runUploadQueue(
     item.status = 'uploading';
     runner.onProgress();
 
-    const attempt = await runner.send(file);
+    let attempt: UploadAttempt;
+    try {
+      attempt = await runner.send(file, { mediaKind: item.mediaKind, groupId: item.groupId });
+    } catch {
+      attempt = { ok: false, message: UPLOAD_FAILED_TEXT };
+    }
 
     if (attempt.ok) {
       item.status = 'done';
       item.error = null;
-      runner.onUploaded(attempt.media);
+
+      try {
+        runner.onUploaded(attempt.media);
+      } catch {
+        // En el servidor ya esta: se avisa sin dar a entender que fallo la subida.
+        item.status = 'error';
+        item.error = UPLOADED_NOT_SHOWN_TEXT;
+      }
     } else {
       item.status = 'error';
       item.error = attempt.message;

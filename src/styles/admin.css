@@ -1186,6 +1186,7 @@
   overflow-wrap: anywhere;
 }
 
+.upload-kind,
 .upload-size,
 .upload-state {
   color: var(--admin-text-soft);
