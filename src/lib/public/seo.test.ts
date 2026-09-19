@@ -672,7 +672,7 @@ describe('las superficies privadas no se indexan', () => {
   });
 
   it('el sitemap y el robots salen del mismo sitio que el sitio publico', () => {
-    expect(read('src/pages/sitemap.xml.ts')).toContain('loadPublicSnapshot()');
+    expect(read('src/pages/sitemap.xml.ts')).toContain('loadRuntimePublicSnapshot()');
     expect(read('src/pages/robots.txt.ts')).toContain('renderRobots');
   });
 

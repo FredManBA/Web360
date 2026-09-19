@@ -2,7 +2,7 @@
  * Read model publico.
  *
  * Es la frontera entre lo que la base guarda y lo que el sitio publica. Todo
- * lo que salga de aqui acaba en HTML estatico visible por cualquiera, asi que
+ * lo que salga de aqui acaba en HTML publico visible por cualquiera, asi que
  * la regla es la contraria a la del admin: no se copia una columna salvo que
  * haya un motivo para publicarla.
  *
@@ -309,7 +309,7 @@ export const EMPTY_SITE: PublicSite = {
 };
 
 export interface PublicSnapshot {
-  /** Cuando se genero, para poder saber si una build va con datos viejos. */
+  /** Cuando se construyo esta lectura del modelo publico. */
   generatedAt: string;
   properties: Record<Locale, PublicPropertyDetail[]>;
   contact: PublicContactChannels;

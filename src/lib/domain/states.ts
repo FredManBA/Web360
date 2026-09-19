@@ -1,12 +1,9 @@
 /**
  * Transiciones del estado editorial.
  *
- * Flujo aprobado:
- *
- *   draft -> in_review -> approved -> published
- *
- * Aprobar NO publica: publicar sigue siendo un acto manual y explicito del
- * admin. Estos helpers solo expresan reglas; ninguno escribe en base de datos.
+ * R1 publica directamente desde borrador; los estados editoriales antiguos
+ * siguen siendo compatibles mientras se retiran sus tablas en otra fase.
+ * Estos helpers solo expresan reglas; ninguno escribe en base de datos.
  *
  * El estado comercial es independiente y no interviene aqui.
  */
@@ -29,13 +26,13 @@ export function canRequestChanges(reviewStatus: ReviewStatus): boolean {
 }
 
 /**
- * Solo una propiedad aprobada puede publicarse.
+ * Una propiedad editable puede publicarse sin revision externa.
  *
  * Esto es unicamente la comprobacion de estado: que la ficha este COMPLETA lo
  * decide `validatePropertyForPublication`. Ambas deben cumplirse para publicar.
  */
 export function canPublishProperty(status: PublicationStatus): boolean {
-  return status === 'approved';
+  return status === 'draft' || status === 'in_review' || status === 'approved';
 }
 
 /** Se archiva desde cualquier estado, salvo si ya esta archivada. */
@@ -52,8 +49,8 @@ export function canRestoreToDraft(status: PublicationStatus): boolean {
 export function nextPublicationStatuses(status: PublicationStatus): PublicationStatus[] {
   const next: PublicationStatus[] = [];
 
-  if (canSubmitForReview(status)) next.push('in_review');
   if (canPublishProperty(status)) next.push('published');
+  if (status === 'published') next.push('draft');
   if (canArchiveProperty(status)) next.push('archived');
   if (canRestoreToDraft(status)) next.push('draft');
 

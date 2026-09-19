@@ -97,6 +97,7 @@ describe('el SEO de un 404', () => {
 
 describe('la pagina 404', () => {
   const page = read(PAGE);
+  const content = read('src/components/public/NotFound.astro');
 
   it('conserva el 404 de verdad', () => {
     expect(page).toContain('Astro.response.status = 404;');
@@ -109,19 +110,19 @@ describe('la pagina 404', () => {
 
   it('usa el shell publico, con su cabecera y su pie', () => {
     expect(page).toContain('PublicLayout');
-    expect(page).toContain('<PublicLayout seo={seo}>');
+    expect(page).toContain('<PublicLayout site={snapshot.site} seo={seo}>');
   });
 
   it('ofrece portada y catalogo del idioma en el que contesta', () => {
-    expect(page).toContain('homeHref(locale)');
-    expect(page).toContain('catalogueHref(locale)');
-    expect(page).toContain('labels.notFoundHome');
-    expect(page).toContain('labels.notFoundCatalogue');
+    expect(content).toContain('homeHref(locale)');
+    expect(content).toContain('catalogueHref(locale)');
+    expect(content).toContain('labels.notFoundHome');
+    expect(content).toContain('labels.notFoundCatalogue');
   });
 
   it('sin prefijo ofrece ademas el otro idioma, en su idioma', () => {
-    expect(page).toContain('fromPath === null && (');
-    expect(page).toContain('other.notFoundHome');
+    expect(page).toContain('offerOtherLanguage={fromPath === null}');
+    expect(content).toContain('other.notFoundHome');
   });
 
   it('NO redirige: desde una ruta desconocida es la forma facil de un bucle', () => {

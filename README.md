@@ -3,9 +3,9 @@
 Sitio web de propiedades construido con **Astro** y desplegado en **Cloudflare
 Workers**, con **D1** (base de datos) y **R2** (multimedia).
 
-Este repositorio esta en **Fase 0**: solo contiene la base tecnica del
-proyecto (estructura, configuracion y herramientas). Todavia no hay diseno,
-catalogo, panel de administracion, autenticacion ni logica de negocio.
+El núcleo público R1 lee D1 en cada request y renderiza HTML con Astro.
+Publicar y retirar contenido son escrituras directas en D1, independientes del
+build y del deploy. Ver [el alcance y la validación de R1](docs/rework-r1.md).
 
 ## Requisitos
 
@@ -26,7 +26,7 @@ npm run dev
 ```
 
 El sitio queda disponible en http://localhost:4321.
-La raiz (`/`) redirige a `/es/`.
+La raíz (`/`) elige idioma en el navegador y ofrece enlaces ES/EN sin JavaScript.
 
 ## Build
 
@@ -40,26 +40,21 @@ El build produce:
 - `dist/client/` — paginas estaticas prerenderizadas y assets.
 - `dist/server/` — el Worker con las rutas on-demand.
 
-## Regla de renderizado (importante)
+## Regla de renderizado
 
-El sitio publico es **estatico por defecto**. Astro esta configurado con
-`output: 'static'`, asi que cada pagina se prerenderiza en el build.
+Las páginas de contenido ES/EN y `/sitemap.xml` declaran `prerender = false`.
+`loadRuntimePublicSnapshot()` obtiene el binding `DB` y reutiliza
+`buildPublicSnapshot(db)` una vez por request; el layout recibe sus datos por
+props. El HTML inicial conserva SEO, contenido e idiomas.
 
-Una ruta pasa a ejecutarse **on-demand** en el Worker unicamente si lo declara
-de forma explicita:
+La raíz `/` sigue estática y elige idioma. `npm run build` solo construye código:
+no necesita D1 local/remota, snapshot ni variables de publicación. Para servir
+contenido en desarrollo sí hace falta preparar la D1 local:
 
-```ts
-export const prerender = false;
+```bash
+npm run db:migrate:local
+npm run db:seed:local
 ```
-
-Se usara solo en:
-
-- `/admin/*`
-- `/api/admin/*`
-- endpoints publicos que necesiten logica de servidor
-- previews privadas
-
-El resto del sitio debe permanecer estatico para no perder rendimiento ni SEO.
 
 ## Configuracion de Cloudflare
 
@@ -90,10 +85,10 @@ npx wrangler deploy --dry-run --config dist/server/wrangler.json
 
 Bindings declarados en `wrangler.jsonc`:
 
-| Binding | Recurso               | Uso                                           |
-| ------- | --------------------- | --------------------------------------------- |
-| `DB`    | D1 (`codeloba-db`)    | datos de propiedades (fases siguientes)       |
-| `MEDIA` | R2 (`codeloba-media`) | imagenes, 360 y multimedia (fases siguientes) |
+| Binding | Recurso               | Uso                            |
+| ------- | --------------------- | ------------------------------ |
+| `DB`    | D1 (`codeloba-db`)    | contenido vivo y configuración |
+| `MEDIA` | R2 (`codeloba-media`) | imágenes, 360 y multimedia     |
 
 Los bindings solo existen dentro de una peticion on-demand y se acceden asi:
 
@@ -185,14 +180,14 @@ drizzle/       migraciones SQL generadas
 public/        archivos servidos tal cual
 ```
 
-`src/components/`, `src/lib/`, `src/types/` y `src/pages/api/` se crearan
-cuando exista el primer archivo que los necesite.
+`src/components/` contiene la interfaz compartida; `src/lib/`, el dominio,
+read model y lógica del admin; `src/pages/api/`, los endpoints HTTP.
 
 ## Idiomas
 
 `/es/` y `/en/` son arboles de rutas independientes, para que cada idioma
-tenga sus propias URLs indexables. Todavia no hay sistema de traducciones ni
-deteccion automatica de idioma.
+tenga sus propias URLs indexables. Las fichas EN aparecen únicamente cuando
+existe una traducción válida. La raíz recuerda la preferencia de idioma.
 
 ## Scripts
 

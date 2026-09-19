@@ -5,23 +5,20 @@ import PublicLayout from '../../../layouts/PublicLayout.astro';
 import { labelsFor } from '../../../lib/public/labels';
 import { catalogueHref, catalogueOf } from '../../../lib/public/read-model';
 import { brandOf, sectionSeo } from '../../../lib/public/seo';
-import { loadPublicSnapshot } from '../../../lib/public/snapshot';
+import { loadRuntimePublicSnapshot } from '../../../lib/public/snapshot';
 
-/*
- * Pagina estatica. El catalogo sale del snapshot que se construye en el build;
- * en tiempo de ejecucion no se consulta nada. Los filtros trabajan despues
- * sobre estas mismas tarjetas, ya en el navegador.
- */
+export const prerender = false;
+Astro.response.headers.set('Cache-Control', 'no-store');
 const locale = 'en' as const;
 const labels = labelsFor(locale);
 
-const snapshot = loadPublicSnapshot();
+const snapshot = await loadRuntimePublicSnapshot();
 const properties = catalogueOf(snapshot, locale);
 
 const seo = sectionSeo({
   locale,
-  brand: brandOf(loadPublicSnapshot().site, locale),
-  socialImage: loadPublicSnapshot().site.media.social,
+  brand: brandOf(snapshot.site, locale),
+  socialImage: snapshot.site.media.social,
   title: labels.catalogueTitle,
   description: labels.catalogueDescription,
   path: catalogueHref('en'),
@@ -29,7 +26,7 @@ const seo = sectionSeo({
 });
 ---
 
-<PublicLayout seo={seo} section="properties">
+<PublicLayout site={snapshot.site} seo={seo} section="properties">
   <div class="page">
     <header class="page-head">
       <h1>{labels.catalogueTitle}</h1>

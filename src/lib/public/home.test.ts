@@ -293,7 +293,8 @@ describe('la raiz', () => {
      * Del snapshot solo coge la marca, que necesita para no escribir el
      * nombre del negocio a mano. Ni cabecera, ni pie, ni propiedades.
      */
-    expect(root).toContain('loadPublicSnapshot().site.businessName');
+    expect(root).not.toContain('loadRuntimePublicSnapshot');
+    expect(root).not.toContain('prerender = false');
     expect(root).not.toContain('PublicLayout');
     expect(root).not.toContain('catalogueOf');
   });
@@ -354,11 +355,11 @@ describe('el <head> de la portada', () => {
 /* -------------------------------------------------------------------------- */
 
 describe('la portada', () => {
-  it('sigue siendo estatica', () => {
-    for (const file of [HOME_ES, HOME_EN, ROOT]) {
-      expect(read(file)).not.toContain('prerender = false');
+  it('se resuelve en runtime', () => {
+    for (const file of [HOME_ES, HOME_EN]) {
+      expect(read(file)).toContain('prerender = false');
     }
-    expect(read(HOME_ES)).toContain('loadPublicSnapshot');
+    expect(read(HOME_ES)).toContain('loadRuntimePublicSnapshot');
   });
 
   it('reutiliza la tarjeta del catalogo en vez de duplicarla', () => {

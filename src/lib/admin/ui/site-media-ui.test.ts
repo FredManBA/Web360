@@ -78,7 +78,7 @@ describe('el favicon', () => {
   it('se declara solo si esta configurado', () => {
     const layout = read(LAYOUT);
 
-    expect(layout).toContain('snapshot.site.media.favicon');
+    expect(layout).toContain('site.media.favicon');
     expect(layout).toContain('{favicon && <link rel="icon" href={favicon} />}');
   });
 });
@@ -87,7 +87,7 @@ describe('el logo', () => {
   it('llega a la cabecera y al pie desde la configuracion', () => {
     const layout = read(LAYOUT);
 
-    expect(layout).toContain('logo={snapshot.site.media.logo}');
+    expect(layout).toContain('logo={site.media.logo}');
     expect(read(HEADER)).toContain('logo?: string | null');
     expect(read(FOOTER)).toContain('logo?: string | null');
   });

@@ -246,7 +246,7 @@ describe('la pagina de contacto', () => {
   it('los canales salen de la configuracion, no del codigo', () => {
     const page = read(CONTACT_ES);
 
-    expect(page).toContain('loadPublicSnapshot().contact');
+    expect(page).toContain('snapshot.contact');
     // Ni un telefono ni un correo escritos a mano en la plantilla.
     expect(read(CHANNELS)).not.toMatch(/\+\d{3}\s?\d{4}/);
     expect(read(CHANNELS)).not.toMatch(/@[a-z]+\.(com|test|cr)/);

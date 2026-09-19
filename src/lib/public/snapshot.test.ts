@@ -13,7 +13,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { EMPTY_SNAPSHOT } from './read-model';
-import { findLocalDatabaseFile, readLocalSnapshot } from './snapshot-source';
+import { findLocalDatabaseFile } from './snapshot-source';
 
 function read(relative: string): string {
   return readFileSync(path.resolve(process.cwd(), relative), 'utf8');
@@ -80,14 +80,6 @@ describe('snapshot de build', () => {
     expect(EMPTY_SNAPSHOT.properties.en).toEqual([]);
   });
 
-  it('devuelve algo utilizable pase lo que pase', async () => {
-    const snapshot = await readLocalSnapshot();
-
-    expect(Array.isArray(snapshot.properties.es)).toBe(true);
-    expect(Array.isArray(snapshot.properties.en)).toBe(true);
-    expect(typeof snapshot.generatedAt).toBe('string');
-  });
-
   it('el plugin lo lee una sola vez, al empezar el build', () => {
     const plugin = read(PLUGIN);
 
@@ -100,10 +92,10 @@ describe('snapshot de build', () => {
 /* Arquitectura                                                               */
 /* -------------------------------------------------------------------------- */
 
-describe('el sitio publico sigue siendo estatico', () => {
-  it('ninguna pagina publica se pasa a ejecucion bajo demanda', () => {
+describe('el sitio publico se resuelve en runtime', () => {
+  it('las paginas con contenido son dinamicas', () => {
     for (const page of [CATALOGUE_ES, CATALOGUE_EN, DETAIL_ES, DETAIL_EN]) {
-      expect(read(page)).not.toContain('prerender = false');
+      expect(read(page)).toContain('prerender = false');
     }
   });
 
@@ -132,11 +124,11 @@ describe('el sitio publico sigue siendo estatico', () => {
     expect(read(SNAPSHOT)).not.toContain('node:fs');
   });
 
-  it('las paginas reciben datos ya resueltos, no una consulta', () => {
+  it('la frontera runtime reutiliza el read model y el build no lo carga', () => {
     // El prerenderizado del adaptador ocurre en workerd: alli no hay ficheros.
-    expect(read(SNAPSHOT)).toContain("import snapshot from 'virtual:public-snapshot'");
+    expect(read(SNAPSHOT)).toContain('buildPublicSnapshot(getDb(env))');
     expect(read(PLUGIN)).toContain('virtual:public-snapshot');
-    expect(read(ASTRO_CONFIG)).toContain('publicSnapshotPlugin()');
+    expect(read(ASTRO_CONFIG)).not.toContain('publicSnapshotPlugin');
   });
 
   it('el origen es el unico que sabe de donde vienen los datos', () => {
@@ -151,11 +143,11 @@ describe('el sitio publico sigue siendo estatico', () => {
     expect(read(READ_MODEL)).not.toContain('CODELOBA_D1_SOURCE');
   });
 
-  it('cada ficha se genera desde el snapshot, no en tiempo de peticion', () => {
+  it('cada ficha busca el slug en el snapshot runtime', () => {
     for (const page of [DETAIL_ES, DETAIL_EN]) {
       const source = read(page);
-      expect(source).toContain('getStaticPaths');
-      expect(source).toContain('loadPublicSnapshot');
+      expect(source).not.toContain('getStaticPaths');
+      expect(source).toContain('loadRuntimePublicSnapshot');
     }
   });
 });
@@ -168,8 +160,8 @@ describe('catalogo y ficha', () => {
   it('cada idioma tiene su arbol de rutas', () => {
     expect(read(CATALOGUE_ES)).toContain("const locale = 'es' as const");
     expect(read(CATALOGUE_EN)).toContain("const locale = 'en' as const");
-    expect(read(DETAIL_ES)).toContain("catalogueOf(snapshot, 'es')");
-    expect(read(DETAIL_EN)).toContain("catalogueOf(snapshot, 'en')");
+    expect(read(DETAIL_ES)).toContain("const locale = 'es' as const");
+    expect(read(DETAIL_EN)).toContain("const locale = 'en' as const");
   });
 
   it('el catalogo tiene un estado vacio', () => {

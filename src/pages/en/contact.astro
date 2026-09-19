@@ -6,22 +6,21 @@ import { hasChannels } from '../../lib/public/contact';
 import { labelsFor } from '../../lib/public/labels';
 import { contactHref } from '../../lib/public/navigation';
 import { brandOf, sectionSeo } from '../../lib/public/seo';
-import { loadPublicSnapshot } from '../../lib/public/snapshot';
+import { loadRuntimePublicSnapshot } from '../../lib/public/snapshot';
 
-/*
- * Pagina estatica: los canales salen del snapshot del build, igual que el
- * catalogo. Lo unico que se ejecuta en el servidor es el envio del
- * formulario, que va a su propio endpoint.
- */
+export const prerender = false;
+Astro.response.headers.set('Cache-Control', 'no-store');
+const snapshot = await loadRuntimePublicSnapshot();
+
 const locale = 'en' as const;
 const labels = labelsFor(locale);
 
-const channels = loadPublicSnapshot().contact;
+const channels = snapshot.contact;
 
 const seo = sectionSeo({
   locale,
-  brand: brandOf(loadPublicSnapshot().site, locale),
-  socialImage: loadPublicSnapshot().site.media.social,
+  brand: brandOf(snapshot.site, locale),
+  socialImage: snapshot.site.media.social,
   title: labels.contactTitle,
   description: labels.contactDescription,
   path: contactHref('en'),
@@ -29,7 +28,7 @@ const seo = sectionSeo({
 });
 ---
 
-<PublicLayout seo={seo} section="contact">
+<PublicLayout site={snapshot.site} seo={seo} section="contact">
   <div class="page">
     <header class="page-head">
       <h1>{labels.contactTitle}</h1>

@@ -12,7 +12,7 @@
  * cambios que todavia no.
  */
 
-import { reconciliationMessage, requestSummary, ACTION_LABELS } from './publication-panel';
+import { reconciliationMessage, requestSummary, ACTION_LABELS } from './legacy-publication-labels';
 import type { ReconciliationReason } from '../../publication/publication';
 
 const ENDPOINT = '/api/admin/publication/site';

@@ -1,15 +1,9 @@
-/**
- * Acceso al snapshot publico desde las paginas.
- *
- * Las paginas no leen la base: importan el modulo virtual que el plugin de
- * Vite ha rellenado durante el build. Este fichero existe para que ese detalle
- * quede en un solo sitio y las paginas se lean bien.
- */
+/** Frontera de servidor: una lectura del modelo publico por request, sin cache. */
+import { env } from 'cloudflare:workers';
 
-import snapshot from 'virtual:public-snapshot';
+import { getDb } from '../../db/client';
+import { buildPublicSnapshot, type PublicSnapshot } from './read-model';
 
-import type { PublicSnapshot } from './read-model';
-
-export function loadPublicSnapshot(): PublicSnapshot {
-  return snapshot;
+export function loadRuntimePublicSnapshot(): Promise<PublicSnapshot> {
+  return buildPublicSnapshot(getDb(env));
 }

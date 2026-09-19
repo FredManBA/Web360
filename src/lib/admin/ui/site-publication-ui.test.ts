@@ -284,32 +284,13 @@ describe('los errores', () => {
 /* La pagina                                                                  */
 /* -------------------------------------------------------------------------- */
 
-describe('la seccion en Configuracion', () => {
-  const page = read(PAGE);
-
-  it('existe y tiene su titulo', () => {
-    expect(page).toContain('id="site-publication"');
-    expect(page).toContain('Publicar los cambios');
-  });
-
-  it('va FUERA del formulario: no es un campo mas que se guarda', () => {
-    const cierre = page.indexOf('</form>');
-    expect(cierre).toBeGreaterThan(-1);
-    expect(page.indexOf('id="site-publication"')).toBeGreaterThan(cierre);
-  });
-
-  it('explica la diferencia entre guardar y publicar', () => {
-    /*
-     * Se normalizan los espacios: el formateador reparte el parrafo en lineas
-     * distintas segun le cuadre, y la frase no puede depender de eso.
-     */
-    const texto = page.replace(/\s+/g, ' ');
-
-    expect(texto).toContain('no lo muestra hasta que lo publicas');
-  });
-
-  it('se engancha al arrancar la pagina', () => {
-    expect(page).toContain('initSitePublicationPanel');
+describe('Configuracion R1', () => {
+  it('guardar es suficiente y el panel historico no se monta', () => {
+    const page = read(PAGE);
+    expect(page).not.toContain('id="site-publication"');
+    expect(page).not.toContain('initSitePublicationPanel');
+    expect(page).not.toContain('Publicar los cambios');
+    expect(page).toContain('Los cambios guardados se muestran al momento');
   });
 });
 

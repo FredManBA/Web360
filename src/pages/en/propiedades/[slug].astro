@@ -1,71 +1,62 @@
 ---
 import PropertyDetail from '../../../components/public/PropertyDetail.astro';
+import NotFound from '../../../components/public/NotFound.astro';
 import PublicLayout from '../../../layouts/PublicLayout.astro';
-import {
-  alternateHref,
-  catalogueOf,
-  type PublicPropertyDetail,
-} from '../../../lib/public/read-model';
-import { brandOf, propertySeo } from '../../../lib/public/seo';
-import { loadPublicSnapshot } from '../../../lib/public/snapshot';
+import { alternateHref, findBySlug } from '../../../lib/public/read-model';
+import { labelsFor } from '../../../lib/public/labels';
+import { brandOf, propertySeo, notFoundSeo } from '../../../lib/public/seo';
+import { loadRuntimePublicSnapshot } from '../../../lib/public/snapshot';
 import { propertyJsonLd } from '../../../lib/public/structured-data';
 
-/*
- * Una ruta por cada propiedad publicada CON traduccion utilizable en este
- * idioma. Las que no la tienen simplemente no existen aqui: no se inventa el
- * slug ni se recurre al otro idioma.
- */
-export function getStaticPaths() {
-  const snapshot = loadPublicSnapshot();
-
-  return catalogueOf(snapshot, 'en').map((property) => ({
-    params: { slug: property.slug },
-    props: {
-      property: property as PublicPropertyDetail,
-      // La misma ficha en el otro idioma, si esta traducida.
-      alternate: alternateHref(snapshot, 'en', property.slug),
-    },
-  }));
-}
-
+export const prerender = false;
+Astro.response.headers.set('Cache-Control', 'no-store');
 const locale = 'en' as const;
-const snapshot = loadPublicSnapshot();
-const channels = snapshot.contact;
-const { property, alternate } = Astro.props as {
-  property: PublicPropertyDetail;
-  alternate: string | null;
-};
-
-const seo = propertySeo(
-  property,
-  locale,
-  brandOf(snapshot.site, locale),
-  alternate,
-  snapshot.site.media.social,
-);
-
-/*
- * Las imagenes del JSON-LD son las rutas publicas de siempre (`/media/N`),
- * absolutas solo si hay dominio. Nunca una clave de R2.
- */
+const snapshot = await loadRuntimePublicSnapshot();
+const property = findBySlug(snapshot, locale, Astro.params.slug ?? '');
+const alternate = property === null ? null : alternateHref(snapshot, locale, property.slug);
+const labels = labelsFor(locale);
+const seo =
+  property === null
+    ? notFoundSeo({
+        locale,
+        brand: brandOf(snapshot.site, locale),
+        title: labels.notFoundTitle,
+        description: labels.notFoundLead,
+      })
+    : propertySeo(
+        property,
+        locale,
+        brandOf(snapshot.site, locale),
+        alternate,
+        snapshot.site.media.social,
+      );
 const url = (path: string): string =>
   Astro.site === undefined ? path : new URL(path, Astro.site).href;
-
-const jsonLd = propertyJsonLd({
-  property,
-  locale,
-  url: url(property.href),
-  images: property.media.items
-    .map((item) => item.url)
-    .filter((item): item is string => item !== null)
-    .map(url),
-});
+const jsonLd =
+  property === null
+    ? null
+    : propertyJsonLd({
+        property,
+        locale,
+        url: url(property.href),
+        images: property.media.items
+          .map((item) => item.url)
+          .filter((item): item is string => item !== null)
+          .map(url),
+      });
+if (property === null) Astro.response.status = 404;
 ---
 
-<PublicLayout seo={seo} section="properties" jsonLd={jsonLd}>
-  <div class="page">
-    <PropertyDetail property={property} locale={locale} channels={channels} />
-  </div>
+<PublicLayout site={snapshot.site} seo={seo} section="properties" jsonLd={jsonLd}>
+  {
+    property === null ? (
+      <NotFound locale={locale} />
+    ) : (
+      <div class="page">
+        <PropertyDetail property={property} locale={locale} channels={snapshot.contact} />
+      </div>
+    )
+  }
 </PublicLayout>
 
 <script>

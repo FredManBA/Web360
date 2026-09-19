@@ -139,9 +139,9 @@ describe('validatePropertyForPublication', () => {
     );
   });
 
-  it('exige estado apropiado para publicar', () => {
-    for (const status of ['draft', 'in_review', 'archived'] as const) {
-      expect(codes(publishableProperty({ publicationStatus: status }))).toContain(
+  it('valida contenido sin exigir revision ni aprobacion', () => {
+    for (const status of ['draft', 'in_review', 'approved', 'published', 'archived'] as const) {
+      expect(codes(publishableProperty({ publicationStatus: status }))).not.toContain(
         'status_not_publishable',
       );
     }

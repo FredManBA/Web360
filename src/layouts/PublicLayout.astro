@@ -7,9 +7,10 @@ import { labelsFor } from '../lib/public/labels';
 import type { SectionId } from '../lib/public/navigation';
 import type { JsonLd } from '../lib/public/structured-data';
 import { absoluteUrl, ogLocale, otherLocale, type PageSeo } from '../lib/public/seo';
-import { loadPublicSnapshot } from '../lib/public/snapshot';
+import type { PublicSite } from '../lib/public/read-model';
 
 interface Props {
+  site: Pick<PublicSite, 'businessName' | 'media'>;
   /** Todo lo que esta pagina declara sobre si misma. */
   seo: PageSeo;
   /** Seccion activa en la navegacion. */
@@ -18,7 +19,7 @@ interface Props {
   jsonLd?: JsonLd | null;
 }
 
-const { seo, section, jsonLd = null } = Astro.props;
+const { site, seo, section, jsonLd = null } = Astro.props;
 
 /*
  * Las URL del `<head>` se emiten absolutas SOLO cuando el proyecto tiene un
@@ -32,14 +33,7 @@ const url = (path: string): string => absoluteUrl(Astro.site, path);
 const { locale } = seo;
 const other = otherLocale(locale);
 
-/*
- * La marca sale de la configuracion del sitio, no de la plantilla: quien
- * lleva el negocio cambia el nombre en el panel y cambia en todas partes. Se
- * resuelve AQUI, en el unico sitio por el que pasan todas las paginas
- * publicas, en vez de pasarlo por props desde cada una.
- */
-const snapshot = loadPublicSnapshot();
-const brand = snapshot.site.businessName ?? labelsFor(locale).brandName;
+const brand = site.businessName ?? labelsFor(locale).brandName;
 
 /*
  * Una pagina que no representa contenido —el 404— no tiene canonica. Sin
@@ -52,7 +46,7 @@ const image = seo.imagePath === null ? null : url(seo.imagePath);
  * El favicon configurado, si lo hay. Sin el no se declara ninguno y el
  * navegador hace lo de siempre: pedir `/favicon.ico` y quedarse sin icono.
  */
-const favicon = snapshot.site.media.favicon;
+const favicon = site.media.favicon;
 ---
 
 <!doctype html>
@@ -114,13 +108,13 @@ const favicon = snapshot.site.media.favicon;
       section={section}
       alternateHref={seo.alternatePath}
       brand={brand}
-      logo={snapshot.site.media.logo}
+      logo={site.media.logo}
     />
 
     <main id="contenido">
       <slot />
     </main>
 
-    <SiteFooter locale={locale} brand={brand} logo={snapshot.site.media.logo} />
+    <SiteFooter locale={locale} brand={brand} logo={site.media.logo} />
   </body>
 </html>

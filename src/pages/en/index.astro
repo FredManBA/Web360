@@ -9,17 +9,15 @@ import { featuredOf, hasPlacedProperties, homeCopy } from '../../lib/public/home
 import { labelsFor } from '../../lib/public/labels';
 import { catalogueHref, catalogueOf } from '../../lib/public/read-model';
 import { sectionSeo } from '../../lib/public/seo';
-import { loadPublicSnapshot } from '../../lib/public/snapshot';
+import { loadRuntimePublicSnapshot } from '../../lib/public/snapshot';
 import { organizationJsonLd } from '../../lib/public/structured-data';
 
-/*
- * Portada estatica, como el resto del sitio publico: sale del snapshot del
- * build y en tiempo de ejecucion no se consulta nada.
- */
+export const prerender = false;
+Astro.response.headers.set('Cache-Control', 'no-store');
 const locale = 'en' as const;
 const labels = labelsFor(locale);
 
-const snapshot = loadPublicSnapshot();
+const snapshot = await loadRuntimePublicSnapshot();
 const properties = catalogueOf(snapshot, locale);
 
 const copy = homeCopy(snapshot.site, locale, {
@@ -56,7 +54,7 @@ const jsonLd = organizationJsonLd({
 });
 ---
 
-<PublicLayout seo={seo} jsonLd={jsonLd}>
+<PublicLayout site={snapshot.site} seo={seo} jsonLd={jsonLd}>
   <HomeHero copy={copy} locale={locale} showMap={showMap} image={snapshot.site.media.hero} />
 
   <div class="home">

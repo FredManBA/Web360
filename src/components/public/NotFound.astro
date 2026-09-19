@@ -1,0 +1,38 @@
+---
+import type { Locale } from '../../lib/domain/vocabularies';
+import { labelsFor } from '../../lib/public/labels';
+import { catalogueHref } from '../../lib/public/read-model';
+import { homeHref, otherLocale } from '../../lib/public/seo';
+interface Props {
+  locale: Locale;
+  offerOtherLanguage?: boolean;
+}
+const { locale, offerOtherLanguage = false } = Astro.props;
+const labels = labelsFor(locale);
+const other = labelsFor(otherLocale(locale));
+---
+
+<section class="not-found">
+  <p class="not-found-code" aria-hidden="true">404</p>
+  <h1>{labels.notFoundTitle}</h1>
+  <p class="not-found-lead">{labels.notFoundLead}</p>
+
+  <div class="not-found-actions">
+    <a class="not-found-cta" href={homeHref(locale)}>{labels.notFoundHome}</a>
+    <a class="not-found-cta not-found-cta-quiet" href={catalogueHref(locale)}>
+      {labels.notFoundCatalogue}
+    </a>
+  </div>
+
+  {
+    /*
+     * Sin prefijo en la URL no se sabe que idioma queria: se ofrece el otro
+     * escrito en su propio idioma.
+     */
+    offerOtherLanguage && (
+      <p class="not-found-other">
+        <a href={homeHref(otherLocale(locale))}>{other.notFoundHome}</a>
+      </p>
+    )
+  }
+</section>

@@ -184,32 +184,13 @@ export const prerender = false;
     </section>
   </form>
 
-  {
-    /*
-     * Fuera del formulario a proposito: no es un campo mas que se guarda, es
-     * lo que lleva a la web lo ya guardado. Meterlo dentro invitaria a
-     * confundir "guardar" con "publicar", que es justo la confusion que este
-     * bloque existe para deshacer.
-     */
-  }
-  <section class="admin-section" aria-labelledby="publicacion-sitio-title">
-    <h2 id="publicacion-sitio-title">Publicar los cambios</h2>
-
-    <p class="admin-muted">
-      Lo que guardas aquí queda registrado al momento, pero el sitio público no lo muestra hasta que
-      lo publicas. Hazlo cuando tengas listos todos los cambios.
-    </p>
-
-    <div id="site-publication" class="publication-panel"></div>
-  </section>
+  <p class="admin-muted">Los cambios guardados se muestran al momento en el sitio público.</p>
 </AdminLayout>
 
 <script>
   import { initSettingsPage } from '../../lib/admin/ui/settings-page';
   import { initSiteMediaPanel } from '../../lib/admin/ui/site-media-panel';
-  import { initSitePublicationPanel } from '../../lib/admin/ui/site-publication-panel';
 
   initSettingsPage();
   initSiteMediaPanel();
-  initSitePublicationPanel();
 </script>

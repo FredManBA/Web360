@@ -1,8 +1,7 @@
 /**
  * Entrega publica de multimedia.
  *
- * Es la unica parte del sitio publico que se ejecuta en el Worker: sirve los
- * archivos de R2 sin hacer publico el bucket.
+ * Sirve los archivos de R2 sin hacer publico el bucket.
  *
  * Como se protege, que es lo que importa aqui:
  *
@@ -14,9 +13,6 @@
  * - un archivo de un borrador, de una propiedad archivada o de una vendida y
  *   oculta responde 404, igual que uno inexistente. No se distingue entre
  *   "no existe" y "no es publico": decirlo seria filtrar;
- * - cuando la version desplegada trae manifiesto, ademas tiene que estar en
- *   el. La base dice si el archivo PUEDE ser publico; el manifiesto, si
- *   pertenece a la version que el visitante esta viendo.
  *
  * No comparte nada con el endpoint del admin: aquel exige sesion y responde
  * `no-store`; este es abierto y cacheable. Son dos puertas distintas a
@@ -26,7 +22,6 @@
 import { eq } from 'drizzle-orm';
 
 import { properties, propertyMedia } from '../../db/schema';
-import { releaseAllowsMedia, type ReleaseManifest } from '../publication/release';
 import type { MediaBucket } from '../admin/media/bucket';
 import type { AdminDatabase } from '../admin/types';
 import { isPubliclyVisible } from '../domain/visibility';
@@ -38,14 +33,6 @@ export interface PublicMediaRequest {
   bucket: MediaBucket;
   /** Cabecera `If-None-Match` del navegador, si la manda. */
   ifNoneMatch?: string | null;
-  /**
-   * Manifiesto de la version desplegada, cuando la hay.
-   *
-   * ACOTA lo que la base permite, nunca lo amplia: sirve para que el HTML
-   * desplegado y los archivos que se sirven pertenezcan a la misma version.
-   * Sin manifiesto (`null` o ausente) decide la base, como siempre.
-   */
-  release?: ReleaseManifest | null;
 }
 
 /**
@@ -78,12 +65,6 @@ export async function servePublicMedia(request: PublicMediaRequest): Promise<Res
   const { mediaId, db, bucket } = request;
 
   if (!Number.isSafeInteger(mediaId) || mediaId <= 0) return notFound();
-
-  /*
-   * Primero la version desplegada: si su HTML no referencia este archivo, no
-   * hay nada que servir y ni siquiera hace falta consultar la base.
-   */
-  if (!releaseAllowsMedia(request.release ?? null, mediaId)) return notFound();
 
   /*
    * Una sola consulta con el estado de la propiedad al lado: asi no hay forma

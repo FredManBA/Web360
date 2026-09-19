@@ -74,10 +74,8 @@ export interface AdminHttpContext {
   /**
    * Manifiesto de la version que ejecuta este artefacto.
    *
-   * Lo pone el puente de Astro leyendo el modulo que el build embebio; los
-   * handlers no lo van a buscar por su cuenta para que sigan probandose sin
-   * pasar por el empaquetado. `null` o ausente = esta version no salio de una
-   * operacion de publicacion.
+   * Compatibilidad con las pruebas y APIs historicas. El contexto R1 no lo
+   * rellena: el artefacto ya no representa una version del contenido.
    */
   deployedRelease?: ReleaseManifest | null;
 }

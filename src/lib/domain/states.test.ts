@@ -29,15 +29,15 @@ describe('canApproveReview / canRequestChanges', () => {
 });
 
 describe('canPublishProperty', () => {
-  it('solo desde aprobada', () => {
+  it('desde borrador y estados editoriales heredados', () => {
     for (const status of PUBLICATION_STATUSES) {
-      expect(canPublishProperty(status)).toBe(status === 'approved');
+      expect(canPublishProperty(status)).toBe(['draft', 'in_review', 'approved'].includes(status));
     }
   });
 
-  it('un borrador no se publica saltandose la revision', () => {
-    expect(canPublishProperty('draft')).toBe(false);
-    expect(canPublishProperty('in_review')).toBe(false);
+  it('la revision ya no es requisito para publicar', () => {
+    expect(canPublishProperty('draft')).toBe(true);
+    expect(canPublishProperty('in_review')).toBe(true);
   });
 });
 
@@ -58,13 +58,14 @@ describe('canRestoreToDraft', () => {
 });
 
 describe('nextPublicationStatuses', () => {
-  it('el flujo aprobado avanza draft -> in_review -> approved -> published', () => {
-    expect(nextPublicationStatuses('draft')).toContain('in_review');
+  it('publica directamente desde borrador y permite retirar', () => {
+    expect(nextPublicationStatuses('draft')).toContain('published');
+    expect(nextPublicationStatuses('published')).toContain('draft');
     expect(nextPublicationStatuses('approved')).toContain('published');
   });
 
-  it('aprobar NO ofrece publicar automaticamente desde in_review', () => {
-    expect(nextPublicationStatuses('in_review')).not.toContain('published');
+  it('ofrece publicar desde in_review sin exigir aprobacion', () => {
+    expect(nextPublicationStatuses('in_review')).toContain('published');
   });
 
   it('archivar esta disponible salvo si ya esta archivada', () => {

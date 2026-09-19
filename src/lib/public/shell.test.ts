@@ -130,7 +130,7 @@ describe('el nombre del negocio', () => {
   it('el shell lo resuelve una sola vez, donde pasan todas las paginas', () => {
     const layout = read(LAYOUT);
 
-    expect(layout).toContain('snapshot.site.businessName');
+    expect(layout).toContain('site.businessName');
     // Sin configurar, el sitio no se queda sin marca.
     expect(layout).toContain('labelsFor(locale).brandName');
     expect(layout).toContain('brand={brand}');
@@ -294,9 +294,9 @@ describe('pagina de catalogo', () => {
     }
   });
 
-  it('sigue siendo estatica', () => {
+  it('se resuelve en runtime', () => {
     for (const page of [CATALOGUE_ES, CATALOGUE_EN, DETAIL_ES]) {
-      expect(read(page)).not.toContain('prerender = false');
+      expect(read(page)).toContain('prerender = false');
     }
   });
 
@@ -485,7 +485,7 @@ describe('sistema visual', () => {
 
 describe('coherencia', () => {
   it('el catalogo se sigue leyendo del snapshot', () => {
-    expect(read(CATALOGUE_ES)).toContain('loadPublicSnapshot');
+    expect(read(CATALOGUE_ES)).toContain('loadRuntimePublicSnapshot');
     expect(read(CATALOGUE_ES)).toContain('catalogueOf(snapshot, locale)');
     expect(typeof catalogueOf).toBe('function');
   });

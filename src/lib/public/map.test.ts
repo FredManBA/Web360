@@ -386,10 +386,10 @@ describe('la pagina de mapa', () => {
     expect(items[1]?.href).toBe('/es/mapa');
   });
 
-  it('sigue siendo estatica: el snapshot del build, no una consulta', () => {
+  it('lee el snapshot runtime', () => {
     for (const page of [MAP_ES, MAP_EN]) {
-      expect(read(page)).toContain('loadPublicSnapshot');
-      expect(read(page)).not.toContain('prerender = false');
+      expect(read(page)).toContain('loadRuntimePublicSnapshot');
+      expect(read(page)).toContain('prerender = false');
     }
   });
 

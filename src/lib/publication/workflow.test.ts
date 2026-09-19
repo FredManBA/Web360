@@ -274,7 +274,7 @@ describe('los secretos', () => {
     for (const linea of asignaciones) expect(linea).toMatch(/=$/);
   });
 
-  it('la plantilla nombra lo que el build de publicacion necesita', () => {
+  it('la plantilla R1 no configura una fuente de contenido para el build', () => {
     for (const nombre of [
       'CODELOBA_D1_SOURCE',
       'CODELOBA_PUBLICATION_REQUEST',
@@ -282,8 +282,9 @@ describe('los secretos', () => {
       'CF_D1_DATABASE_ID',
       'CF_API_TOKEN',
     ]) {
-      expect(ENV_EXAMPLE).toContain(nombre);
+      expect(ENV_EXAMPLE).not.toContain(`${nombre}=`);
     }
+    expect(ENV_EXAMPLE).toContain('CODELOBA_SITE_URL=');
   });
 });
 

@@ -170,25 +170,20 @@ describe('lo que NO viaja en el artefacto', () => {
 /* Como lo lee el Worker                                                      */
 /* -------------------------------------------------------------------------- */
 
-describe('el Worker lee su propia release', () => {
-  it('el modulo desplegado sale del artefacto, no de una consulta', () => {
-    const deployed = read('src/lib/publication/deployed-release.ts');
-
-    expect(deployed).toContain("import manifest from 'virtual:release-manifest'");
-    // Nada de red ni de base: el artefacto habla de si mismo.
-    expect(deployed).not.toContain('fetch(');
-    expect(deployed).not.toContain('drizzle');
+describe('el Worker R1 no depende del artefacto de contenido', () => {
+  it('el build y el runtime no importan modulos virtuales', () => {
+    for (const file of [
+      'astro.config.mjs',
+      'src/lib/public/snapshot.ts',
+      'src/lib/publication/deployed-release.ts',
+    ]) {
+      expect(read(file)).not.toContain('virtual:');
+      expect(read(file)).not.toContain('publicSnapshotPlugin');
+    }
   });
-
-  it('la puerta de los archivos usa el manifiesto del artefacto', () => {
-    expect(read('src/pages/media/[id].ts')).toContain('deployedReleaseManifest()');
-    expect(read('src/lib/public/media-delivery.ts')).toContain('releaseAllowsMedia');
-  });
-
-  it('el panel recibe la release por el contexto, no la va a buscar', () => {
-    expect(read('src/lib/admin/http/astro.ts')).toContain(
-      'deployedRelease: deployedReleaseManifest()',
-    );
-    expect(read('src/lib/admin/http/publication-handlers.ts')).not.toContain('deployed-release');
+  it('D1 decide la media y el admin no conecta un ejecutor', () => {
+    expect(read('src/pages/media/[id].ts')).not.toContain('deployedReleaseManifest');
+    expect(read('src/lib/public/media-delivery.ts')).not.toContain('releaseAllowsMedia');
+    expect(read('src/lib/admin/http/astro.ts')).not.toContain('resolvePublishTrigger');
   });
 });

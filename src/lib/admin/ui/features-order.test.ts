@@ -660,8 +660,8 @@ describe('integracion de la seccion', () => {
   });
 
   it('(12)(13) el editor no tiene un segundo camino de guardado', () => {
-    // Un unico `saveNow`, el del envio del formulario.
-    expect(editor.match(/saveNow\(\)/g)).toHaveLength(1);
+    // Formulario y publicacion llaman al mismo coordinador.
+    expect(editor.match(/coordinator\?\.saveNow\(\)/g)).toHaveLength(2);
     expect(read(COORDINATOR)).toContain('register');
   });
 

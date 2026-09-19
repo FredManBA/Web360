@@ -1,3 +1,8 @@
+> **Histórico, anterior a R1.** Este procedimiento ya no publica contenido en
+> el núcleo dinámico. No ejecutar el workflow ni los scripts de finalize para
+> publicar propiedades. El funcionamiento actual est? en [rework-r1.md](rework-r1.md).
+> Se conserva esta documentación junto al código pendiente de retirar en R2/R3.
+
 # Publicación: cómo se activa y cómo se recupera
 
 Guía operativa del flujo de publicación. Aquí no hay ningún valor real: solo

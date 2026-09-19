@@ -24,12 +24,7 @@ import type { AdminBatchDatabase } from '../admin/types';
 import type { PublicationStatus } from '../domain/vocabularies';
 import { servePublicMedia } from '../public/media-delivery';
 import { buildCandidateSnapshot, catalogueOf } from '../public/read-model';
-import {
-  buildReleaseCandidate,
-  releaseAllowsMedia,
-  releaseIdFor,
-  releaseMediaIds,
-} from './release';
+import { buildReleaseCandidate, releaseIdFor, releaseMediaIds } from './release';
 
 let db: AdminBatchDatabase;
 let sqlite: DatabaseSync;
@@ -258,73 +253,9 @@ describe('el manifiesto de la release', () => {
 /* La puerta de los archivos                                                  */
 /* -------------------------------------------------------------------------- */
 
-describe('la autorizacion de archivos con manifiesto', () => {
-  it('sin manifiesto decide la base, como siempre', async () => {
-    const propertyId = await property('lote-publicado', 'published');
-    const mediaId = await mediaIdOf(propertyId);
-
-    const response = await servePublicMedia({ mediaId, db, bucket });
-
-    expect(response.status).toBe(200);
-    expect(releaseAllowsMedia(null, mediaId)).toBe(true);
-  });
-
-  it('con manifiesto, lo que no esta en la version no se sirve', async () => {
-    const propertyId = await property('lote-publicado', 'published');
-    const mediaId = await mediaIdOf(propertyId);
-
-    const response = await servePublicMedia({
-      mediaId,
-      db,
-      bucket,
-      release: {
-        releaseId: 'r1',
-        requestId: 1,
-        generatedAt: '2026-01-01T00:00:00.000Z',
-        mediaIds: [],
-      },
-    });
-
-    // 404 sobrio, igual que un archivo inexistente.
-    expect(response.status).toBe(404);
-  });
-
-  it('el manifiesto acota, nunca amplia', async () => {
-    const propertyId = await property('lote-borrador', 'draft');
-    const mediaId = await mediaIdOf(propertyId);
-
-    const response = await servePublicMedia({
-      mediaId,
-      db,
-      bucket,
-      // Aunque la version lo listara, la base sigue diciendo que no es publico.
-      release: {
-        releaseId: 'r1',
-        requestId: 1,
-        generatedAt: '2026-01-01T00:00:00.000Z',
-        mediaIds: [mediaId],
-      },
-    });
-
-    expect(response.status).toBe(404);
-  });
-
-  it('lo que esta en la version y es publico se sirve', async () => {
-    const propertyId = await property('lote-publicado', 'published');
-    const mediaId = await mediaIdOf(propertyId);
-
-    const response = await servePublicMedia({
-      mediaId,
-      db,
-      bucket,
-      release: {
-        releaseId: 'r1',
-        requestId: 1,
-        generatedAt: '2026-01-01T00:00:00.000Z',
-        mediaIds: [mediaId],
-      },
-    });
-
-    expect(response.status).toBe(200);
+describe('media en R1', () => {
+  it('sirve la media publicada usando solo D1, sin manifiesto', async () => {
+    const id = await property('lote-publicado', 'published');
+    expect((await servePublicMedia({ mediaId: await mediaIdOf(id), db, bucket })).status).toBe(200);
   });
 });

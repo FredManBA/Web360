@@ -59,9 +59,6 @@ export interface PropertyForPublication {
 /** El idioma obligatorio para publicar. El ingles es opcional. */
 const REQUIRED_LOCALE: Locale = 'es';
 
-/** Estados desde los que tiene sentido comprobar si la ficha esta lista. */
-const PUBLISHABLE_STATUSES: PublicationStatus[] = ['approved', 'published'];
-
 const PRICE_MESSAGES: Record<string, string> = {
   amount_required: 'El modo de precio elegido exige un importe.',
   currency_required: 'El modo de precio elegido exige una moneda.',
@@ -190,15 +187,6 @@ export function validatePropertyForPublication(
     }
   }
 
-  // -- Estado editorial ----------------------------------------------------
-  if (!PUBLISHABLE_STATUSES.includes(property.publicationStatus)) {
-    add(
-      'status_not_publishable',
-      'status',
-      'La propiedad debe estar aprobada antes de publicarse.',
-      'publicationStatus',
-    );
-  }
-
+  // La validacion mide contenido; la transicion decide el estado por separado.
   return { valid: issues.length === 0, issues };
 }

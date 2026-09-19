@@ -13,6 +13,7 @@ import { bindingFor, FIELD_BINDINGS } from './editor-fields';
 import { initFeatureEditor } from './feature-editor';
 import { initMediaEditor } from './media-editor';
 import { initTourEditor } from './tour-editor';
+import { initPublicationPanel } from './publication-panel';
 import {
   areaPreview,
   fieldsToRaw,
@@ -666,5 +667,15 @@ export function initEditorPage(): void {
     initFeatureEditor(propertyId, coordinator);
     initMediaEditor(propertyId, coordinator);
     initTourEditor(propertyId, coordinator);
+    initPublicationPanel(propertyId, {
+      save: async () => {
+        await coordinator?.saveNow();
+        return coordinator?.snapshot().hasPendingWork === false;
+      },
+      onStatus: (status) => {
+        publicationStatus = status;
+        renderHeader();
+      },
+    });
   });
 }

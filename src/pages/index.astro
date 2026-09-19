@@ -20,13 +20,12 @@ import '../styles/global.css';
 
 import { labelsFor } from '../lib/public/labels';
 import { LANGUAGE_STORAGE_KEY } from '../lib/public/language-preference';
-import { loadPublicSnapshot } from '../lib/public/snapshot';
 
 // La raiz no tiene idioma propio: se presenta en los dos.
 const es = labelsFor('es');
 const en = labelsFor('en');
 
-const brand = loadPublicSnapshot().site.businessName ?? es.brandName;
+const brand = es.brandName;
 ---
 
 <!doctype html>
