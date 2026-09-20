@@ -315,10 +315,18 @@ export function initTour() {
 
   el<HTMLButtonElement>('r2-tour-preview').addEventListener('click', () => {
     if (tour === null) return;
+    if (viewer === null) {
+      hint('Espera a que cargue el visor y vuelve a intentar Vista previa.');
+      return;
+    }
+    /*
+     * La pantalla completa se pide dentro del propio gesto: tras una espera el
+     * navegador ya no la considera activada por el usuario y la rechaza. El
+     * panorama de inicio se carga después, ya a pantalla completa.
+     */
+    viewer.enterFullscreen();
     selectedMediaId = tour.startMediaId;
     render();
-    // A pantalla completa cuando el panorama de inicio ya está cargado.
-    void sync().then(() => viewer?.enterFullscreen());
   });
 
   el<HTMLButtonElement>('r2-tour-remove').addEventListener('click', () => {
