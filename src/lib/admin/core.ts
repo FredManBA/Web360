@@ -108,8 +108,18 @@ export function publicationIssues(
 export async function saveProperty(db: AdminDatabase, id: number, input: unknown) {
   const parsed = propertyInput.safeParse(input);
   if (!parsed.success) return fromZodError(parsed.error);
-  if (!(await getProperty(db, id)))
-    return fail({ code: 'not_found', message: 'La propiedad no existe.' });
+  const property = await getProperty(db, id);
+  if (!property) return fail({ code: 'not_found', message: 'La propiedad no existe.' });
+  if (property.status === 'published') {
+    const issues = publicationIssues({ ...property, ...parsed.data }, await propertyMedia(db, id));
+    if (issues.length)
+      return fail({
+        code: 'publication_incomplete',
+        message:
+          'No se puede guardar: la propiedad publicada debe conservar los mínimos de publicación.',
+        issues,
+      });
+  }
   try {
     // ES, EN y características forman parte del mismo UPDATE atómico. El tour se conserva.
     const [row] = await db
@@ -258,6 +268,15 @@ export async function changeMedia(
 export async function removeMedia(db: AdminDatabase, id: number, mediaId: number) {
   const property = await getProperty(db, id);
   if (!property) return fail({ code: 'not_found', message: 'La propiedad no existe.' });
+  if (property.status === 'published') {
+    const files = await propertyMedia(db, id);
+    if (files.some((file) => file.id === mediaId && file.isCover))
+      return fail({
+        code: 'media_in_use',
+        message:
+          'Primero elige otra portada antes de eliminar la portada de una propiedad publicada.',
+      });
+  }
   if (property.tourJson?.nodes.some((n) => n.mediaId === mediaId))
     return fail({
       code: 'media_in_use',
