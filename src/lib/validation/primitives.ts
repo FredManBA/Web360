@@ -19,8 +19,6 @@ import {
   MEDIA_KINDS,
   PRICE_MODES,
   PUBLICATION_STATUSES,
-  REVIEW_STATUSES,
-  SOURCE_PROVIDERS,
 } from '../domain/vocabularies';
 
 export const localeSchema = z.enum(LOCALES);
@@ -29,10 +27,8 @@ export const commercialStatusSchema = z.enum(COMMERCIAL_STATUSES);
 export const priceModeSchema = z.enum(PRICE_MODES);
 export const locationPrecisionSchema = z.enum(LOCATION_PRECISIONS);
 export const mediaKindSchema = z.enum(MEDIA_KINDS);
-export const sourceProviderSchema = z.enum(SOURCE_PROVIDERS);
 export const contactMethodSchema = z.enum(CONTACT_METHODS);
 export const contactStatusSchema = z.enum(CONTACT_STATUSES);
-export const reviewStatusSchema = z.enum(REVIEW_STATUSES);
 
 export const latitudeSchema = z.number().min(-90).max(90);
 export const longitudeSchema = z.number().min(-180).max(180);

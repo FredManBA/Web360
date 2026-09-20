@@ -1,73 +1,25 @@
-/**
- * Read model publico.
- *
- * Es la frontera entre lo que la base guarda y lo que el sitio publica. Todo
- * lo que salga de aqui acaba en HTML publico visible por cualquiera, asi que
- * la regla es la contraria a la del admin: no se copia una columna salvo que
- * haya un motivo para publicarla.
- *
- * Lo que NUNCA sale, aunque este a mano en la misma fila:
- *
- * - `privateLatitude` / `privateLongitude`: la coordenada privada solo se
- *   convierte en publica cuando alguien la escribe a mano en el editor;
- * - estados editoriales (`publicationStatus`, `publishedAt`), fechas internas
- *   y cualquier id de la base;
- * - reviews, tokens y contactos;
- * - claves de objeto de R2: el archivo se publica como ruta (`/media/N`), y
- *   la clave la resuelve el Worker leyendo la base;
- * - los ids de los puntos del recorrido: dentro del tour se referencian por
- *   una clave propia, no por su numero de fila.
- *
- * Se separa a proposito de `admin/`: alli se lee para editar y hace falta
- * todo; aqui se lee para publicar y hace falta lo minimo.
- */
-
-import { asc } from 'drizzle-orm';
-
-import {
-  properties,
-  propertyFeatureGroupTranslations,
-  propertyFeatureGroups,
-  propertyFeatureTranslations,
-  propertyFeatures,
-  propertyMedia,
-  propertyMediaGroupTranslations,
-  propertyMediaGroups,
-  propertyMediaTranslations,
-  propertyTourLinks,
-  propertyTourNodeTranslations,
-  propertyTourNodes,
-  propertyTranslations,
-  propertyTypeTranslations,
-  siteSettings,
-  siteSettingTranslations,
-  siteSocialLinks,
-} from '../../db/schema';
+/** Public projection over the four product tables. Never exposes R2 keys or contact records. */
+import { asc, desc, eq, inArray } from 'drizzle-orm';
+import { properties, media, siteSettings } from '../../db/schema';
 import { formatArea } from '../domain/area';
-import { getPublicCoordinates } from '../domain/location';
 import { formatMoney } from '../domain/money';
-import type { SiteMediaSlot } from '../domain/site-media';
-import { isPubliclyVisible } from '../domain/visibility';
-import type {
-  CommercialStatus,
-  Locale,
-  LocationPrecision,
-  MediaKind,
-  PriceMode,
-  PublicationAction,
+import {
+  TYPE_LABELS,
+  type CommercialStatus,
+  type Locale,
+  type LocationPrecision,
+  type PriceMode,
 } from '../domain/vocabularies';
 import type { AdminDatabase } from '../admin/types';
-
-/* -------------------------------------------------------------------------- */
-/* Forma de lo publicado                                                      */
-/* -------------------------------------------------------------------------- */
-
+import type { Tour } from '../domain/content';
+// Compatibility at the view boundary keeps the public components unchanged.
+type PublicMediaKind = 'image' | 'panorama' | 'video' | 'document';
 export interface PublicPrice {
   mode: PriceMode;
-  /** Solo cuando el modo es `exact` o `negotiable`. */
+
   amountMinor: number | null;
   currencyCode: string | null;
-  /** Ya formateado en el idioma de la ficha. */
+
   text: string;
 }
 
@@ -81,48 +33,35 @@ export interface PublicLocation {
   canton: string | null;
   district: string | null;
   locality: string | null;
-  /** Solo la coordenada PUBLICA, y solo si es utilizable. */
+
   coordinates: { latitude: number; longitude: number } | null;
   precision: LocationPrecision;
 }
 
-/**
- * Un archivo publicable.
- *
- * Lo que se publica es la URL ya construida, no el identificador suelto: asi
- * el sitio no tiene que saber como se forma una ruta de media, y la clave del
- * objeto en R2 sigue sin salir de la base.
- *
- * Para YouTube se publica el identificador del video, que es publico por
- * definicion: es el que aparece en cualquier enlace de YouTube.
- */
 export interface PublicMediaItem {
-  kind: MediaKind;
-  /** Ruta servida por el Worker. `null` en los videos de YouTube. */
+  kind: PublicMediaKind;
+
   url: string | null;
   youtubeVideoId: string | null;
 
   title: string | null;
-  /** Texto alternativo del idioma de la ficha; nunca se inventa. */
+
   altText: string | null;
   caption: string | null;
 
-  /** Nombre del grupo al que pertenece, si tiene. */
   group: string | null;
   isHero: boolean;
   isCatalogCover: boolean;
 }
 
-/** Que hay para ver, y donde pedirlo. */
 export interface PublicMediaSummary {
-  counts: Record<MediaKind, number>;
+  counts: Record<PublicMediaKind, number>;
   hasTour: boolean;
 
-  /** Imagen de la tarjeta del catalogo. */
   cover: PublicMediaItem | null;
-  /** Imagen o video que encabeza la ficha. */
+
   hero: PublicMediaItem | null;
-  /** Todo lo publicable, en el orden en que se edito. */
+
   items: PublicMediaItem[];
 }
 
@@ -132,54 +71,34 @@ export interface PublicFeature {
 }
 
 export interface PublicFeatureGroup {
-  /** `null` cuando el grupo no tiene nombre en este idioma. */
   name: string | null;
   items: PublicFeature[];
 }
 
-/* -------------------------------------------------------------------------- */
-/* Recorrido 360                                                              */
-/* -------------------------------------------------------------------------- */
-
-/**
- * El recorrido, tal como lo ve un visitante.
- *
- * Es una representacion cerrada sobre si misma: los nodos se referencian entre
- * ellos por una CLAVE que solo existe dentro de este recorrido —su posicion en
- * la lista, empezando por 1—, nunca por el id de la base. Asi el visor puede
- * navegar sin que el sitio publique numeros de fila.
- *
- * El panorama viaja como ruta publica (`/media/N`), igual que el resto de la
- * multimedia: la clave del objeto en R2 no sale de la base.
- */
 export interface PublicTourLink {
-  /** Clave del punto al que lleva este salto. */
   to: string;
-  /** Donde se pinta el salto dentro del panorama de origen. */
+
   yaw: number;
   pitch: number;
 }
 
 export interface PublicTourNode {
-  /** Identifica el punto DENTRO de este recorrido. No es un id de la base. */
   key: string;
-  /** Nombre en el idioma de la ficha; `null` si no se tradujo. */
+
   name: string | null;
-  /** Ruta publica del panorama. */
+
   url: string;
-  /** Camara con la que abre el punto; `null` si no se ajusto. */
+
   initialView: { yaw: number; pitch: number; fov: number | null } | null;
-  /** Saltos que salen de este punto, en su orden. */
+
   links: PublicTourLink[];
 }
 
 export interface PublicTour {
-  /** Clave del punto por el que empieza el recorrido. */
   start: string;
   nodes: PublicTourNode[];
 }
 
-/** Lo que necesita una tarjeta del catalogo. */
 export interface PublicPropertyCard {
   code: string;
   slug: string;
@@ -190,10 +109,6 @@ export interface PublicPropertyCard {
   area: PublicArea | null;
   location: PublicLocation;
 
-  /**
-   * Solo cuando aporta algo: `available` es lo normal y no se anuncia.
-   * `sold` solo llega hasta aqui si la propiedad se publica vendida.
-   */
   commercialStatus: CommercialStatus | null;
   isFeatured: boolean;
 
@@ -201,35 +116,19 @@ export interface PublicPropertyCard {
   href: string;
 }
 
-/** La ficha completa: la tarjeta mas el contenido largo. */
 export interface PublicPropertyDetail extends PublicPropertyCard {
   marketingDescription: string | null;
   technicalDescription: string | null;
   features: PublicFeatureGroup[];
-  /** `null` cuando la propiedad no tiene recorrido publicable. */
+
   tour: PublicTour | null;
 }
-
-/* -------------------------------------------------------------------------- */
-/* Canales de contacto                                                        */
-/* -------------------------------------------------------------------------- */
 
 export interface PublicSocialLink {
   platform: string;
   url: string;
 }
 
-/**
- * Como contactar con el negocio.
- *
- * Sale de `site_settings`, no de constantes en el codigo: el telefono lo
- * cambia quien lleva el negocio, no una fase de desarrollo.
- *
- * Se publica SOLO lo que es un canal publico. `reviewerEmail` y
- * `notificationsEmail` son direcciones internas —una para revisar borradores,
- * otra para recibir los avisos— y no se seleccionan siquiera: publicarlas
- * seria regalar dos buzones al primer robot que lea el HTML.
- */
 export interface PublicContactChannels {
   phone: string | null;
   whatsapp: string | null;
@@ -246,17 +145,6 @@ export const EMPTY_CONTACT: PublicContactChannels = {
   social: [],
 };
 
-/* -------------------------------------------------------------------------- */
-/* Textos del sitio                                                           */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Lo que la portada dice del negocio, por idioma.
- *
- * Sale de `site_setting_translations`, no de constantes en el codigo: el
- * mensaje de la portada lo escribe quien lleva el negocio. Cuando falta, la
- * pagina usa su texto por defecto; nunca se deja un hueco.
- */
 export interface PublicSiteTexts {
   tagline: string | null;
   heroTitle: string | null;
@@ -265,14 +153,6 @@ export interface PublicSiteTexts {
   seoDescription: string | null;
 }
 
-/**
- * Las imagenes del sitio, como RUTAS.
- *
- * Nunca la clave del objeto en R2: eso se queda en la base y en el servidor.
- * Lo que sale de aqui es lo mismo que ya viaja en el HTML —una ruta que
- * cualquiera puede pedir—, con una version detras para que reemplazar una
- * imagen no deje la anterior en la cache de nadie.
- */
 export interface PublicSiteMedia {
   logo: string | null;
   favicon: string | null;
@@ -281,7 +161,6 @@ export interface PublicSiteMedia {
 }
 
 export interface PublicSite {
-  /** Nombre comercial; la marca, no un canal de contacto. */
   businessName: string | null;
   texts: Record<Locale, PublicSiteTexts>;
   media: PublicSiteMedia;
@@ -309,7 +188,6 @@ export const EMPTY_SITE: PublicSite = {
 };
 
 export interface PublicSnapshot {
-  /** Cuando se construyo esta lectura del modelo publico. */
   generatedAt: string;
   properties: Record<Locale, PublicPropertyDetail[]>;
   contact: PublicContactChannels;
@@ -323,10 +201,6 @@ export const EMPTY_SNAPSHOT: PublicSnapshot = {
   site: EMPTY_SITE,
 };
 
-/* -------------------------------------------------------------------------- */
-/* Rutas                                                                      */
-/* -------------------------------------------------------------------------- */
-
 export function catalogueHref(locale: Locale): string {
   return `/${locale}/propiedades`;
 }
@@ -335,43 +209,9 @@ export function propertyHref(locale: Locale, slug: string): string {
   return `/${locale}/propiedades/${slug}`;
 }
 
-/**
- * Ruta publica de un archivo.
- *
- * El identificador que viaja es el de la fila de multimedia: estable, no
- * revela nada del bucket y no obliga al sitio a saber nada de R2. La clave del
- * objeto la resuelve el Worker leyendo la base, nunca llega desde la URL.
- *
- * Los videos de YouTube no pasan por aqui: se enlazan con su identificador.
- */
 export function publicMediaUrl(mediaId: number): string {
   return `/media/${mediaId}`;
 }
-
-/**
- * La inversa: que fila referencia una ruta publica.
- *
- * Vive al lado de `publicMediaUrl` para que la forma de la ruta se decida en
- * un unico sitio. La usa el manifiesto de una release, que necesita saber
- * exactamente que archivos referencia el HTML que se va a desplegar.
- *
- * Devuelve `null` para lo que no sea una ruta de archivo propio: los videos
- * de YouTube no pasan por el Worker.
- */
-export function mediaIdFromPublicUrl(url: string | null): number | null {
-  if (url === null) return null;
-
-  const match = /^\/media\/(\d+)$/.exec(url);
-  if (match === null) return null;
-
-  const id = Number(match[1]);
-
-  return Number.isSafeInteger(id) && id > 0 ? id : null;
-}
-
-/* -------------------------------------------------------------------------- */
-/* Formato                                                                    */
-/* -------------------------------------------------------------------------- */
 
 const PRICE_ON_REQUEST: Record<Locale, string> = {
   es: 'Consultar precio',
@@ -383,12 +223,6 @@ const NEGOTIABLE_SUFFIX: Record<Locale, string> = {
   en: 'negotiable',
 };
 
-/**
- * Texto del precio segun su modo.
- *
- * `contact` no lleva importe aunque la fila tenga uno guardado: el modo manda.
- * Nunca se convierte de moneda.
- */
 export function formatPrice(
   mode: PriceMode,
   amountMinor: number | null,
@@ -405,717 +239,199 @@ export function formatPrice(
   return { mode, amountMinor, currencyCode, text };
 }
 
-/** El estado comercial solo se anuncia cuando dice algo que no sea lo normal. */
 export function publishedCommercialStatus(status: CommercialStatus): CommercialStatus | null {
   return status === 'available' ? null : status;
 }
 
-/* -------------------------------------------------------------------------- */
-/* Construccion                                                               */
-/* -------------------------------------------------------------------------- */
-
-function emptyCounts(): Record<MediaKind, number> {
-  return { image: 0, video: 0, document: 0, panorama: 0 };
+function projectTour(
+  tour: Tour | null,
+  rows: (typeof media.$inferSelect)[],
+  locale: Locale,
+): PublicTour | null {
+  if (!tour || tour.nodes.length === 0) return null;
+  const panoramas = new Set(rows.filter((m) => m.kind === 'panorama').map((m) => m.id));
+  const nodes = tour.nodes
+    .filter((n) => panoramas.has(n.mediaId))
+    .map((n) => ({
+      key: String(n.mediaId),
+      name: locale === 'es' ? n.name_es : n.name_en,
+      url: publicMediaUrl(n.mediaId),
+      initialView:
+        n.initialView?.yaw != null && n.initialView.pitch != null
+          ? { yaw: n.initialView.yaw, pitch: n.initialView.pitch, fov: n.initialView.fov }
+          : null,
+      links: n.links
+        .filter(
+          (l) =>
+            panoramas.has(l.toMediaId) &&
+            tour.nodes.some((target) => target.mediaId === l.toMediaId),
+        )
+        .map((l) => ({ to: String(l.toMediaId), yaw: l.yaw, pitch: l.pitch })),
+    }));
+  if (!nodes.length) return null;
+  return {
+    start: nodes.some((n) => n.key === String(tour.startMediaId))
+      ? String(tour.startMediaId)
+      : nodes[0]!.key,
+    nodes,
+  };
 }
 
-/**
- * Construye el snapshot publico leyendo la base.
- *
- * Se recorre idioma por idioma: ES y EN son independientes y una propiedad
- * aparece en un idioma SOLO si tiene traduccion utilizable con slug y titulo
- * en ese idioma. No se copia contenido de un idioma a otro ni se inventan
- * slugs.
- */
 export async function buildPublicSnapshot(
   db: AdminDatabase,
-  now: Date = new Date(),
+  now = new Date(),
 ): Promise<PublicSnapshot> {
-  return buildSnapshot(db, { now });
-}
-
-/**
- * Snapshot de UNA propiedad, sin exigir que sea publica.
- *
- * Lo usa la revision privada: quien tiene el enlace ve un borrador con la
- * misma proyeccion que tendria publicado, no una segunda ficha escrita
- * aparte. Todo lo que este modulo no publica —coordenadas privadas, claves de
- * R2, estados editoriales, ids— sigue sin salir, porque es exactamente el
- * mismo codigo.
- *
- * La puerta esta en QUIEN llama: `buildPublicSnapshot` filtra siempre por
- * visibilidad y no admite excepciones; esta funcion se llama solo despues de
- * validar un token, y nunca desde el sitio publico.
- */
-export async function buildPreviewSnapshot(
-  db: AdminDatabase,
-  propertyId: number,
-  mediaUrl: (mediaId: number) => string,
-  now: Date = new Date(),
-): Promise<PublicSnapshot> {
-  return buildSnapshot(db, { now, only: propertyId, mediaUrl });
-}
-
-/**
- * Cambio hipotetico sobre una propiedad, sin tocar la base.
- *
- * `publish` la trata como si ya estuviera publicada; `unpublish`, como si ya
- * hubiera vuelto a `approved`.
- */
-export interface CandidateChange {
-  propertyId: number;
-  action: PublicationAction;
-}
-
-/**
- * El sitio publico TAL COMO QUEDARIA si una operacion de publicacion saliera
- * bien.
- *
- * Existe por un problema de orden: el sitio es estatico y se genera leyendo
- * que es publico, asi que si se marcara la propiedad como publicada antes del
- * build, un fallo dejaria la base afirmando algo que la web no dice; y si se
- * marcara despues, el build habria corrido cuando todavia era `approved` y la
- * web desplegada no la contendria. La salida es no mover nada y construir el
- * sitio que tendria sentido: eso es esta funcion.
- *
- * No escribe nada. Es la misma proyeccion publica de siempre con el estado de
- * UNA propiedad sustituido en memoria.
- */
-export async function buildCandidateSnapshot(
-  db: AdminDatabase,
-  candidate: CandidateChange,
-  now: Date = new Date(),
-): Promise<PublicSnapshot> {
-  return buildSnapshot(db, { now, candidate });
-}
-
-interface SnapshotOptions {
-  now: Date;
-  /** Cuando se indica, solo entra esa propiedad y se salta la visibilidad. */
-  only?: number;
-  /** Como se construye la ruta de cada archivo. */
-  mediaUrl?: (mediaId: number) => string;
-  /** Estado hipotetico de una propiedad, para un snapshot candidato. */
-  candidate?: CandidateChange;
-}
-
-async function buildSnapshot(db: AdminDatabase, options: SnapshotOptions): Promise<PublicSnapshot> {
-  const { now } = options;
-  const mediaUrlOf = options.mediaUrl ?? publicMediaUrl;
-  const propertyRows = await db
+  const [settings] = await db
     .select({
-      id: properties.id,
-      code: properties.code,
-      propertyTypeId: properties.propertyTypeId,
-      publicationStatus: properties.publicationStatus,
-      commercialStatus: properties.commercialStatus,
-      showWhenSold: properties.showWhenSold,
-      isFeatured: properties.isFeatured,
-
-      priceMode: properties.priceMode,
-      priceAmountMinor: properties.priceAmountMinor,
-      currencyCode: properties.currencyCode,
-
-      areaSquareMeters: properties.areaSquareMeters,
-
-      province: properties.province,
-      canton: properties.canton,
-      district: properties.district,
-      locality: properties.locality,
-
-      // Las privadas NI SE SELECCIONAN: no pueden filtrarse por descuido.
-      publicLatitude: properties.publicLatitude,
-      publicLongitude: properties.publicLongitude,
-      locationPrecision: properties.locationPrecision,
-    })
-    .from(properties)
-    .orderBy(asc(properties.id));
-
-  const contact = await readContactChannels(db);
-  const site = await readSiteTexts(db);
-
-  /*
-   * La regla de siempre: solo lo publicamente visible. La revision privada es
-   * la unica excepcion, y llega por `only` con una propiedad concreta que ya
-   * se ha autorizado con un token.
-   */
-  const candidate = options.candidate;
-
-  const visible =
-    options.only === undefined
-      ? propertyRows.filter((row) =>
-          isPubliclyVisible({
-            /*
-             * El candidato NO consulta un estado distinto: sustituye el de una
-             * sola propiedad por el que tendria si la operacion saliera bien, y
-             * lo pasa por la misma regla. Asi una propiedad vendida y oculta
-             * sigue sin aparecer aunque se publique, porque el estado comercial
-             * lo decide la misma funcion de siempre.
-             */
-            publicationStatus:
-              candidate !== undefined && candidate.propertyId === row.id
-                ? candidate.action === 'publish'
-                  ? 'published'
-                  : 'approved'
-                : row.publicationStatus,
-            commercialStatus: row.commercialStatus,
-            showWhenSold: row.showWhenSold,
-          }),
-        )
-      : propertyRows.filter((row) => row.id === options.only);
-
-  if (visible.length === 0) {
-    return { generatedAt: now.toISOString(), properties: { es: [], en: [] }, contact, site };
-  }
-
-  const visibleIds = new Set(visible.map((row) => row.id));
-
-  const translations = await db
-    .select({
-      propertyId: propertyTranslations.propertyId,
-      locale: propertyTranslations.locale,
-      slug: propertyTranslations.slug,
-      title: propertyTranslations.title,
-      marketingDescription: propertyTranslations.marketingDescription,
-      technicalDescription: propertyTranslations.technicalDescription,
-    })
-    .from(propertyTranslations);
-
-  const typeNames = await db
-    .select({
-      propertyTypeId: propertyTypeTranslations.propertyTypeId,
-      locale: propertyTypeTranslations.locale,
-      name: propertyTypeTranslations.name,
-    })
-    .from(propertyTypeTranslations);
-
-  const featureGroups = await db
-    .select()
-    .from(propertyFeatureGroups)
-    .orderBy(asc(propertyFeatureGroups.sortOrder), asc(propertyFeatureGroups.id));
-
-  const groupNames = await db
-    .select({
-      groupId: propertyFeatureGroupTranslations.propertyFeatureGroupId,
-      locale: propertyFeatureGroupTranslations.locale,
-      name: propertyFeatureGroupTranslations.name,
-    })
-    .from(propertyFeatureGroupTranslations);
-
-  const features = await db
-    .select()
-    .from(propertyFeatures)
-    .orderBy(asc(propertyFeatures.sortOrder), asc(propertyFeatures.id));
-
-  const featureTexts = await db
-    .select({
-      featureId: propertyFeatureTranslations.propertyFeatureId,
-      locale: propertyFeatureTranslations.locale,
-      label: propertyFeatureTranslations.label,
-      value: propertyFeatureTranslations.value,
-    })
-    .from(propertyFeatureTranslations);
-
-  /*
-   * `object_key` NO se selecciona en ninguna consulta de este modulo: la
-   * resolucion de la clave es cosa del Worker que sirve el archivo, y asi no
-   * puede colarse en el snapshot ni por descuido.
-   */
-  const media = await db
-    .select({
-      id: propertyMedia.id,
-      propertyId: propertyMedia.propertyId,
-      groupId: propertyMedia.propertyMediaGroupId,
-      mediaKind: propertyMedia.mediaKind,
-      sourceProvider: propertyMedia.sourceProvider,
-      youtubeVideoId: propertyMedia.youtubeVideoId,
-      sortOrder: propertyMedia.sortOrder,
-      isHero: propertyMedia.isHero,
-      isCatalogCover: propertyMedia.isCatalogCover,
-    })
-    .from(propertyMedia)
-    .orderBy(asc(propertyMedia.sortOrder), asc(propertyMedia.id));
-
-  const mediaTexts = await db
-    .select({
-      mediaId: propertyMediaTranslations.propertyMediaId,
-      locale: propertyMediaTranslations.locale,
-      title: propertyMediaTranslations.title,
-      altText: propertyMediaTranslations.altText,
-      caption: propertyMediaTranslations.caption,
-    })
-    .from(propertyMediaTranslations);
-
-  const mediaGroups = await db
-    .select()
-    .from(propertyMediaGroups)
-    .orderBy(asc(propertyMediaGroups.sortOrder), asc(propertyMediaGroups.id));
-
-  const mediaGroupNames = await db
-    .select({
-      groupId: propertyMediaGroupTranslations.propertyMediaGroupId,
-      locale: propertyMediaGroupTranslations.locale,
-      name: propertyMediaGroupTranslations.name,
-    })
-    .from(propertyMediaGroupTranslations);
-
-  /*
-   * Recorrido: nodos, sus nombres y los saltos que salen de cada uno. Se traen
-   * enteros y se cruzan en memoria, como el resto del snapshot.
-   */
-  const tourNodes = await db
-    .select({
-      id: propertyTourNodes.id,
-      propertyId: propertyTourNodes.propertyId,
-      propertyMediaId: propertyTourNodes.propertyMediaId,
-      sortOrder: propertyTourNodes.sortOrder,
-      isStart: propertyTourNodes.isStart,
-      initialYaw: propertyTourNodes.initialYaw,
-      initialPitch: propertyTourNodes.initialPitch,
-      initialFov: propertyTourNodes.initialFov,
-    })
-    .from(propertyTourNodes)
-    .orderBy(asc(propertyTourNodes.sortOrder), asc(propertyTourNodes.id));
-
-  const tourNodeNames = await db
-    .select({
-      nodeId: propertyTourNodeTranslations.propertyTourNodeId,
-      locale: propertyTourNodeTranslations.locale,
-      name: propertyTourNodeTranslations.name,
-    })
-    .from(propertyTourNodeTranslations);
-
-  const tourLinks = await db
-    .select({
-      id: propertyTourLinks.id,
-      fromNodeId: propertyTourLinks.fromNodeId,
-      toNodeId: propertyTourLinks.toNodeId,
-      yaw: propertyTourLinks.yaw,
-      pitch: propertyTourLinks.pitch,
-      sortOrder: propertyTourLinks.sortOrder,
-    })
-    .from(propertyTourLinks)
-    .orderBy(asc(propertyTourLinks.sortOrder), asc(propertyTourLinks.id));
-
-  /* -- Indices en memoria -------------------------------------------------- */
-
-  const translationOf = new Map<string, (typeof translations)[number]>();
-  for (const row of translations) translationOf.set(`${row.propertyId}:${row.locale}`, row);
-
-  const typeNameOf = new Map<string, string>();
-  for (const row of typeNames) typeNameOf.set(`${row.propertyTypeId}:${row.locale}`, row.name);
-
-  const groupNameOf = new Map<string, string | null>();
-  for (const row of groupNames) groupNameOf.set(`${row.groupId}:${row.locale}`, row.name);
-
-  const featureTextOf = new Map<string, { label: string | null; value: string | null }>();
-  for (const row of featureTexts) {
-    featureTextOf.set(`${row.featureId}:${row.locale}`, { label: row.label, value: row.value });
-  }
-
-  const mediaCounts = new Map<number, Record<MediaKind, number>>();
-  for (const row of media) {
-    if (!visibleIds.has(row.propertyId)) continue;
-
-    const counts = mediaCounts.get(row.propertyId) ?? emptyCounts();
-    counts[row.mediaKind] += 1;
-    mediaCounts.set(row.propertyId, counts);
-  }
-
-  const mediaTextOf = new Map<
-    string,
-    { title: string | null; altText: string | null; caption: string | null }
-  >();
-  for (const row of mediaTexts) {
-    mediaTextOf.set(`${row.mediaId}:${row.locale}`, {
-      title: row.title,
-      altText: row.altText,
-      caption: row.caption,
-    });
-  }
-
-  const mediaGroupNameOf = new Map<string, string | null>();
-  for (const row of mediaGroupNames) {
-    mediaGroupNameOf.set(`${row.groupId}:${row.locale}`, row.name);
-  }
-
-  /** Orden de los grupos, para presentar la galeria como en el editor. */
-  const mediaGroupOrder = new Map<number, number>();
-  mediaGroups.forEach((group, index) => mediaGroupOrder.set(group.id, index));
-
-  const tourNodeNameOf = new Map<string, string | null>();
-  for (const row of tourNodeNames) tourNodeNameOf.set(`${row.nodeId}:${row.locale}`, row.name);
-
-  /** Los archivos, por id, para resolver el panorama de cada punto. */
-  const mediaById = new Map(media.map((row) => [row.id, row]));
-
-  /* -- Montaje por idioma -------------------------------------------------- */
-
-  /**
-   * Recorrido publicable de una propiedad.
-   *
-   * Un punto solo entra si su panorama existe, pertenece a ESTA propiedad y es
-   * de verdad un panorama. La base garantiza la clave foranea, pero no que el
-   * archivo sea del mismo dueno ni de la clase correcta, asi que se comprueba
-   * aqui: publicar un punto roto seria peor que no publicar el recorrido.
-   *
-   * Los saltos que apuntan a un punto descartado se caen con el: un hotspot
-   * que no lleva a ninguna parte no ayuda a nadie.
-   */
-  const tourFor = (propertyId: number, locale: Locale): PublicTour | null => {
-    const usable = tourNodes.filter((node) => {
-      if (node.propertyId !== propertyId) return false;
-
-      const panorama = mediaById.get(node.propertyMediaId);
-      return (
-        panorama !== undefined &&
-        panorama.propertyId === propertyId &&
-        panorama.mediaKind === 'panorama' &&
-        panorama.sourceProvider !== 'youtube'
-      );
-    });
-
-    if (usable.length === 0) return null;
-
-    // La clave es la posicion dentro del recorrido, no el id de la fila.
-    const keyOf = new Map<number, string>();
-    usable.forEach((node, index) => keyOf.set(node.id, String(index + 1)));
-
-    const nodes: PublicTourNode[] = usable.map((node) => {
-      const name = tourNodeNameOf.get(`${node.id}:${locale}`)?.trim();
-
-      const links: PublicTourLink[] = tourLinks.flatMap((link) => {
-        if (link.fromNodeId !== node.id) return [];
-
-        const to = keyOf.get(link.toNodeId);
-        if (to === undefined) return [];
-
-        return [{ to, yaw: link.yaw, pitch: link.pitch }];
-      });
-
-      return {
-        key: keyOf.get(node.id) ?? '1',
-        name: name === undefined || name.length === 0 ? null : name,
-        url: mediaUrlOf(node.propertyMediaId),
-        initialView:
-          node.initialYaw === null || node.initialPitch === null
-            ? null
-            : { yaw: node.initialYaw, pitch: node.initialPitch, fov: node.initialFov },
-        links,
-      };
-    });
-
-    /*
-     * Sin punto inicial marcado se empieza por el primero: el recorrido tiene
-     * que abrir en algun sitio, y el orden del editor es el que manda.
-     */
-    const start = usable.find((node) => node.isStart) ?? usable[0];
-
-    return { start: start === undefined ? '1' : (keyOf.get(start.id) ?? '1'), nodes };
-  };
-
-  /**
-   * Multimedia publicable de una propiedad en un idioma.
-   *
-   * Se ordena por grupo y despues por la posicion dentro del grupo, que es
-   * como se ve en el editor. Un archivo sin textos en este idioma se publica
-   * igualmente: la foto sirve aunque no tenga pie.
-   */
-  const mediaFor = (propertyId: number, locale: Locale, hasTour: boolean): PublicMediaSummary => {
-    const rows = media.filter((row) => row.propertyId === propertyId);
-
-    const items: PublicMediaItem[] = rows
-      .slice()
-      .sort((a, b) => {
-        const groupA =
-          a.groupId === null ? Number.MAX_SAFE_INTEGER : (mediaGroupOrder.get(a.groupId) ?? 0);
-        const groupB =
-          b.groupId === null ? Number.MAX_SAFE_INTEGER : (mediaGroupOrder.get(b.groupId) ?? 0);
-
-        if (groupA !== groupB) return groupA - groupB;
-        return a.sortOrder === b.sortOrder ? a.id - b.id : a.sortOrder - b.sortOrder;
-      })
-      .map((row) => {
-        const texts = mediaTextOf.get(`${row.id}:${locale}`);
-        const youtube = row.sourceProvider === 'youtube' ? row.youtubeVideoId : null;
-
-        return {
-          kind: row.mediaKind,
-          // Los de YouTube no se sirven desde R2: se enlazan con su id.
-          url: youtube === null ? mediaUrlOf(row.id) : null,
-          youtubeVideoId: youtube,
-
-          title: texts?.title?.trim() ?? null,
-          altText: texts?.altText?.trim() ?? null,
-          caption: texts?.caption?.trim() ?? null,
-
-          group:
-            row.groupId === null
-              ? null
-              : (mediaGroupNameOf.get(`${row.groupId}:${locale}`) ?? null),
-          isHero: row.isHero,
-          isCatalogCover: row.isCatalogCover,
-        };
-      });
-
-    return {
-      counts: mediaCounts.get(propertyId) ?? emptyCounts(),
-      hasTour,
-      cover: items.find((item) => item.isCatalogCover) ?? null,
-      hero: items.find((item) => item.isHero) ?? null,
-      items,
-    };
-  };
-
-  const buildFor = (locale: Locale): PublicPropertyDetail[] => {
-    const list: PublicPropertyDetail[] = [];
-
-    for (const row of visible) {
-      const translation = translationOf.get(`${row.id}:${locale}`);
-
-      /*
-       * Sin slug o sin titulo en ESTE idioma no hay ficha. No se recurre al
-       * otro idioma ni se genera un slug: publicar una URL inventada seria
-       * peor que no publicar nada.
-       */
-      const slug = translation?.slug?.trim();
-      const title = translation?.title?.trim();
-      if (slug === undefined || slug.length === 0) continue;
-      if (title === undefined || title.length === 0) continue;
-
-      const groups: PublicFeatureGroup[] = [];
-
-      const inGroup = (groupId: number | null): PublicFeature[] =>
-        features
-          .filter(
-            (feature) =>
-              feature.propertyId === row.id && feature.propertyFeatureGroupId === groupId,
-          )
-          .map((feature) => featureTextOf.get(`${feature.id}:${locale}`))
-          .flatMap((texts) => {
-            const label = texts?.label?.trim();
-            // Sin etiqueta en este idioma, la caracteristica no dice nada.
-            if (label === undefined || label.length === 0) return [];
-
-            const value = texts?.value?.trim();
-            return [{ label, value: value === undefined || value.length === 0 ? null : value }];
-          });
-
-      for (const group of featureGroups) {
-        if (group.propertyId !== row.id) continue;
-
-        const items = inGroup(group.id);
-        if (items.length === 0) continue;
-
-        groups.push({ name: groupNameOf.get(`${group.id}:${locale}`) ?? null, items });
-      }
-
-      const loose = inGroup(null);
-      if (loose.length > 0) groups.push({ name: null, items: loose });
-
-      const tour = tourFor(row.id, locale);
-
-      const area =
-        row.areaSquareMeters === null
-          ? null
-          : {
-              squareMeters: row.areaSquareMeters,
-              text: formatArea(row.areaSquareMeters, { locale }).text,
-            };
-
-      list.push({
-        code: row.code,
-        slug,
-        title,
-        propertyType:
-          row.propertyTypeId === null
-            ? null
-            : (typeNameOf.get(`${row.propertyTypeId}:${locale}`) ?? null),
-
-        price: formatPrice(row.priceMode, row.priceAmountMinor, row.currencyCode, locale),
-        area,
-
-        location: {
-          province: row.province,
-          canton: row.canton,
-          district: row.district,
-          locality: row.locality,
-          coordinates: getPublicCoordinates(row),
-          precision: row.locationPrecision,
-        },
-
-        commercialStatus: publishedCommercialStatus(row.commercialStatus),
-        isFeatured: row.isFeatured,
-
-        media: mediaFor(row.id, locale, tour !== null),
-
-        href: propertyHref(locale, slug),
-
-        marketingDescription: translation?.marketingDescription?.trim() ?? null,
-        technicalDescription: translation?.technicalDescription?.trim() ?? null,
-        features: groups,
-        tour,
-      });
-    }
-
-    return list;
-  };
-
-  return {
-    generatedAt: now.toISOString(),
-    properties: { es: buildFor('es'), en: buildFor('en') },
-    contact,
-    site,
-  };
-}
-
-/**
- * Textos de la portada, por idioma.
- *
- * `globalSeoTitle` y `globalSeoDescription` son publicos por definicion —van
- * en el `<head>`— asi que viajan con el resto.
- */
-async function readSiteTexts(db: AdminDatabase): Promise<PublicSite> {
-  const settings = await db
-    .select({
-      id: siteSettings.id,
       businessName: siteSettings.businessName,
-      updatedAt: siteSettings.updatedAt,
-      /*
-       * Las claves se leen SOLO para saber si el hueco esta lleno. No entran
-       * en el snapshot: lo que se publica es la ruta.
-       */
-      logoObjectKey: siteSettings.logoObjectKey,
-      faviconObjectKey: siteSettings.faviconObjectKey,
-      defaultSocialImageObjectKey: siteSettings.defaultSocialImageObjectKey,
-      homeHeroObjectKey: siteSettings.homeHeroObjectKey,
-    })
-    .from(siteSettings)
-    .orderBy(asc(siteSettings.id))
-    .limit(1);
-
-  const rows = await db
-    .select({
-      settingsId: siteSettingTranslations.siteSettingsId,
-      locale: siteSettingTranslations.locale,
-      brandTagline: siteSettingTranslations.brandTagline,
-      homeHeroTitle: siteSettingTranslations.homeHeroTitle,
-      homeHeroSubtitle: siteSettingTranslations.homeHeroSubtitle,
-      globalSeoTitle: siteSettingTranslations.globalSeoTitle,
-      globalSeoDescription: siteSettingTranslations.globalSeoDescription,
-    })
-    .from(siteSettingTranslations);
-
-  const current = settings[0];
-  const clean = (value: string | null | undefined): string | null => {
-    const trimmed = value?.trim();
-    return trimmed === undefined || trimmed.length === 0 ? null : trimmed;
-  };
-
-  const textsFor = (locale: Locale): PublicSiteTexts => {
-    const row = rows.find(
-      (candidate) => candidate.locale === locale && candidate.settingsId === current?.id,
-    );
-
-    return {
-      tagline: clean(row?.brandTagline),
-      heroTitle: clean(row?.homeHeroTitle),
-      heroSubtitle: clean(row?.homeHeroSubtitle),
-      seoTitle: clean(row?.globalSeoTitle),
-      seoDescription: clean(row?.globalSeoDescription),
-    };
-  };
-
-  /*
-   * La version cambia cuando cambia la configuracion, asi que reemplazar una
-   * imagen estrena URL y nadie se queda con la anterior.
-   */
-  const version = current === undefined ? null : Math.floor(current.updatedAt.getTime() / 1000);
-
-  const mediaUrl = (slot: SiteMediaSlot, key: string | null | undefined): string | null =>
-    key === null || key === undefined ? null : `/site-media/${slot}?v=${version}`;
-
-  return {
-    businessName: clean(current?.businessName),
-    texts: { es: textsFor('es'), en: textsFor('en') },
-    media: {
-      logo: mediaUrl('logo', current?.logoObjectKey),
-      favicon: mediaUrl('favicon', current?.faviconObjectKey),
-      social: mediaUrl('social', current?.defaultSocialImageObjectKey),
-      hero: mediaUrl('hero', current?.homeHeroObjectKey),
-    },
-  };
-}
-
-/**
- * Canales de contacto publicables.
- *
- * Las columnas internas —`reviewerEmail`, `notificationsEmail`— NO se
- * seleccionan, igual que no se seleccionan las coordenadas privadas de una
- * propiedad: lo que no se lee no puede filtrarse por descuido.
- */
-async function readContactChannels(db: AdminDatabase): Promise<PublicContactChannels> {
-  const rows = await db
-    .select({
       phone: siteSettings.phone,
       whatsapp: siteSettings.whatsapp,
       email: siteSettings.email,
       address: siteSettings.address,
+      brandTaglineEs: siteSettings.brandTaglineEs,
+      brandTaglineEn: siteSettings.brandTaglineEn,
+      heroTitleEs: siteSettings.heroTitleEs,
+      heroTitleEn: siteSettings.heroTitleEn,
+      heroSubtitleEs: siteSettings.heroSubtitleEs,
+      heroSubtitleEn: siteSettings.heroSubtitleEn,
+      seoTitleEs: siteSettings.seoTitleEs,
+      seoTitleEn: siteSettings.seoTitleEn,
+      seoDescriptionEs: siteSettings.seoDescriptionEs,
+      seoDescriptionEn: siteSettings.seoDescriptionEn,
+      socialLinksJson: siteSettings.socialLinksJson,
+      logoObjectKey: siteSettings.logoObjectKey,
+      faviconObjectKey: siteSettings.faviconObjectKey,
+      socialImageObjectKey: siteSettings.socialImageObjectKey,
+      heroObjectKey: siteSettings.heroObjectKey,
+      updatedAt: siteSettings.updatedAt,
     })
     .from(siteSettings)
-    .orderBy(asc(siteSettings.id))
+    .where(eq(siteSettings.id, 1))
     .limit(1);
-
-  const links = await db
-    .select({
-      platform: siteSocialLinks.platform,
-      url: siteSocialLinks.url,
-      isActive: siteSocialLinks.isActive,
-      sortOrder: siteSocialLinks.sortOrder,
-      id: siteSocialLinks.id,
-    })
-    .from(siteSocialLinks)
-    .orderBy(asc(siteSocialLinks.sortOrder), asc(siteSocialLinks.id));
-
-  const settings = rows[0];
-  const clean = (value: string | null | undefined): string | null => {
-    const trimmed = value?.trim();
-    return trimmed === undefined || trimmed.length === 0 ? null : trimmed;
-  };
-
+  const rows = await db
+    .select()
+    .from(properties)
+    .where(eq(properties.status, 'published'))
+    .orderBy(desc(properties.featured), desc(properties.publishedAt), asc(properties.id));
+  const files =
+    rows.length === 0
+      ? []
+      : await db
+          .select()
+          .from(media)
+          .where(
+            inArray(
+              media.propertyId,
+              rows.map((p) => p.id),
+            ),
+          )
+          .orderBy(asc(media.sortOrder), asc(media.id));
+  const texts = (locale: Locale): PublicSiteTexts => ({
+    tagline: (locale === 'es' ? settings?.brandTaglineEs : settings?.brandTaglineEn) ?? null,
+    heroTitle: (locale === 'es' ? settings?.heroTitleEs : settings?.heroTitleEn) ?? null,
+    heroSubtitle: (locale === 'es' ? settings?.heroSubtitleEs : settings?.heroSubtitleEn) ?? null,
+    seoTitle: (locale === 'es' ? settings?.seoTitleEs : settings?.seoTitleEn) ?? null,
+    seoDescription:
+      (locale === 'es' ? settings?.seoDescriptionEs : settings?.seoDescriptionEn) ?? null,
+  });
+  const siteImage = (slot: string, key: string | null | undefined) =>
+    key ? `/site-media/${slot}?v=${settings?.updatedAt.getTime()}` : null;
+  const project = (locale: Locale): PublicPropertyDetail[] =>
+    rows.flatMap((row) => {
+      const slug = (locale === 'es' ? row.slugEs : row.slugEn)?.trim();
+      const title = (locale === 'es' ? row.titleEs : row.titleEn)?.trim();
+      if (!slug || !title) return [];
+      const own = files.filter((m) => m.propertyId === row.id);
+      const tour = projectTour(row.tourJson, own, locale);
+      const items: PublicMediaItem[] = own.map((m) => ({
+        kind: m.kind === 'youtube' ? 'video' : m.kind,
+        url: m.objectKey ? publicMediaUrl(m.id) : null,
+        youtubeVideoId: m.youtubeVideoId,
+        title: null,
+        caption: null,
+        group: null,
+        altText: locale === 'es' ? m.altEs : m.altEn,
+        isHero: m.isCover,
+        isCatalogCover: m.isCover,
+      }));
+      const cover = items.find((m) => m.isCatalogCover) ?? null;
+      const featureItems = row.featuresJson.flatMap((f) => {
+        const label = (locale === 'es' ? f.label_es : f.label_en)?.trim();
+        return label ? [{ label, value: locale === 'es' ? f.value_es : f.value_en }] : [];
+      });
+      return [
+        {
+          code: row.code,
+          slug,
+          title,
+          propertyType: TYPE_LABELS[locale][row.type],
+          price: formatPrice(row.priceMode, row.priceAmountMinor, row.currencyCode, locale),
+          area:
+            row.areaSquareMeters === null
+              ? null
+              : {
+                  squareMeters: row.areaSquareMeters,
+                  text: formatArea(row.areaSquareMeters, { locale }).text,
+                },
+          location: {
+            province: row.province,
+            canton: row.canton,
+            district: row.district,
+            locality: row.locality,
+            coordinates:
+              row.mapLatitude === null || row.mapLongitude === null
+                ? null
+                : { latitude: row.mapLatitude, longitude: row.mapLongitude },
+            precision: row.locationPrecision,
+          },
+          commercialStatus: publishedCommercialStatus(row.commercialStatus),
+          isFeatured: row.featured,
+          media: {
+            items,
+            cover,
+            hero: cover,
+            hasTour: tour !== null,
+            counts: {
+              image: own.filter((m) => m.kind === 'image').length,
+              panorama: own.filter((m) => m.kind === 'panorama').length,
+              video: own.filter((m) => m.kind === 'youtube').length,
+              document: 0,
+            },
+          },
+          href: propertyHref(locale, slug),
+          marketingDescription: locale === 'es' ? row.descriptionEs : row.descriptionEn,
+          technicalDescription: locale === 'es' ? row.detailsEs : row.detailsEn,
+          features: featureItems.length ? [{ name: null, items: featureItems }] : [],
+          tour,
+        },
+      ];
+    });
   return {
-    phone: clean(settings?.phone),
-    whatsapp: clean(settings?.whatsapp),
-    email: clean(settings?.email),
-    address: clean(settings?.address),
-    // Una red desactivada no se publica: es la forma de quitarla sin borrarla.
-    social: links
-      .filter((link) => link.isActive)
-      .flatMap((link) => {
-        const platform = clean(link.platform);
-        const url = clean(link.url);
-        return platform === null || url === null ? [] : [{ platform, url }];
-      }),
+    generatedAt: now.toISOString(),
+    properties: { es: project('es'), en: project('en') },
+    contact: {
+      phone: settings?.phone ?? null,
+      whatsapp: settings?.whatsapp ?? null,
+      email: settings?.email ?? null,
+      address: settings?.address ?? null,
+      social: settings?.socialLinksJson ?? [],
+    },
+    site: {
+      businessName: settings?.businessName ?? null,
+      texts: { es: texts('es'), en: texts('en') },
+      media: {
+        logo: siteImage('logo', settings?.logoObjectKey),
+        favicon: siteImage('favicon', settings?.faviconObjectKey),
+        social: siteImage('social', settings?.socialImageObjectKey),
+        hero: siteImage('hero', settings?.heroObjectKey),
+      },
+    },
   };
 }
-
-/* -------------------------------------------------------------------------- */
-/* Consultas sobre el snapshot                                                */
-/* -------------------------------------------------------------------------- */
-
 export function catalogueOf(snapshot: PublicSnapshot, locale: Locale): PublicPropertyCard[] {
   return snapshot.properties[locale];
 }
 
-/**
- * La misma propiedad en el otro idioma.
- *
- * Se correlaciona por el CODIGO, que es publico y esta en las dos versiones.
- * No hay ids en el snapshot y no hacen falta: el codigo ya identifica la
- * propiedad de forma estable.
- *
- * Devuelve `null` cuando esa version no existe, y entonces el selector de
- * idioma lleva al catalogo en vez de inventar una URL que daria 404.
- */
 export function alternateHref(
   snapshot: PublicSnapshot,
   locale: Locale,
@@ -1137,19 +453,3 @@ export function findBySlug(
 ): PublicPropertyDetail | null {
   return snapshot.properties[locale].find((property) => property.slug === slug) ?? null;
 }
-
-/** Comprobacion usada en un test: nada de lo publicado deberia traer esto. */
-export const FORBIDDEN_PUBLIC_KEYS = [
-  'privateLatitude',
-  'privateLongitude',
-  'publicationStatus',
-  'publishedAt',
-  'objectKey',
-  'youtubeVideoId',
-  'reviewToken',
-  'tokenHash',
-  'id',
-  'propertyId',
-  'createdAt',
-  'updatedAt',
-] as const;

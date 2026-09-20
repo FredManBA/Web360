@@ -27,7 +27,7 @@ export interface JsonErrorBody {
 
 /**
  * Ninguna respuesta administrativa debe quedar cacheada: contiene borradores,
- * coordenadas privadas y datos que no son publicos.
+ * consultas y datos que no son publicos.
  */
 const BASE_HEADERS: Record<string, string> = {
   'content-type': 'application/json; charset=utf-8',
@@ -61,65 +61,11 @@ export function jsonError(
 const STATUS_BY_ERROR: Record<AdminErrorCode, number> = {
   validation_failed: 422,
   not_found: 404,
-  code_taken: 409,
-  slug_taken: 409,
-  // El tipo referenciado no existe: la peticion se entiende pero no es
-  // procesable, igual que cualquier otro fallo de validacion.
-  property_type_not_found: 422,
-  invalid_status_transition: 422,
   code_generation_failed: 500,
-
-  feature_group_not_found: 404,
-  feature_not_found: 404,
-  // Peticion entendible pero no procesable: el grupo no es de esa propiedad.
-  feature_group_property_mismatch: 422,
-  // El orden enviado ya no describe la realidad: conflicto de estado.
-  feature_order_conflict: 409,
-
-  media_not_found: 404,
-  media_group_not_found: 404,
-  media_group_property_mismatch: 422,
-  media_invalid_provider: 422,
-  media_role_conflict: 422,
-  // Choque con algo que ya existe, no con la forma de la peticion.
-  media_object_key_taken: 409,
+  slug_taken: 409,
   media_in_use: 409,
   media_upload_rejected: 422,
-  // El almacenamiento no respondio: no es culpa de la peticion.
-  media_upload_failed: 502,
-
-  tour_node_not_found: 404,
-  tour_link_not_found: 404,
-  tour_media_not_panorama: 422,
-  tour_media_property_mismatch: 422,
-  // Choque con algo que ya existe, no con la forma de la peticion.
-  tour_media_in_use: 409,
-  tour_link_invalid: 422,
-  tour_link_duplicate: 409,
-
-  contact_not_found: 404,
-
-  social_link_not_found: 404,
-  // Choque de estado, no de forma: la lista ya no describe la realidad.
-  social_order_conflict: 409,
-
-  review_not_found: 404,
-  // No se distingue caducado de inexistente: decirlo confirmaria que existio.
-  review_link_invalid: 404,
-  review_failed: 500,
-
-  // Choque con el estado real, no con la forma de la peticion.
-  publication_not_allowed: 409,
   publication_incomplete: 422,
-  publication_in_progress: 409,
-  publication_request_not_found: 404,
-  // Choque de estado: la operacion no esta donde el cliente cree.
-  publication_must_reconcile: 409,
-  // No se distingue "no existe" de "ya se uso": decirlo confirmaria que existio.
-  publication_link_invalid: 404,
-  // El fallo no es de quien pide: lo pone quien tenia que construir el sitio.
-  publication_trigger_failed: 502,
-  publication_failed: 500,
 };
 
 export function jsonFromAdminError(error: AdminError): Response {

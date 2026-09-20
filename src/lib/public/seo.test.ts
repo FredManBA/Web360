@@ -17,11 +17,7 @@ import path from 'node:path';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { properties, siteSettings, siteSettingTranslations } from '../../db/schema';
-import { createMedia, setMediaRoles } from '../admin/media/media';
-import { createPropertyDraft } from '../admin/properties/create-property';
-import { updateProperty } from '../admin/properties/update-property';
-import { upsertPropertyTranslation } from '../admin/properties/update-property-translation';
+import { properties, siteSettings, media } from '../../db/schema';
 import { applySeed, createTestDatabase } from '../admin/test-database';
 import type { AdminBatchDatabase } from '../admin/types';
 import type { CommercialStatus, Locale, PublicationStatus } from '../domain/vocabularies';
@@ -59,12 +55,14 @@ const SITE = new URL('https://ejemplo.test');
 
 let db: AdminBatchDatabase;
 let sqlite: DatabaseSync;
+let nextCode = 0;
 
 beforeEach(() => {
   const test = createTestDatabase();
   db = test.db;
   sqlite = test.sqlite;
   applySeed(sqlite);
+  nextCode = 0;
 });
 
 /* -------------------------------------------------------------------------- */
@@ -78,76 +76,47 @@ interface PropertyOptions {
   technicalEs?: string | null;
   status?: PublicationStatus;
   commercial?: CommercialStatus;
-  showWhenSold?: boolean;
   priceMode?: 'exact' | 'negotiable' | 'contact';
   precision?: 'exact' | 'approximate';
   withImage?: boolean;
 }
 
 async function property(options: PropertyOptions = {}): Promise<number> {
-  const created = await createPropertyDraft(db);
-  if (!created.ok) throw new Error('setup: propiedad');
-
-  const id = created.data.id;
-
-  await updateProperty(db, id, {
-    propertyTypeId: 1,
-    priceMode: options.priceMode ?? 'exact',
-    priceAmountMinor: options.priceMode === 'contact' ? null : 18_500_000,
-    currencyCode: options.priceMode === 'contact' ? null : 'USD',
-    areaSquareMeters: 5200,
-    province: 'Guanacaste',
-    canton: 'Nicoya',
-    district: 'Nosara',
-    locality: 'Playa Guiones',
-    // Privadas: no deben salir por ninguna parte.
-    privateLatitude: 9.951234,
-    privateLongitude: -85.653211,
-    publicLatitude: 9.951,
-    publicLongitude: -85.653,
-    locationPrecision: options.precision ?? 'exact',
-  });
-
-  if (options.slugEs !== null) {
-    await upsertPropertyTranslation(db, id, {
-      locale: 'es',
-      slug: options.slugEs ?? 'lote-nosara',
-      title: 'Lote con vista al mar',
-      marketingDescription: options.marketingEs ?? null,
-      technicalDescription: options.technicalEs ?? null,
-    });
-  }
-
-  if (options.slugEn !== undefined && options.slugEn !== null) {
-    await upsertPropertyTranslation(db, id, {
-      locale: 'en',
-      slug: options.slugEn,
-      title: 'Lot with ocean view',
-    });
-  }
-
-  if (options.withImage !== false) {
-    const media = await createMedia(db, id, {
-      mediaKind: 'image',
-      sourceProvider: 'r2',
-      objectKey: `propiedades/${id}/portada-secreta.jpg`,
-      altTextEs: 'Vista del lote',
-    });
-    if (!media.ok) throw new Error('setup: archivo');
-
-    await setMediaRoles(db, id, media.data.id, { isHero: true, isCatalogCover: true });
-  }
-
-  await db
-    .update(properties)
-    .set({
-      publicationStatus: options.status ?? 'published',
+  const [p] = await db
+    .insert(properties)
+    .values({
+      code: `CR360-${String(++nextCode).padStart(3, '0')}`,
+      type: 'lot',
+      priceMode: options.priceMode ?? 'exact',
+      priceAmountMinor: options.priceMode === 'contact' ? null : 18500000,
+      currencyCode: options.priceMode === 'contact' ? null : 'USD',
+      areaSquareMeters: 5200,
+      province: 'Guanacaste',
+      canton: 'Nicoya',
+      district: 'Nosara',
+      locality: 'Playa Guiones',
+      mapLatitude: 9.951,
+      mapLongitude: -85.653,
+      locationPrecision: options.precision ?? 'exact',
+      slugEs: options.slugEs === null ? null : (options.slugEs ?? 'lote-nosara'),
+      titleEs: 'Lote con vista al mar',
+      descriptionEs: options.marketingEs ?? null,
+      detailsEs: options.technicalEs ?? null,
+      slugEn: options.slugEn ?? null,
+      titleEn: options.slugEn ? 'Lot with ocean view' : null,
+      status: options.status ?? 'published',
       commercialStatus: options.commercial ?? 'available',
-      showWhenSold: options.showWhenSold ?? false,
     })
-    .where(eq(properties.id, id));
-
-  return id;
+    .returning();
+  if (options.withImage !== false)
+    await db.insert(media).values({
+      propertyId: p!.id,
+      kind: 'image',
+      objectKey: `propiedades/${p!.id}/portada-secreta.jpg`,
+      altEs: 'Vista del lote',
+      isCover: true,
+    });
+  return p!.id;
 }
 
 async function configureSite(): Promise<void> {
@@ -159,11 +128,10 @@ async function configureSite(): Promise<void> {
       set: { businessName: 'Loba', email: 'hola@ejemplo.test' },
     });
 
-  await db.insert(siteSettingTranslations).values({
-    siteSettingsId: 1,
-    locale: 'es',
-    brandTagline: 'Terrenos con vista al Pacífico.',
-  });
+  await db
+    .update(siteSettings)
+    .set({ brandTaglineEs: 'Terrenos con vista al Pacífico.' })
+    .where(eq(siteSettings.id, 1));
 }
 
 async function snapshot(): Promise<PublicSnapshot> {
@@ -389,7 +357,7 @@ describe('canonical y hreflang', () => {
 
 describe('que llega a tener ficha', () => {
   it('una propiedad no publicada no genera ninguna', async () => {
-    await property({ status: 'approved' });
+    await property({ status: 'draft' });
     const snap = await snapshot();
 
     expect(catalogueOf(snap, 'es')).toHaveLength(0);
@@ -397,7 +365,7 @@ describe('que llega a tener ficha', () => {
   });
 
   it('una vendida que el admin decide mostrar sigue siendo indexable', async () => {
-    await property({ commercial: 'sold', showWhenSold: true });
+    await property({ commercial: 'sold' });
     const snap = await snapshot();
 
     const ficha = findBySlug(snap, 'es', 'lote-nosara');
@@ -406,7 +374,7 @@ describe('que llega a tener ficha', () => {
   });
 
   it('una vendida que el admin oculta no llega a existir', async () => {
-    await property({ commercial: 'sold', showWhenSold: false });
+    await property({ commercial: 'sold', status: 'draft' });
     const snap = await snapshot();
 
     expect(catalogueOf(snap, 'es')).toHaveLength(0);
@@ -468,7 +436,7 @@ describe('el JSON-LD de una ficha', () => {
   });
 
   it('una vendida visible se declara agotada', async () => {
-    const node = await jsonLdOf({ commercial: 'sold', showWhenSold: true });
+    const node = await jsonLdOf({ commercial: 'sold' });
     const oferta = node.mainEntity as Record<string, unknown>;
 
     expect(oferta.availability).toBe('https://schema.org/SoldOut');

@@ -1,44 +1,38 @@
----
+﻿---
+import { env } from 'cloudflare:workers';
 import AdminLayout from '../../layouts/AdminLayout.astro';
-import { CONTACT_STATUSES } from '../../lib/domain/vocabularies';
-import { CONTACT_STATUS_LABELS } from '../../lib/admin/ui/labels';
-
+import { getDb } from '../../db/client';
+import { listContacts } from '../../lib/admin/core';
+import { CONTACT_METHOD_LABELS } from '../../lib/admin/ui/labels';
 export const prerender = false;
-
-/*
- * El shell se renderiza en el servidor; las consultas las carga el navegador
- * contra `/api/admin/contacts`, para no saltarse la capa HTTP.
- */
+const contacts = await listContacts(getDb(env));
 ---
 
-<AdminLayout title="Consultas" description="Quién ha escrito y por dónde quiere que le respondas.">
-  <form class="admin-filters" id="contacts-filters">
-    <div class="admin-field">
-      <label for="contacts-filter">Estado</label>
-      <select id="contacts-filter" name="status">
-        <option value="">Todas</option>
-        {
-          CONTACT_STATUSES.map((status) => (
-            <option value={status}>{CONTACT_STATUS_LABELS[status]}</option>
-          ))
-        }
-      </select>
-    </div>
-  </form>
-
-  <div class="admin-listing-bar">
-    <p class="admin-count" id="contacts-count" aria-live="polite"></p>
-  </div>
-
-  <p class="editor-error" id="contacts-error" role="alert" hidden></p>
-
-  <div class="admin-panel">
-    <div class="contact-list" id="contacts-results" aria-busy="false"></div>
-  </div>
+<AdminLayout title="Consultas" description="Mensajes recibidos desde el sitio.">
+  <p id="r2-status" role="status" aria-live="polite"></p>
+  {contacts.length === 0 && <p>No hay consultas todavía.</p>}
+  {
+    contacts.map((c) => (
+      <article class="admin-panel">
+        <>
+          <h2>{c.name}</h2>
+          <p>
+            {c.propertyCode ?? 'Consulta general'} · {c.createdAt.toLocaleDateString('es-CR')} ·{' '}
+            {c.locale.toUpperCase()}
+          </p>
+          <p>
+            {CONTACT_METHOD_LABELS[c.preferredContactMethod]}: {c.contactValue}
+          </p>
+          <p class="r2-message">{c.message}</p>
+          <button type="button" class="admin-button" data-contact-id={c.id} data-status={c.status}>
+            {c.status === 'new' ? 'Marcar atendida' : 'Marcar sin atender'}
+          </button>
+        </>
+      </article>
+    ))
+  }
 </AdminLayout>
-
 <script>
-  import { initContactsPage } from '../../lib/admin/ui/contacts-page';
-
-  initContactsPage();
+  import { initContacts } from '../../lib/admin/ui/simple';
+  initContacts();
 </script>

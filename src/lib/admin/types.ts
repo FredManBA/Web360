@@ -31,8 +31,7 @@ export type AdminBatchItem = BatchItem<'sqlite'>;
  *
  * D1 no ofrece transacciones interactivas, pero si `batch()`, que envuelve el
  * lote completo en una transaccion implicita: o se aplican todas las
- * sentencias o ninguna. Es lo que necesita la reordenacion para no dejar
- * medio intercambio persistido.
+ * sentencias o ninguna. Esto permite sustituir la portada en una sola operacion.
  *
  * Se declara aparte de `AdminDatabase` porque `BaseSQLiteDatabase` no incluye
  * `batch`; lo aportan los drivers concretos (D1 y el proxy de los tests).
@@ -44,80 +43,14 @@ export type AdminBatchDatabase = AdminDatabase & {
 export type AdminErrorCode =
   | 'validation_failed'
   | 'not_found'
-  | 'code_taken'
-  | 'slug_taken'
-  | 'property_type_not_found'
-  | 'invalid_status_transition'
   | 'code_generation_failed'
-  | 'feature_group_not_found'
-  | 'feature_not_found'
-  // El grupo existe, pero es de otra propiedad: la base no puede impedirlo.
-  | 'feature_group_property_mismatch'
-  // La lista de reordenacion no coincide con lo que hay ahora en la base.
-  | 'feature_order_conflict'
-
-  // -- Multimedia ------------------------------------------------------------
-  | 'media_not_found'
-  | 'media_group_not_found'
-  | 'media_group_property_mismatch'
-  // Combinacion imposible de proveedor y tipo (un panorama de YouTube, p. ej.).
-  | 'media_invalid_provider'
-  // El tipo no admite el rol pedido: un documento no puede encabezar la ficha.
-  | 'media_role_conflict'
-  // Otra fila ya usa esa clave de R2.
-  | 'media_object_key_taken'
-  // No se puede borrar: un nodo del recorrido 360 depende de este panorama.
+  | 'slug_taken'
   | 'media_in_use'
-  // El archivo no pasa las comprobaciones: tipo, contenido o tamano.
   | 'media_upload_rejected'
-  // R2 no acepto la escritura; no se ha registrado nada.
-  | 'media_upload_failed'
-
-  // -- Recorrido 360 ---------------------------------------------------------
-  | 'tour_node_not_found'
-  | 'tour_link_not_found'
-  // Un nodo solo puede apoyarse en un panorama.
-  | 'tour_media_not_panorama'
-  | 'tour_media_property_mismatch'
-  // Ese panorama ya sostiene otro nodo: el esquema admite uno solo.
-  | 'tour_media_in_use'
-  // Enlace imposible: a si mismo, o entre nodos de propiedades distintas.
-  | 'tour_link_invalid'
-  | 'tour_link_duplicate'
-
-  // -- Consultas -------------------------------------------------------------
-  | 'contact_not_found'
-
-  // -- Configuracion del sitio -----------------------------------------------
-  | 'social_link_not_found'
-  // El orden enviado ya no describe los enlaces guardados.
-  | 'social_order_conflict'
-
-  // -- Revision privada ------------------------------------------------------
-  | 'review_not_found'
-  // No existe, caduco, se revoco o ya se uso: por fuera son el mismo caso.
-  | 'review_link_invalid'
-  | 'review_failed'
-
-  // -- Publicacion -----------------------------------------------------------
-  // El estado editorial actual no admite la operacion pedida.
-  | 'publication_not_allowed'
-  // La ficha no esta completa: no se llega a crear ninguna peticion.
-  | 'publication_incomplete'
-  // Ya hay una operacion viva sobre esa propiedad.
-  | 'publication_in_progress'
-  // No hay ninguna operacion de publicacion con ese numero, o ya no esta viva.
-  | 'publication_request_not_found'
-  // Se intento abandonar algo que el artefacto desplegado si confirma.
-  | 'publication_must_reconcile'
-  // Token de callback que no existe, o que ya se uso: no se distinguen.
-  | 'publication_link_invalid'
-  // Quien tenia que construir el sitio no acepto el trabajo.
-  | 'publication_trigger_failed'
-  | 'publication_failed';
+  | 'publication_incomplete';
 
 export interface FieldIssue {
-  /** Ruta del campo, p. ej. "publicLatitude" o "translations.es.slug". */
+  /** Ruta del campo, p. ej. "mapLatitude" o "slugEs". */
   path: string;
   message: string;
 }
@@ -137,12 +70,15 @@ export function ok<T>(data: T): AdminResult<T> {
   return { ok: true, data };
 }
 
-export function fail<T>(error: AdminError): AdminResult<T> {
+export function fail<T = never>(error: AdminError): AdminResult<T> {
   return { ok: false, error };
 }
 
 /** Traduce un `ZodError` a la forma de error de esta capa. */
-export function fromZodError<T>(error: ZodError, message = 'Datos invalidos.'): AdminResult<T> {
+export function fromZodError<T = never>(
+  error: ZodError,
+  message = 'Datos invalidos.',
+): AdminResult<T> {
   const issues: FieldIssue[] = error.issues.map((issue) => ({
     path: issue.path.join('.'),
     message: issue.message,

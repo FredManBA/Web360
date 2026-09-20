@@ -1,30 +1,9 @@
-/**
- * Entrega publica de multimedia.
- *
- * Sirve los archivos de R2 sin hacer publico el bucket.
- *
- * Como se protege, que es lo que importa aqui:
- *
- * - la URL solo lleva el identificador de la FILA, nunca una clave de R2. Una
- *   clave arbitraria no tiene por donde entrar;
- * - la clave se lee de la base y se comprueba, en la misma consulta, que su
- *   propiedad esta publicada y es visible. Se reutiliza `isPubliclyVisible`,
- *   que es la misma regla que decide el catalogo;
- * - un archivo de un borrador, de una propiedad archivada o de una vendida y
- *   oculta responde 404, igual que uno inexistente. No se distingue entre
- *   "no existe" y "no es publico": decirlo seria filtrar;
- *
- * No comparte nada con el endpoint del admin: aquel exige sesion y responde
- * `no-store`; este es abierto y cacheable. Son dos puertas distintas a
- * proposito.
- */
-
+/** Entrega por ID: solo media de propiedades published; los borradores dan 404. */
 import { eq } from 'drizzle-orm';
 
-import { properties, propertyMedia } from '../../db/schema';
+import { properties, media } from '../../db/schema';
 import type { MediaBucket } from '../admin/media/bucket';
 import type { AdminDatabase } from '../admin/types';
-import { isPubliclyVisible } from '../domain/visibility';
 
 export interface PublicMediaRequest {
   /** Identificador de la fila, tal como viaja en la URL publica. */
@@ -40,7 +19,6 @@ export interface PublicMediaRequest {
  *
  * Una hora en el navegador y un dia en el borde: los archivos de una ficha
  * publicada cambian poco, y el `ETag` permite revalidar barato cuando cambian.
- * La invalidacion fina llegara con el flujo de publicacion.
  */
 export const PUBLIC_MEDIA_CACHE_CONTROL = 'public, max-age=3600, s-maxage=86400';
 
@@ -72,30 +50,20 @@ export async function servePublicMedia(request: PublicMediaRequest): Promise<Res
    */
   const rows = await db
     .select({
-      objectKey: propertyMedia.objectKey,
-      mimeType: propertyMedia.mimeType,
+      objectKey: media.objectKey,
+      mimeType: media.mimeType,
 
-      publicationStatus: properties.publicationStatus,
-      commercialStatus: properties.commercialStatus,
-      showWhenSold: properties.showWhenSold,
+      status: properties.status,
     })
-    .from(propertyMedia)
-    .innerJoin(properties, eq(propertyMedia.propertyId, properties.id))
-    .where(eq(propertyMedia.id, mediaId))
+    .from(media)
+    .innerJoin(properties, eq(media.propertyId, properties.id))
+    .where(eq(media.id, mediaId))
     .limit(1);
 
   const row = rows[0];
   if (row === undefined) return notFound();
 
-  if (
-    !isPubliclyVisible({
-      publicationStatus: row.publicationStatus,
-      commercialStatus: row.commercialStatus,
-      showWhenSold: row.showWhenSold,
-    })
-  ) {
-    return notFound();
-  }
+  if (row.status !== 'published') return notFound();
 
   // Un video de YouTube no tiene objeto: se enlaza, no se sirve.
   if (row.objectKey === null) return notFound();

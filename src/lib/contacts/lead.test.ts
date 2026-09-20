@@ -14,8 +14,7 @@ import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { contacts, properties, siteSettings } from '../../db/schema';
-import { createPropertyDraft } from '../admin/properties/create-property';
-import { upsertPropertyTranslation } from '../admin/properties/update-property-translation';
+import { createProperty as createPropertyDraft } from '../admin/core';
 import { applySeed, createTestDatabase } from '../admin/test-database';
 import type { AdminBatchDatabase } from '../admin/types';
 import type { CommercialStatus, PublicationStatus } from '../domain/vocabularies';
@@ -50,7 +49,7 @@ async function setStatus(
 ): Promise<void> {
   await db
     .update(properties)
-    .set({ publicationStatus, commercialStatus })
+    .set({ status: publicationStatus, commercialStatus })
     .where(eq(properties.id, propertyId));
 }
 
@@ -58,13 +57,10 @@ async function setStatus(
 async function publishedProperty(slug = 'lote-nosara'): Promise<number> {
   const propertyId = await newProperty();
 
-  const translated = await upsertPropertyTranslation(db, propertyId, {
-    locale: 'es',
-    slug,
-    title: 'Lote con vista al mar',
-  });
-  if (!translated.ok) throw new Error('setup: traduccion');
-
+  await db
+    .update(properties)
+    .set({ slugEs: slug, titleEs: 'Lote con vista al mar' })
+    .where(eq(properties.id, propertyId));
   await setStatus(propertyId, 'published');
   return propertyId;
 }
@@ -162,13 +158,13 @@ describe('una consulta desde una ficha', () => {
     expect(await storedRows()).toHaveLength(0);
   });
 
-  it('una vendida y oculta tampoco acepta consultas', async () => {
+  it('una vendida publicada sigue aceptando consultas', async () => {
     const propertyId = await publishedProperty();
     await setStatus(propertyId, 'published', 'sold');
 
     const result = await createLead(db, body({ propertySlug: 'lote-nosara' }));
 
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(true);
   });
 
   it('un slug inventado se rechaza igual que uno no publico', async () => {
@@ -186,11 +182,10 @@ describe('una consulta desde una ficha', () => {
 
   it('el slug se resuelve en el idioma en que se escribio', async () => {
     const propertyId = await publishedProperty();
-    await upsertPropertyTranslation(db, propertyId, {
-      locale: 'en',
-      slug: 'ocean-view-lot',
-      title: 'Ocean view lot',
-    });
+    await db
+      .update(properties)
+      .set({ slugEn: 'ocean-view-lot', titleEn: 'Ocean view lot' })
+      .where(eq(properties.id, propertyId));
 
     expect(await resolvePublicProperty(db, 'en', 'ocean-view-lot')).not.toBeNull();
     // El slug ingles no vale desde el formulario en espanol.
@@ -334,7 +329,7 @@ describe('el endpoint publico', () => {
 
   it('una propiedad no publica se distingue, para poder explicarlo', async () => {
     const propertyId = await publishedProperty();
-    await setStatus(propertyId, 'archived');
+    await setStatus(propertyId, 'draft');
 
     const response = await handleContact(context(post(body({ propertySlug: 'lote-nosara' }))));
     const payload = (await response.json()) as { error: { code: string } };
@@ -357,7 +352,10 @@ describe('el endpoint publico', () => {
 
 describe('el aviso al administrador', () => {
   async function configureRecipient(): Promise<void> {
-    await db.insert(siteSettings).values({ id: 1, notificationsEmail: 'avisos@codeloba.test' });
+    await db
+      .update(siteSettings)
+      .set({ notificationsEmail: 'avisos@codeloba.test' })
+      .where(eq(siteSettings.id, 1));
   }
 
   it('sin credenciales no se intenta nada, y la consulta se guarda igual', async () => {

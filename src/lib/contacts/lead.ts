@@ -19,9 +19,8 @@
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 
-import { contacts, properties, propertyTranslations } from '../../db/schema';
+import { contacts, properties } from '../../db/schema';
 import type { AdminDatabase } from '../admin/types';
-import { isPubliclyVisible } from '../domain/visibility';
 import type { ContactMethod, Locale } from '../domain/vocabularies';
 import { contactMethodSchema, localeSchema } from '../validation/primitives';
 
@@ -115,34 +114,21 @@ export async function resolvePublicProperty(
   locale: Locale,
   slug: string,
 ): Promise<PublicPropertyRef | null> {
-  const rows = await db
+  const [row] = await db
     .select({
       id: properties.id,
       code: properties.code,
-      title: propertyTranslations.title,
-      publicationStatus: properties.publicationStatus,
-      commercialStatus: properties.commercialStatus,
-      showWhenSold: properties.showWhenSold,
+      title: locale === 'es' ? properties.titleEs : properties.titleEn,
     })
-    .from(propertyTranslations)
-    .innerJoin(properties, eq(propertyTranslations.propertyId, properties.id))
-    .where(and(eq(propertyTranslations.locale, locale), eq(propertyTranslations.slug, slug)))
+    .from(properties)
+    .where(
+      and(
+        eq(properties.status, 'published'),
+        eq(locale === 'es' ? properties.slugEs : properties.slugEn, slug),
+      ),
+    )
     .limit(1);
-
-  const row = rows[0];
-  if (row === undefined || row.title === null) return null;
-
-  if (
-    !isPubliclyVisible({
-      publicationStatus: row.publicationStatus,
-      commercialStatus: row.commercialStatus,
-      showWhenSold: row.showWhenSold,
-    })
-  ) {
-    return null;
-  }
-
-  return { id: row.id, code: row.code, title: row.title };
+  return row?.title?.trim() ? { id: row.id, code: row.code, title: row.title } : null;
 }
 
 /* -------------------------------------------------------------------------- */

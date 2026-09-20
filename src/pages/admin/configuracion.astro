@@ -1,196 +1,159 @@
----
+﻿---
+import { env } from 'cloudflare:workers';
 import AdminLayout from '../../layouts/AdminLayout.astro';
-import { SUPPORTED_CURRENCY_CODES } from '../../lib/domain/money';
-
+import Field from '../../components/admin/Field.astro';
+import { getDb } from '../../db/client';
+import { getSettings } from '../../lib/admin/core';
+import { SITE_MEDIA_SLOTS, SITE_MEDIA_RULES } from '../../lib/domain/site-media';
+import { COLUMN_BY_SLOT } from '../../lib/admin/settings/site-media';
 export const prerender = false;
-
-/*
- * El shell se renderiza en el servidor; la configuracion la carga el navegador
- * contra `/api/admin/settings`, para no saltarse la capa HTTP.
- *
- * Logo, favicon e imagen social existen en el esquema pero no se editan aqui:
- * son claves de objeto de R2 y necesitan una subida de archivo, que es la fase
- * de media global. Pedirle a alguien que escriba una ruta de bucket a mano no
- * es administrar nada.
- */
+const s = await getSettings(getDb(env));
+const business = [
+  ['businessName', 'Nombre del negocio'],
+  ['phone', 'Teléfono'],
+  ['whatsapp', 'WhatsApp'],
+  ['email', 'Correo público'],
+  ['address', 'Dirección'],
+  ['notificationsEmail', 'Correo de avisos'],
+  ['defaultCurrencyCode', 'Moneda por defecto'],
+] as const;
+const texts = [
+  ['brandTagline', 'Lema / Tagline'],
+  ['heroTitle', 'Título de portada / Hero title'],
+  ['heroSubtitle', 'Subtítulo / Subtitle'],
+  ['seoTitle', 'Título SEO'],
+  ['seoDescription', 'Descripción SEO'],
+] as const;
 ---
 
-<AdminLayout title="Configuración" description="Los datos del negocio y los textos del sitio.">
-  <p class="admin-state" id="settings-state">Cargando la configuración…</p>
-
-  <form class="settings-form" id="settings-form" hidden>
-    <div class="admin-listing-bar">
-      <p class="admin-count" id="settings-save-state" aria-live="polite"></p>
-    </div>
-
-    <p class="editor-error" id="settings-errors" role="alert" hidden></p>
-
-    <section class="admin-panel" aria-labelledby="settings-business">
-      <h2 id="settings-business">Negocio</h2>
-
-      <div class="admin-field">
-        <label for="businessName">Nombre del negocio</label>
-        <input id="businessName" name="businessName" type="text" maxlength="120" />
-        <p class="admin-hint">Aparece en la cabecera, el pie y la portada del sitio público.</p>
-      </div>
-
-      <div class="admin-field">
-        <label for="address">Dirección</label>
-        <input id="address" name="address" type="text" maxlength="300" />
-      </div>
-
-      <div class="admin-field">
-        <label for="defaultCurrencyCode">Moneda por defecto</label>
-        <select id="defaultCurrencyCode" name="defaultCurrencyCode">
-          <option value="">Sin definir</option>
-          {SUPPORTED_CURRENCY_CODES.map((code) => <option value={code}>{code}</option>)}
-        </select>
+<AdminLayout
+  title="Configuración"
+  description="Los cambios guardados aparecen al momento en el sitio público."
+>
+  <p id="r2-status" role="status" aria-live="polite"></p>
+  <form id="r2-settings">
+    <section class="admin-panel">
+      <h2>Negocio y contacto</h2><div class="r2-grid">
+        {
+          business.map(([key, label]) => (
+            <Field
+              name={key}
+              label={label}
+              value={s?.[key] ?? (key === 'defaultCurrencyCode' ? 'USD' : '')}
+            />
+          ))
+        }
       </div>
     </section>
-
-    <section class="admin-panel" aria-labelledby="settings-public">
-      <h2 id="settings-public">Canales públicos</h2>
-      <p class="admin-hint">Esto sí se publica en el sitio. Lo que dejes vacío no se muestra.</p>
-
-      <div class="admin-field">
-        <label for="phone">Teléfono</label>
-        <input id="phone" name="phone" type="tel" maxlength="40" />
-      </div>
-
-      <div class="admin-field">
-        <label for="whatsapp">WhatsApp</label>
-        <input id="whatsapp" name="whatsapp" type="tel" maxlength="40" />
-        <p class="admin-hint">Con prefijo internacional. Ej.: +506 8888 8888</p>
-      </div>
-
-      <div class="admin-field">
-        <label for="email">Correo público</label>
-        <input id="email" name="email" type="email" maxlength="200" />
-      </div>
-    </section>
-
-    <section class="admin-panel" aria-labelledby="settings-internal">
-      <h2 id="settings-internal">Correos internos</h2>
-      <p class="admin-hint">
-        <strong>No se publican nunca.</strong> Solo se usan para avisarte a ti.
-      </p>
-
-      <div class="admin-field">
-        <label for="notificationsEmail">Avisos de consultas nuevas</label>
-        <input id="notificationsEmail" name="notificationsEmail" type="email" maxlength="200" />
-      </div>
-
-      <div class="admin-field">
-        <label for="reviewerEmail">Revisión de borradores</label>
-        <input id="reviewerEmail" name="reviewerEmail" type="email" maxlength="200" />
-      </div>
-    </section>
-
     {
-      (['es', 'en'] as const).map((locale) => (
-        <section class="admin-panel" aria-labelledby={`settings-texts-${locale}`}>
-          <h2 id={`settings-texts-${locale}`}>
-            Textos del sitio · {locale === 'es' ? 'Español' : 'Inglés'}
-          </h2>
-
-          <div class="admin-field">
-            <label for={`${locale}.brandTagline`}>Lema</label>
-            <input
-              id={`${locale}.brandTagline`}
-              name={`${locale}.brandTagline`}
-              type="text"
-              maxlength="160"
-            />
-          </div>
-
-          <div class="admin-field">
-            <label for={`${locale}.homeHeroTitle`}>Título de portada</label>
-            <input
-              id={`${locale}.homeHeroTitle`}
-              name={`${locale}.homeHeroTitle`}
-              type="text"
-              maxlength="160"
-            />
-          </div>
-
-          <div class="admin-field">
-            <label for={`${locale}.homeHeroSubtitle`}>Subtítulo de portada</label>
-            <textarea
-              id={`${locale}.homeHeroSubtitle`}
-              name={`${locale}.homeHeroSubtitle`}
-              rows="2"
-              maxlength="300"
-            />
-          </div>
-
-          <div class="admin-field">
-            <label for={`${locale}.globalSeoTitle`}>Título para buscadores</label>
-            <input
-              id={`${locale}.globalSeoTitle`}
-              name={`${locale}.globalSeoTitle`}
-              type="text"
-              maxlength="160"
-            />
-            <p class="admin-hint">Si lo dejas vacío se compone con el nombre del negocio.</p>
-          </div>
-
-          <div class="admin-field">
-            <label for={`${locale}.globalSeoDescription`}>Descripción para buscadores</label>
-            <textarea
-              id={`${locale}.globalSeoDescription`}
-              name={`${locale}.globalSeoDescription`}
-              rows="2"
-              maxlength="300"
-            />
-          </div>
+      (['Es', 'En'] as const).map((locale) => (
+        <section class="admin-panel">
+          <h2>{locale === 'Es' ? 'Español' : 'English'}</h2>
+          {texts.map(([key, label]) => (
+            <Field name={`${key}${locale}`} label={label} value={s?.[`${key}${locale}`]} />
+          ))}
         </section>
       ))
     }
-
-    <section class="admin-panel" aria-labelledby="settings-media">
-      <h2 id="settings-media">Imágenes del sitio</h2>
-      <p class="editor-help">
-        La portada de la Home, el logo, la imagen que se ve al compartir enlaces y el icono de la
-        pestaña. Son del sitio, no de ninguna propiedad.
-      </p>
-
-      <div id="site-media">
-        <p class="admin-muted">Cargando imágenes…</p>
-      </div>
+    <section class="admin-panel">
+      <h2>Redes sociales</h2><div id="r2-social">
+        {
+          (s?.socialLinksJson ?? []).map((link) => (
+            <div class="r2-row" data-row>
+              <>
+                <label>
+                  Plataforma
+                  <input data-key="platform" value={link.platform} />
+                </label>
+                <label>
+                  URL
+                  <input data-key="url" type="url" value={link.url} />
+                </label>
+                <div class="r2-actions">
+                  <>
+                    <button
+                      type="button"
+                      class="admin-button"
+                      data-row-action="up"
+                      aria-label="Subir red social"
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      class="admin-button"
+                      data-row-action="down"
+                      aria-label="Bajar red social"
+                    >
+                      ↓
+                    </button>
+                    <button type="button" class="admin-button" data-row-action="remove">
+                      Eliminar
+                    </button>
+                  </>
+                </div>
+              </>
+            </div>
+          ))
+        }
+      </div><button id="r2-add-social" type="button" class="admin-button">Añadir red social</button>
     </section>
-
-    <section class="admin-panel" aria-labelledby="settings-social">
-      <h2 id="settings-social">Redes sociales</h2>
-
-      <div class="social-list" id="social-list"></div>
-
-      <div class="social-new">
-        <div class="admin-field">
-          <label for="social-platform">Red</label>
-          <input id="social-platform" type="text" maxlength="60" placeholder="Instagram" />
-        </div>
-
-        <div class="admin-field">
-          <label for="social-url">Dirección</label>
-          <input id="social-url" type="url" maxlength="500" placeholder="https://instagram.com/…" />
-        </div>
-
-        <button type="button" class="admin-button admin-button-primary" id="social-add">
-          Añadir
-        </button>
-      </div>
-
-      <p class="editor-error" id="social-error" role="alert" hidden></p>
-    </section>
+    <button type="submit" class="admin-button admin-button-primary">Guardar cambios</button>
   </form>
-
-  <p class="admin-muted">Los cambios guardados se muestran al momento en el sitio público.</p>
+  <template id="r2-social-template"
+    ><div class="r2-row" data-row>
+      <label>Plataforma<input data-key="platform" /></label><label
+        >URL<input data-key="url" type="url" /></label
+      ><div class="r2-actions">
+        <button
+          type="button"
+          class="admin-button"
+          data-row-action="up"
+          aria-label="Subir red social">↑</button
+        ><button
+          type="button"
+          class="admin-button"
+          data-row-action="down"
+          aria-label="Bajar red social">↓</button
+        ><button type="button" class="admin-button" data-row-action="remove">Eliminar</button>
+      </div>
+    </div></template
+  >
+  <section class="admin-panel">
+    <h2>Identidad visual</h2><div class="r2-grid">
+      {
+        SITE_MEDIA_SLOTS.map((slot) => (
+          <form data-site-slot={slot} class="r2-media-card">
+            <>
+              <h3>{SITE_MEDIA_RULES[slot].label}</h3>
+              <img
+                src={`/site-media/${slot}?v=${s?.updatedAt.getTime()}`}
+                alt={SITE_MEDIA_RULES[slot].label}
+                hidden={!s?.[COLUMN_BY_SLOT[slot]]}
+              />
+              <label>
+                Nueva imagen
+                <input name="file" type="file" accept="image/jpeg,image/png,image/webp" required />
+              </label>
+              <p>Máximo {Math.round(SITE_MEDIA_RULES[slot].maxBytes / 1024)} KB.</p>
+              <div class="r2-actions">
+                <>
+                  <button type="submit" class="admin-button">
+                    Subir imagen
+                  </button>
+                  <button type="button" class="admin-button" data-remove-slot>
+                    Retirar imagen
+                  </button>
+                </>
+              </div>
+            </>
+          </form>
+        ))
+      }
+    </div>
+  </section>
 </AdminLayout>
-
 <script>
-  import { initSettingsPage } from '../../lib/admin/ui/settings-page';
-  import { initSiteMediaPanel } from '../../lib/admin/ui/site-media-panel';
-
-  initSettingsPage();
-  initSiteMediaPanel();
+  import { initSettings } from '../../lib/admin/ui/simple';
+  initSettings();
 </script>

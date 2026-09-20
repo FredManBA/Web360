@@ -14,10 +14,7 @@ import type {
 
 export const PUBLICATION_STATUS_LABELS: Record<PublicationStatus, string> = {
   draft: 'Borrador',
-  in_review: 'En revisión',
-  approved: 'Aprobada',
   published: 'Publicada',
-  archived: 'Archivada',
 };
 
 export const COMMERCIAL_STATUS_LABELS: Record<CommercialStatus, string> = {

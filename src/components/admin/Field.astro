@@ -1,0 +1,39 @@
+---
+interface Props {
+  name: string;
+  label: string;
+  value?: string | number | boolean | null | undefined;
+  type?: 'text' | 'number' | 'checkbox' | 'textarea';
+  options?: { value: string; label: string }[];
+}
+const { name, label, value = null, type = 'text', options } = Astro.props;
+---
+
+<div class="admin-field">
+  <label for={name}>{label}</label>
+  {
+    options ? (
+      <select id={name} name={name}>
+        {options.map((option) => (
+          <option value={option.value} selected={option.value === value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    ) : type === 'textarea' ? (
+      <textarea id={name} name={name} rows="5">
+        {value}
+      </textarea>
+    ) : type === 'checkbox' ? (
+      <input id={name} name={name} type="checkbox" checked={value === true} />
+    ) : (
+      <input
+        id={name}
+        name={name}
+        type={type}
+        value={value === null ? '' : String(value)}
+        step={type === 'number' ? 'any' : undefined}
+      />
+    )
+  }
+</div>

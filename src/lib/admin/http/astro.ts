@@ -13,7 +13,7 @@ import type { APIContext } from 'astro';
 
 import { getDb } from '../../../db/client';
 import type { AdminAuthEnv } from '../auth/authorize';
-import type { AdminHttpContext } from './handlers';
+import type { AdminHttpContext } from './core-handlers';
 
 /**
  * Variables que no se declaran en `wrangler.jsonc` a proposito.

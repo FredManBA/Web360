@@ -13,7 +13,7 @@
  * empieza como dice, no que su contenido sea inofensivo.
  */
 
-import type { MediaKind } from './vocabularies';
+type MediaKind = 'image' | 'panorama';
 
 /* -------------------------------------------------------------------------- */
 /* Limites                                                                    */
@@ -33,16 +33,12 @@ export const MEDIA_SIZE_LIMITS: Record<MediaKind, number> = {
   image: 12 * MB,
   // Las equirectangulares de 360 son bastante mas pesadas que una foto normal.
   panorama: 30 * MB,
-  document: 20 * MB,
-  video: 50 * MB,
 };
 
 /** Tipos MIME admitidos por cada tipo de archivo. */
 export const ALLOWED_MIME_TYPES: Record<MediaKind, readonly string[]> = {
   image: ['image/jpeg', 'image/png', 'image/webp'],
   panorama: ['image/jpeg', 'image/png', 'image/webp'],
-  document: ['application/pdf'],
-  video: ['video/mp4', 'video/webm'],
 };
 
 /** Extension con la que se guarda cada tipo MIME en R2. */
@@ -50,9 +46,6 @@ const EXTENSION_BY_MIME: Record<string, string> = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
   'image/webp': 'webp',
-  'application/pdf': 'pdf',
-  'video/mp4': 'mp4',
-  'video/webm': 'webm',
 };
 
 export function extensionForMimeType(mimeType: string): string {
@@ -95,19 +88,6 @@ export function sniffMimeType(bytes: Uint8Array): string | null {
 
   // WebP: contenedor RIFF con la marca "WEBP" en el byte 8.
   if (hasAscii(bytes, 'RIFF', 0) && hasAscii(bytes, 'WEBP', 8)) return 'image/webp';
-
-  // PDF: "%PDF-"
-  if (hasAscii(bytes, '%PDF-', 0)) return 'application/pdf';
-
-  // MP4 y familia: caja "ftyp" en el byte 4.
-  if (hasAscii(bytes, 'ftyp', 4)) return 'video/mp4';
-
-  /*
-   * WebM: cabecera EBML. Matroska comparte esta firma, asi que un .mkv
-   * renombrado pasaria; se acepta como coste razonable de no analizar el
-   * contenedor entero.
-   */
-  if (startsWith(bytes, [0x1a, 0x45, 0xdf, 0xa3])) return 'video/webm';
 
   return null;
 }
