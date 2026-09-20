@@ -66,16 +66,7 @@ beforeAll(async () => {
       "defineConfig({ cacheDir: './.astro-cache', vite: { cacheDir: './.vite-cache' },",
     ),
   );
-  const migration = 'drizzle/0008_r2_simple_core.sql';
-  rmSync(path.join(temporary, migration));
-  await run(wrangler, ['d1', 'migrations', 'apply', 'codeloba-db', '--local']);
-  for (const file of ['legacy-seed.sql', 'r2-legacy-fixture.sql'])
-    await run(wrangler, ['d1', 'execute', 'codeloba-db', '--local', `--file=src/db/tests/${file}`]);
-  const excluded = await sql(
-    "SELECT count(*) AS total FROM property_media WHERE source_provider='r2' AND media_kind IN ('document','video')",
-  );
-  expect(excluded[0]?.total).toBe(0);
-  cpSync(path.join(project, migration), path.join(temporary, migration));
+  // Base vacia: el baseline crea las cuatro tablas y no hay datos previos.
   await run(wrangler, ['d1', 'migrations', 'apply', 'codeloba-db', '--local']);
   writeFileSync(path.join(temporary, '.dev.vars'), 'ADMIN_DEV_BYPASS=true\n');
   server = spawn(process.execPath, [astro, 'dev', '--host', '127.0.0.1', '--port', '0'], {
@@ -174,106 +165,20 @@ async function sql(command: string): Promise<Record<string, unknown>[]> {
   return JSON.parse(result.stdout)[0].results;
 }
 
-// Solo la fixture de migracion y un ciclo de publicacion, sin matriz historica.
-describe('R2: migracion y smoke minimo', () => {
-  it('conserva la ficha ES/EN, media, features, tour, settings y contacto', async () => {
+// Base nueva y un ciclo de publicacion; no hay historia que simular.
+describe('Runtime: base nueva y smoke minimo', () => {
+  it('el baseline deja solo las cuatro tablas y ningun dato previo', async () => {
     const tables = await sql(
       "SELECT name FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT IN ('d1_migrations','_cf_KV','_cf_METADATA') ORDER BY name",
     );
     expect(tables.map((t) => t.name)).toEqual(['contacts', 'media', 'properties', 'site_settings']);
     expect(await sql('PRAGMA foreign_key_check')).toEqual([]);
-    const [p] = await sql('SELECT * FROM properties WHERE id=7');
-    expect(p).toMatchObject({
-      id: 7,
-      code: 'CR360-012',
-      status: 'published',
-      commercial_status: 'sold',
-      type: 'lot',
-      featured: 1,
-      price_amount_minor: 1234500,
-      area_square_meters: 1250,
-      map_latitude: 9.9,
-      map_longitude: -84.1,
-      slug_es: 'lote-migrado',
-      slug_en: 'migrated-lot',
-      title_en: 'Migrated lot',
-      description_en: 'Preserved description',
-      details_en: 'Preserved details',
-    });
-    expect(p).not.toHaveProperty('private_latitude');
-    expect(JSON.parse(p!.features_json as string)).toEqual([
-      {
-        label_es: 'Servicios: Agua',
-        label_en: 'Utilities: Water',
-        value_es: 'S\u00ed',
-        value_en: 'Yes',
-      },
-    ]);
-    expect(JSON.parse(p!.tour_json as string)).toEqual({
-      startMediaId: 13,
-      nodes: [
-        {
-          mediaId: 12,
-          name_es: 'Entrada',
-          name_en: 'Entrance',
-          initialView: { yaw: 0.5, pitch: -0.1, fov: 70 },
-          links: [{ toMediaId: 13, yaw: 1.4, pitch: -0.1 }],
-        },
-        {
-          mediaId: 13,
-          name_es: 'Mirador',
-          name_en: 'Lookout',
-          initialView: { yaw: 1.4, pitch: 0.2, fov: 80 },
-          links: [{ toMediaId: 12, yaw: -1.2, pitch: 0.2 }],
-        },
-      ],
-    });
-    const files = await sql(
-      'SELECT id,kind,is_cover,alt_es,alt_en,youtube_video_id FROM media ORDER BY sort_order,id',
-    );
-    expect(files.map((m) => [m.id, m.kind, m.is_cover])).toEqual([
-      [10, 'image', 1],
-      [12, 'panorama', 0],
-      [13, 'panorama', 0],
-      [14, 'youtube', 0],
-    ]);
-    expect(files[0]).toMatchObject({ alt_es: 'Vista del lote', alt_en: 'Lot view' });
-    expect(files[3]?.youtube_video_id).toBe('abcdefghijk');
-    const [settings] = await sql('SELECT * FROM site_settings');
-    expect(settings).toMatchObject({
-      business_name: 'Fixture R2',
-      logo_object_key: 'fixture/logo.png',
-      favicon_object_key: 'fixture/favicon.png',
-      social_image_object_key: 'fixture/social.png',
-      hero_object_key: 'fixture/hero.png',
-      hero_title_es: 'Portada migrada',
-      hero_title_en: 'Migrated home',
-    });
-    expect(JSON.parse(settings!.social_links_json as string)).toEqual([
-      { platform: 'Instagram', url: 'https://instagram.com/example' },
-    ]);
-    expect((await sql('SELECT * FROM contacts'))[0]).toMatchObject({
-      id: 8,
-      property_id: 7,
-      name: 'Ana',
-      message: 'Consulta conservada',
-      locale: 'es',
-      status: 'new',
-    });
-    // Una vendida publicada sigue visible; el tour migrado usa mediaId.
-    const detail = await page('/es/propiedades/lote-migrado');
-    expect(detail).toContain('Servicios: Agua');
-    const tour = JSON.parse(detail.match(/id="tour-data"[^>]*>([\s\S]*?)<\/script>/)![1]!);
-    expect(tour.start).toBe('13');
-    expect(tour.nodes.map((n: { key: string }) => n.key)).toEqual(['12', '13']);
-    expect(tour.nodes[0].links).toEqual([{ to: '13', yaw: 1.4, pitch: -0.1 }]);
-    expect(await page('/en/propiedades/migrated-lot')).toContain('Migrated lot');
-    expect(detail).not.toContain('internal@example.test');
+    expect((await sql('SELECT count(*) AS total FROM properties'))[0]?.total).toBe(0);
   }, 30_000);
 
   it('crea, guarda toda la ficha, sube una imagen, publica y retira de inmediato', async () => {
     const created = await api('/api/admin/properties', 'POST', {}, 201);
-    expect(created.data.code).toBe('CR360-013');
+    expect(created.data.code).toBe('CR360-001');
     expect(created.data.status).toBe('draft');
     const base = `/api/admin/properties/${created.data.id}`;
     const data = {

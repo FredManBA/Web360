@@ -1,0 +1,120 @@
+CREATE TABLE `contacts` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`property_id` integer,
+	`name` text NOT NULL,
+	`preferred_contact_method` text NOT NULL,
+	`contact_value` text NOT NULL,
+	`message` text,
+	`locale` text DEFAULT 'es' NOT NULL,
+	`status` text DEFAULT 'new' NOT NULL,
+	`consent_accepted_at` integer,
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
+	`updated_at` integer DEFAULT (unixepoch()) NOT NULL,
+	FOREIGN KEY (`property_id`) REFERENCES `properties`(`id`) ON UPDATE no action ON DELETE set null,
+	CONSTRAINT "contacts_status_check" CHECK("contacts"."status" IN ('new','reviewed')),
+	CONSTRAINT "contacts_locale_check" CHECK("contacts"."locale" IN ('es','en'))
+);
+--> statement-breakpoint
+CREATE INDEX `contacts_status_created_idx` ON `contacts` (`status`,`created_at`);--> statement-breakpoint
+CREATE TABLE `media` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`property_id` integer NOT NULL,
+	`kind` text NOT NULL,
+	`object_key` text,
+	`youtube_video_id` text,
+	`mime_type` text,
+	`file_size_bytes` integer,
+	`width` integer,
+	`height` integer,
+	`sort_order` integer DEFAULT 0 NOT NULL,
+	`is_cover` integer DEFAULT false NOT NULL,
+	`alt_es` text,
+	`alt_en` text,
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
+	`updated_at` integer DEFAULT (unixepoch()) NOT NULL,
+	FOREIGN KEY (`property_id`) REFERENCES `properties`(`id`) ON UPDATE no action ON DELETE cascade,
+	CONSTRAINT "media_source_check" CHECK(("media"."kind" IN ('image','panorama') AND "media"."object_key" IS NOT NULL AND length("media"."object_key") > 0 AND "media"."youtube_video_id" IS NULL) OR ("media"."kind" = 'youtube' AND "media"."youtube_video_id" IS NOT NULL AND length("media"."youtube_video_id") = 11 AND "media"."object_key" IS NULL)),
+	CONSTRAINT "media_cover_check" CHECK("media"."is_cover" = 0 OR "media"."kind" = 'image')
+);
+--> statement-breakpoint
+CREATE INDEX `media_property_order_idx` ON `media` (`property_id`,`sort_order`);--> statement-breakpoint
+CREATE UNIQUE INDEX `media_object_key_unique` ON `media` (`object_key`);--> statement-breakpoint
+CREATE UNIQUE INDEX `media_one_cover` ON `media` (`property_id`) WHERE "media"."is_cover" = 1;--> statement-breakpoint
+CREATE TABLE `properties` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`code` text NOT NULL,
+	`status` text DEFAULT 'draft' NOT NULL,
+	`commercial_status` text DEFAULT 'available' NOT NULL,
+	`featured` integer DEFAULT false NOT NULL,
+	`type` text DEFAULT 'lot' NOT NULL,
+	`price_mode` text DEFAULT 'contact' NOT NULL,
+	`price_amount_minor` integer,
+	`currency_code` text,
+	`area_square_meters` real,
+	`province` text,
+	`canton` text,
+	`district` text,
+	`locality` text,
+	`map_latitude` real,
+	`map_longitude` real,
+	`location_precision` text DEFAULT 'approximate' NOT NULL,
+	`slug_es` text,
+	`title_es` text,
+	`description_es` text,
+	`details_es` text,
+	`slug_en` text,
+	`title_en` text,
+	`description_en` text,
+	`details_en` text,
+	`features_json` text DEFAULT '[]' NOT NULL,
+	`tour_json` text,
+	`published_at` integer,
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
+	`updated_at` integer DEFAULT (unixepoch()) NOT NULL,
+	CONSTRAINT "properties_status_check" CHECK("properties"."status" IN ('draft','published')),
+	CONSTRAINT "properties_type_check" CHECK("properties"."type" IN ('lot','house','farm','land','commercial','other')),
+	CONSTRAINT "properties_commercial_check" CHECK("properties"."commercial_status" IN ('available','offer_received','reserved','sold')),
+	CONSTRAINT "properties_price_check" CHECK("properties"."price_mode" IN ('exact','negotiable','contact')),
+	CONSTRAINT "properties_precision_check" CHECK("properties"."location_precision" IN ('exact','approximate')),
+	CONSTRAINT "properties_code_check" CHECK(length(trim("properties"."code")) > 0),
+	CONSTRAINT "properties_amount_check" CHECK("properties"."price_amount_minor" IS NULL OR "properties"."price_amount_minor" >= 0),
+	CONSTRAINT "properties_area_check" CHECK("properties"."area_square_meters" IS NULL OR "properties"."area_square_meters" > 0),
+	CONSTRAINT "properties_latitude_check" CHECK("properties"."map_latitude" IS NULL OR "properties"."map_latitude" BETWEEN -90 AND 90),
+	CONSTRAINT "properties_longitude_check" CHECK("properties"."map_longitude" IS NULL OR "properties"."map_longitude" BETWEEN -180 AND 180),
+	CONSTRAINT "properties_features_check" CHECK(json_valid("properties"."features_json") AND json_type("properties"."features_json") = 'array'),
+	CONSTRAINT "properties_tour_check" CHECK("properties"."tour_json" IS NULL OR (json_valid("properties"."tour_json") AND json_type("properties"."tour_json") = 'object'))
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `properties_code_unique` ON `properties` (`code`);--> statement-breakpoint
+CREATE UNIQUE INDEX `properties_slug_es_unique` ON `properties` (`slug_es`);--> statement-breakpoint
+CREATE UNIQUE INDEX `properties_slug_en_unique` ON `properties` (`slug_en`);--> statement-breakpoint
+CREATE INDEX `properties_status_idx` ON `properties` (`status`);--> statement-breakpoint
+CREATE TABLE `site_settings` (
+	`id` integer PRIMARY KEY DEFAULT 1 NOT NULL,
+	`business_name` text,
+	`phone` text,
+	`whatsapp` text,
+	`email` text,
+	`address` text,
+	`notifications_email` text,
+	`logo_object_key` text,
+	`favicon_object_key` text,
+	`social_image_object_key` text,
+	`hero_object_key` text,
+	`brand_tagline_es` text,
+	`hero_title_es` text,
+	`hero_subtitle_es` text,
+	`seo_title_es` text,
+	`seo_description_es` text,
+	`brand_tagline_en` text,
+	`hero_title_en` text,
+	`hero_subtitle_en` text,
+	`seo_title_en` text,
+	`seo_description_en` text,
+	`default_currency_code` text DEFAULT 'USD' NOT NULL,
+	`social_links_json` text DEFAULT '[]' NOT NULL,
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
+	`updated_at` integer DEFAULT (unixepoch()) NOT NULL,
+	CONSTRAINT "site_settings_singleton" CHECK("site_settings"."id" = 1),
+	CONSTRAINT "site_settings_social_check" CHECK(json_valid("site_settings"."social_links_json") AND json_type("site_settings"."social_links_json") = 'array')
+);

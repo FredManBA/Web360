@@ -7,7 +7,8 @@ El núcleo público lee D1 en cada request y renderiza HTML con Astro.
 Publicar y retirar contenido son escrituras directas en D1, independientes del
 build y del deploy. R2 reduce el producto a `properties`, `media`,
 `site_settings` y `contacts`, con ES/EN integrados y guardado manual del admin.
-Ver [la migración y validación de R2](docs/rework-r2.md).
+El proyecto parte de una D1 nueva: una única migración crea esas cuatro tablas.
+Ver [el modelo y la validación de R2](docs/rework-r2.md).
 
 ## Requisitos
 
