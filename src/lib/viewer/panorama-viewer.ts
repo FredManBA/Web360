@@ -41,6 +41,16 @@ export interface PanoramaViewer {
   show: (url: string, view?: PanoramaView | null) => Promise<void>;
   /** Pinta los saltos del nodo actual. */
   setHotspots: (hotspots: readonly PanoramaHotspot[]) => void;
+  /**
+   * Camara actual, tal y como la ve el usuario.
+   *
+   * La usa el editor para guardar la vista inicial sin pedir ningun numero: lo
+   * que hay en pantalla es lo que se guarda.
+   */
+  getView: () => Required<PanoramaView>;
+  /** Aviso dentro del propio visor, visible tambien a pantalla completa. */
+  notify: (text: string | null) => void;
+  enterFullscreen: () => void;
   destroy: () => void;
 }
 
@@ -77,6 +87,7 @@ interface PsvMarker {
 interface PsvMarkersPlugin {
   clearMarkers: () => void;
   addMarker: (marker: PsvMarker) => void;
+  setMarkers?: (markers: PsvMarker[]) => void;
   addEventListener: (type: string, listener: (event: { marker: { id: string } }) => void) => void;
 }
 
@@ -84,11 +95,20 @@ interface PsvViewer {
   setPanorama: (url: string, options?: Record<string, unknown>) => Promise<unknown>;
   getPlugin: (plugin: unknown) => PsvMarkersPlugin | null;
   zoom: (level: number) => void;
-  /** El visor convierte grados de campo de vision a su nivel de zoom. */
-  dataHelper: { fovToZoomLevel: (fov: number) => number };
+  getPosition: () => { yaw: number; pitch: number };
+  getZoomLevel: () => number;
+  enterFullscreen: () => void;
+  notification: { show: (config: string | { content: string }) => void; hide: () => void };
+  /** El visor convierte grados de campo de vision a su nivel de zoom, y al reves. */
+  dataHelper: {
+    fovToZoomLevel: (fov: number) => number;
+    zoomLevelToFov: (level: number) => number;
+  };
   addEventListener: (
     type: string,
-    listener: (event: { data: { yaw: number; pitch: number } }) => void,
+    listener: (event: {
+      data: { yaw: number; pitch: number; rightclick: boolean; marker?: unknown };
+    }) => void,
   ) => void;
   destroy: () => void;
 }
@@ -193,6 +213,11 @@ export async function createPanoramaViewer(
     const onPick = options.onPick;
     if (onPick !== undefined) {
       viewer.addEventListener('click', (event) => {
+        /*
+         * Pulsar un salto existente no es marcar un punto nuevo: el visor
+         * anuncia ese caso en `marker`, y lo atiende `select-marker`.
+         */
+        if (event.data.rightclick || event.data.marker !== undefined) return;
         onPick({ yaw: event.data.yaw, pitch: event.data.pitch });
       });
     }
@@ -211,18 +236,41 @@ export async function createPanoramaViewer(
       setHotspots(hotspots) {
         if (plugin === null) return;
 
-        plugin.clearMarkers();
+        const markers = hotspots.map((hotspot) => ({
+          id: hotspot.id,
+          position: { yaw: hotspot.yaw, pitch: hotspot.pitch },
+          html: HOTSPOT_HTML,
+          size: { width: 32, height: 32 },
+          anchor: 'center center',
+          tooltip: hotspot.label,
+        }));
 
-        for (const hotspot of hotspots) {
-          plugin.addMarker({
-            id: hotspot.id,
-            position: { yaw: hotspot.yaw, pitch: hotspot.pitch },
-            html: HOTSPOT_HTML,
-            size: { width: 32, height: 32 },
-            anchor: 'center center',
-            tooltip: hotspot.label,
-          });
+        // Reponer la lista entera de una vez; son pocas marcas y no hace falta comparar.
+        if (plugin.setMarkers !== undefined) {
+          plugin.setMarkers(markers);
+          return;
         }
+
+        plugin.clearMarkers();
+        for (const marker of markers) plugin.addMarker(marker);
+      },
+
+      getView() {
+        const position = viewer.getPosition();
+        return {
+          yaw: position.yaw,
+          pitch: position.pitch,
+          fov: viewer.dataHelper.zoomLevelToFov(viewer.getZoomLevel()),
+        };
+      },
+
+      notify(text) {
+        if (text === null) viewer.notification.hide();
+        else viewer.notification.show({ content: text });
+      },
+
+      enterFullscreen() {
+        viewer.enterFullscreen();
       },
 
       destroy() {

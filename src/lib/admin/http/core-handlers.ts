@@ -17,6 +17,7 @@ import {
   removeMedia,
   saveProperty,
   saveSettings,
+  saveTour,
   setPublication,
   uploadMedia,
 } from '../core';
@@ -70,7 +71,9 @@ export async function handleAdmin(ctx: AdminHttpContext): Promise<Response> {
       return methodNotAllowed();
     }
     const property =
-      /^properties\/([^/]+)(?:\/(publish|unpublish|media)(?:\/([^/]+)(?:\/(file))?)?)?$/.exec(path);
+      /^properties\/([^/]+)(?:\/(publish|unpublish|media|tour)(?:\/([^/]+)(?:\/(file))?)?)?$/.exec(
+        path,
+      );
     if (property) {
       const id = parseRouteId(property[1]);
       if (id === null) return jsonError('validation_failed', 'Identificador inválido.', 422);
@@ -90,6 +93,12 @@ export async function handleAdmin(ctx: AdminHttpContext): Promise<Response> {
           return body.ok ? jsonFromResult(await saveProperty(db, id, body.value)) : body.response;
         }
         return methodNotAllowed();
+      }
+      if (action === 'tour') {
+        if (mediaId !== null) return notFound();
+        if (method !== 'PUT') return methodNotAllowed();
+        const body = await readJsonBody(request);
+        return body.ok ? jsonFromResult(await saveTour(db, id, body.value)) : body.response;
       }
       if (action === 'publish' || action === 'unpublish') {
         if (mediaId !== null) return notFound();

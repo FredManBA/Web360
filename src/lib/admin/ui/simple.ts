@@ -3,14 +3,14 @@ import { parseAmountToMinor } from '../../domain/money';
 
 type Property = typeof properties.$inferSelect;
 type Media = typeof media.$inferSelect;
-const escape = (v: unknown) =>
+export const escape = (v: unknown) =>
   String(v ?? '')
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;');
 
-async function api<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
+export async function api<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
   const multipart = body instanceof FormData;
   const response = await fetch(`/api/admin/${path}`, {
     method,
@@ -31,7 +31,7 @@ async function api<T>(path: string, method = 'GET', body?: unknown): Promise<T> 
     );
   return result.data as T;
 }
-function message(error: unknown) {
+export function message(error: unknown) {
   return error instanceof Error ? error.message : 'No se pudo contactar con el servidor.';
 }
 function status(text: string) {
@@ -222,6 +222,8 @@ export function initEditor() {
           )
           .join('')
       : '<p>No hay imágenes todavía.</p>';
+    // El editor 360 trabaja sobre estos mismos archivos y necesita la lista al día.
+    document.dispatchEvent(new CustomEvent('r2-media', { detail: files }));
   }
   const reloadMedia = async () => renderMedia((await api<{ media: Media[] }>(base)).media);
   renderMedia(JSON.parse(document.getElementById('r2-media-data')!.textContent || '[]') as Media[]);

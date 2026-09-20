@@ -55,6 +55,69 @@ export const propertyInput = z.strictObject({
 });
 export type PropertyInput = z.infer<typeof propertyInput>;
 
+/* El visor trabaja en radianes; el editor nunca pide estos números al usuario. */
+const yaw = z
+  .number()
+  .gte(-2 * Math.PI)
+  .lte(2 * Math.PI);
+const pitch = z
+  .number()
+  .gte(-Math.PI / 2)
+  .lte(Math.PI / 2);
+const tourNode = z.strictObject({
+  mediaId: z.number().int().positive(),
+  name_es: text(200),
+  name_en: text(200),
+  initialView: z
+    .strictObject({
+      yaw: yaw.nullable(),
+      pitch: pitch.nullable(),
+      fov: z.number().gt(0).lte(180).nullable(),
+    })
+    .nullable(),
+  links: z.array(z.strictObject({ toMediaId: z.number().int().positive(), yaw, pitch })).max(50),
+});
+
+/** Coherencia interna del recorrido. La pertenencia de cada panorama se comprueba contra la base. */
+export const tourSchema = z
+  .strictObject({
+    startMediaId: z.number().int().positive(),
+    nodes: z.array(tourNode).min(1).max(100),
+  })
+  .superRefine((tour, ctx) => {
+    const ids = new Set(tour.nodes.map((n) => n.mediaId));
+    if (ids.size !== tour.nodes.length)
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Un panorama no puede repetirse en el recorrido.',
+        path: ['nodes'],
+      });
+    if (!ids.has(tour.startMediaId))
+      ctx.addIssue({
+        code: 'custom',
+        message: 'El punto inicial debe formar parte del recorrido.',
+        path: ['startMediaId'],
+      });
+    tour.nodes.forEach((node, index) => {
+      const seen = new Set<number>();
+      node.links.forEach((link, position) => {
+        const path = ['nodes', index, 'links', position];
+        if (link.toMediaId === node.mediaId)
+          ctx.addIssue({ code: 'custom', message: 'Un punto no enlaza consigo mismo.', path });
+        else if (!ids.has(link.toMediaId))
+          ctx.addIssue({
+            code: 'custom',
+            message: 'Un enlace apunta a un punto que no existe.',
+            path,
+          });
+        else if (seen.has(link.toMediaId))
+          ctx.addIssue({ code: 'custom', message: 'Solo cabe un enlace por destino.', path });
+        seen.add(link.toMediaId);
+      });
+    });
+  });
+export const tourInput = z.strictObject({ tour: tourSchema.nullable() });
+
 const email = text(250).refine(
   (v) => v === null || z.email().safeParse(v).success,
   'Email inválido.',

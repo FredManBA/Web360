@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import { properties, media, siteSettings, contacts } from '../../db/schema';
-import { propertyInput, settingsInput, mediaPatch, youtubeInput } from './validation';
+import { propertyInput, settingsInput, mediaPatch, tourInput, youtubeInput } from './validation';
 import {
   fail,
   fromZodError,
@@ -14,6 +14,7 @@ import {
 import { validatePrice } from '../domain/money';
 import { isValidSlug } from '../domain/slug';
 import { checkUpload, buildObjectKey } from '../domain/media-upload';
+import { removeTourNode, tourUsesMedia } from '../domain/tour';
 import type { MediaBucket } from './media/bucket';
 
 export const listProperties = (db: AdminDatabase) =>
@@ -133,6 +134,39 @@ export async function saveProperty(db: AdminDatabase, id: number, input: unknown
       return fail({ code: 'slug_taken', message: 'Ese slug ya pertenece a otra propiedad.' });
     throw error;
   }
+}
+
+/**
+ * Guarda el recorrido completo en una sola escritura.
+ *
+ * El tour no es un mínimo de publicación: una propiedad publicada puede
+ * cambiarlo o quitarlo sin tocar su estado, y el cambio se ve en público al
+ * instante porque el sitio lee D1 en cada visita.
+ */
+export async function saveTour(db: AdminDatabase, id: number, input: unknown) {
+  const parsed = tourInput.safeParse(input);
+  if (!parsed.success) return fromZodError(parsed.error);
+  if (!(await getProperty(db, id)))
+    return fail({ code: 'not_found', message: 'La propiedad no existe.' });
+  const tour = parsed.data.tour;
+  if (tour) {
+    // La base no puede garantizar que el panorama sea de ESTA propiedad.
+    const panoramas = new Set(
+      (await propertyMedia(db, id)).filter((m) => m.kind === 'panorama').map((m) => m.id),
+    );
+    if (tour.nodes.some((node) => !panoramas.has(node.mediaId)))
+      return fail({
+        code: 'validation_failed',
+        message: 'El recorrido solo admite panoramas de esta propiedad.',
+        field: 'nodes',
+      });
+  }
+  const [row] = await db
+    .update(properties)
+    .set({ tourJson: tour, updatedAt: new Date() })
+    .where(eq(properties.id, id))
+    .returning();
+  return ok(row!.tourJson ?? null);
 }
 
 export async function setPublication(db: AdminDatabase, id: number, publish: boolean) {
@@ -265,31 +299,32 @@ export async function changeMedia(
   return ok((await propertyMedia(db, id)).find((m) => m.id === mediaId));
 }
 
-export async function removeMedia(db: AdminDatabase, id: number, mediaId: number) {
+export async function removeMedia(db: AdminBatchDatabase, id: number, mediaId: number) {
   const property = await getProperty(db, id);
   if (!property) return fail({ code: 'not_found', message: 'La propiedad no existe.' });
-  if (property.status === 'published') {
-    const files = await propertyMedia(db, id);
-    if (files.some((file) => file.id === mediaId && file.isCover))
-      return fail({
-        code: 'media_in_use',
-        message:
-          'Primero elige otra portada antes de eliminar la portada de una propiedad publicada.',
-      });
-  }
-  if (property.tourJson?.nodes.some((n) => n.mediaId === mediaId))
+  const file = (await propertyMedia(db, id)).find((row) => row.id === mediaId);
+  if (!file) return fail({ code: 'not_found', message: 'El archivo no existe.' });
+  if (property.status === 'published' && file.isCover)
     return fail({
       code: 'media_in_use',
       message:
-        'Este panorama pertenece al recorrido conservado. Su edición llegará en la siguiente fase.',
+        'Primero elige otra portada antes de eliminar la portada de una propiedad publicada.',
     });
-  const removed = await db
-    .delete(media)
-    .where(and(eq(media.id, mediaId), eq(media.propertyId, id)))
-    .returning();
-  return removed.length
-    ? ok({ deleted: true })
-    : fail({ code: 'not_found', message: 'El archivo no existe.' });
+  const remove = db.delete(media).where(and(eq(media.id, mediaId), eq(media.propertyId, id)));
+  // El recorrido se limpia en la misma transacción: nunca queda apuntando a un panorama borrado.
+  if (tourUsesMedia(property.tourJson ?? null, mediaId))
+    await db.batch([
+      db
+        .update(properties)
+        .set({
+          tourJson: removeTourNode(property.tourJson ?? null, mediaId),
+          updatedAt: new Date(),
+        })
+        .where(eq(properties.id, id)),
+      remove,
+    ]);
+  else await remove;
+  return ok({ deleted: true });
 }
 
 export const listContacts = (db: AdminDatabase) =>

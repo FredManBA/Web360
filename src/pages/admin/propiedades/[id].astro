@@ -312,11 +312,73 @@ if (!p) Astro.response.status = 404;
             set:html={JSON.stringify(files).replace(/</g, '\\u003c')}
           />
         </section>
-        <section class="admin-panel">
-          <p>Editor visual 360 disponible en la siguiente fase del rework.</p>
-          {p.tourJson && (
-            <p>El recorrido existente se conserva con {p.tourJson.nodes.length} panoramas.</p>
-          )}
+        <section class="admin-panel" id="r2-tour" data-id={p.id}>
+          <h2>Recorrido 360</h2>
+          <p id="r2-tour-empty" hidden={p.tourJson !== null}>
+            Todavía no hay recorrido. Añade un panorama para empezar; una propiedad puede publicarse
+            sin él.
+          </p>
+          <div class="r2-tour">
+            <div>
+              <ul class="r2-tour-nodes" id="r2-tour-nodes" />
+              <div class="r2-actions">
+                <label>
+                  Añadir panorama
+                  <select id="r2-tour-add" />
+                </label>
+                <button type="button" class="admin-button" id="r2-tour-add-button">
+                  Añadir al recorrido
+                </button>
+              </div>
+              <p>Los panoramas se suben en «Fotos y multimedia».</p>
+            </div>
+            <div>
+              {/* Nodo permanente: el visor vive aquí y nunca se sustituye. */}
+              <div class="r2-tour-viewer" id="tour-viewer" hidden />
+              <p id="r2-tour-hint" role="status" aria-live="polite" />
+              <div class="r2-actions">
+                <label>
+                  Enlazar con
+                  <select id="r2-tour-link-target" />
+                </label>
+                <button type="button" class="admin-button" id="r2-tour-link">
+                  Añadir enlace
+                </button>
+                <label>
+                  <input type="checkbox" id="r2-tour-return" />
+                  Crear también regreso
+                </label>
+                <button type="button" class="admin-button" id="r2-tour-cancel" hidden>
+                  Cancelar
+                </button>
+              </div>
+              <div class="r2-actions">
+                <button type="button" class="admin-button" id="r2-tour-view">
+                  Usar esta vista como inicial
+                </button>
+                <button type="button" class="admin-button" id="r2-tour-start">
+                  Marcar como inicio
+                </button>
+                <button type="button" class="admin-button" id="r2-tour-preview">
+                  Vista previa
+                </button>
+                <button type="button" class="admin-button" id="r2-tour-remove">
+                  Quitar del recorrido
+                </button>
+              </div>
+              <div id="r2-tour-detail" />
+            </div>
+          </div>
+          <p id="r2-tour-status" role="status" aria-live="polite" />
+          <button type="button" class="admin-button admin-button-primary" id="r2-tour-save">
+            Guardar recorrido
+          </button>
+          <script
+            is:inline
+            id="r2-tour-data"
+            type="application/json"
+            set:html={JSON.stringify(p.tourJson ?? null).replace(/</g, '\\u003c')}
+          />
         </section>
       </>
     )
@@ -324,5 +386,7 @@ if (!p) Astro.response.status = 404;
 </AdminLayout>
 <script>
   import { initEditor } from '../../../lib/admin/ui/simple';
+  import { initTour } from '../../../lib/admin/ui/tour';
   initEditor();
+  initTour();
 </script>
