@@ -140,8 +140,7 @@ export interface PublicLabels {
   homeSeeAll: string;
   homeExploreTitle: string;
   homeExploreLead: string;
-  homeExploreOpen: string;
-  homeExploreViewProperty: string;
+  homeExploreAlt: string;
   homeExplorePrevious: string;
   homeExploreNext: string;
   homeExplorePosition: (index: number, total: number) => string;
@@ -278,12 +277,11 @@ const ES: PublicLabels = {
   homeFeaturedEmpty: 'Todavía no hay una selección. Mientras tanto, están todas en Propiedades.',
   homeSeeAll: 'Ver todas las propiedades',
   homeExploreTitle: 'Explora Costa Rica',
-  homeExploreLead: 'Recorre algunas propiedades en 360° o encuentra la zona que te interesa.',
-  homeExploreOpen: 'Explorar en 360°',
-  homeExploreViewProperty: 'Ver propiedad',
-  homeExplorePrevious: 'Propiedad anterior',
-  homeExploreNext: 'Propiedad siguiente',
-  homeExplorePosition: (index, total) => `Propiedad ${index} de ${total}`,
+  homeExploreLead: 'Descubre distintos rincones del país en 360°.',
+  homeExploreAlt: 'Panorama 360° de Costa Rica',
+  homeExplorePrevious: 'Panorama anterior',
+  homeExploreNext: 'Panorama siguiente',
+  homeExplorePosition: (index, total) => `Panorama ${index} de ${total}`,
   homeContactTitle: '¿Hablamos?',
   homeContactLead: 'Cuéntanos qué buscas y te respondemos por donde prefieras.',
   notFoundTitle: 'Esta página no existe',
@@ -414,12 +412,11 @@ const EN: PublicLabels = {
   homeFeaturedEmpty: 'There is no selection yet. In the meantime, they are all under Properties.',
   homeSeeAll: 'See every property',
   homeExploreTitle: 'Explore Costa Rica',
-  homeExploreLead: 'Explore selected properties in 360° or find the area that interests you.',
-  homeExploreOpen: 'Explore in 360°',
-  homeExploreViewProperty: 'View property',
-  homeExplorePrevious: 'Previous property',
-  homeExploreNext: 'Next property',
-  homeExplorePosition: (index, total) => `Property ${index} of ${total}`,
+  homeExploreLead: 'Discover different places across the country in 360°.',
+  homeExploreAlt: '360° panorama of Costa Rica',
+  homeExplorePrevious: 'Previous panorama',
+  homeExploreNext: 'Next panorama',
+  homeExplorePosition: (index, total) => `Panorama ${index} of ${total}`,
   homeContactTitle: 'Shall we talk?',
   homeContactLead: 'Tell us what you are after and we will reply however you prefer.',
   notFoundTitle: 'This page does not exist',

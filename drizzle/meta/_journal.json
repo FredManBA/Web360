@@ -8,6 +8,13 @@
       "when": 1789927788225,
       "tag": "0000_core_baseline",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1790030394381,
+      "tag": "0001_explore_360_site_media",
+      "breakpoints": true
     }
   ]
 }

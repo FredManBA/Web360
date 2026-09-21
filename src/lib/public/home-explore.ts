@@ -1,164 +1,148 @@
 /**
- * "Explora Costa Rica" en el navegador: carrusel manual y visor 360 bajo
- * demanda.
+ * "Explora Costa Rica" en el navegador.
  *
- * - Sin cambio automatico ni animaciones: se pasa de propiedad con las flechas.
- * - El visor (Photo Sphere Viewer) no se descarga hasta que alguien pulsa el
- *   boton, y solo muestra el panorama inicial: el recorrido entero vive en la
- *   ficha.
- * - Al cambiar de propiedad el visor se destruye (con su contexto WebGL) y
- *   vuelve la foto de la siguiente.
- * - Si el visor no puede crearse, no se dice nada a gritos: se queda la foto y
- *   el enlace a la propiedad. Sin reintentos automaticos.
+ * - El visor (Photo Sphere Viewer) no se descarga hasta que la seccion se
+ *   acerca a la pantalla: no compite con el hero ni con la primera pintura.
+ * - Solo existe un visor a la vez, el del panorama visible. Al cambiar de
+ *   panorama se destruye (con su contexto WebGL) y se crea el siguiente.
+ * - Carrusel manual: sin cambio automatico ni animaciones.
+ * - Si el visor no puede crearse, se queda el panorama como foto recortada y
+ *   no se vuelve a intentar con los demas: sin WebGL fallarian igual.
  */
 
 import { stepIndex } from './gallery';
-import type { PanoramaView, PanoramaViewer } from '../viewer/panorama-viewer';
+import type { PanoramaViewer } from '../viewer/panorama-viewer';
 
-interface Slide {
-  root: HTMLElement;
-  open: HTMLButtonElement;
-  container: HTMLElement;
-  panorama: string;
-  view: PanoramaView | null;
-  position: string;
-}
-
-function readView(raw: string | undefined): PanoramaView | null {
-  if (raw === undefined) return null;
+function readList(raw: string | undefined): string[] {
+  if (raw === undefined) return [];
   try {
-    const parsed = JSON.parse(raw) as PanoramaView | null;
-    return parsed !== null && typeof parsed.yaw === 'number' && typeof parsed.pitch === 'number'
-      ? parsed
-      : null;
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((item) => typeof item === 'string') : [];
   } catch {
-    return null;
+    return [];
   }
 }
 
+function byId<T extends object>(id: string): T | null {
+  return document.getElementById(id) as T | null;
+}
+
 export function initHomeExplore(): void {
-  const root = document.getElementById('explore') as HTMLElement | null;
-  if (root === null) return;
+  const root = byId<HTMLElement>('explore');
+  const still = byId<HTMLImageElement>('explore-still');
+  const container = byId<HTMLElement>('explore-viewer');
+  if (root === null || still === null || container === null) return;
 
-  const slides = ([...root.querySelectorAll('[data-explore-slide]')] as HTMLElement[]).flatMap(
-    (element): Slide[] => {
-      const open = element.querySelector('.explore-open') as HTMLButtonElement | null;
-      const container = element.querySelector('.explore-viewer') as HTMLElement | null;
-      const panorama = element.dataset.panorama;
-      if (open === null || container === null || panorama === undefined) return [];
+  const panoramas = readList(root.dataset.panoramas);
+  const positions = readList(root.dataset.positions);
+  if (panoramas.length === 0) return;
 
-      return [
-        {
-          root: element,
-          open,
-          container,
-          panorama,
-          view: readView(element.dataset.view),
-          position: element.dataset.position ?? '',
-        },
-      ];
-    },
-  );
-  if (slides.length === 0) return;
-
-  const controls = root.querySelector('.explore-controls') as HTMLElement | null;
-  const position = root.querySelector('.explore-position') as HTMLElement | null;
+  const controls = byId<HTMLElement>('explore-controls');
+  const position = byId<HTMLElement>('explore-position');
 
   let index = 0;
   let viewer: PanoramaViewer | null = null;
-  // Cada apertura o cierre invalida lo que estuviera cargandose antes.
+  // Cada montaje o desmontaje invalida lo que estuviera cargandose antes.
   let generation = 0;
+  let near = false;
+  let unavailable = false;
 
-  const closeViewer = (): void => {
+  const unmount = (): void => {
     generation += 1;
     viewer?.destroy();
     viewer = null;
-
-    for (const slide of slides) {
-      slide.container.hidden = true;
-      slide.container.innerHTML = '';
-      slide.root.classList.remove('is-live');
-      if (slide.root.dataset.viewerFailed === undefined) {
-        slide.open.hidden = false;
-        slide.open.disabled = false;
-      }
-    }
+    container.hidden = true;
+    container.innerHTML = '';
+    root.classList.remove('is-live');
   };
 
-  const show = (next: number): void => {
-    closeViewer();
-    index = next;
+  const mount = async (): Promise<void> => {
+    if (unavailable || !near) return;
 
-    slides.forEach((slide, current) => {
-      slide.root.hidden = current !== index;
-    });
-
-    if (position !== null) {
-      const [visual, spoken] = [...position.children] as HTMLElement[];
-      if (visual !== undefined) visual.textContent = `${index + 1} / ${slides.length}`;
-      if (spoken !== undefined) spoken.textContent = slides[index]?.position ?? '';
-    }
-  };
-
-  const openViewer = async (slide: Slide): Promise<void> => {
-    closeViewer();
+    unmount();
     const mine = generation;
+    const url = panoramas[index];
+    if (url === undefined) return;
 
-    slide.open.disabled = true;
-    slide.container.hidden = false;
+    // El visor necesita un contenedor visible para medir.
+    container.hidden = false;
 
     let created: PanoramaViewer | null;
     try {
       const { createPanoramaViewer } = await import('../viewer/panorama-viewer');
       if (mine !== generation) return;
 
-      created = await createPanoramaViewer(slide.panorama, {
-        container: slide.container,
+      created = await createPanoramaViewer(url, {
+        container,
         navbar: ['zoom', 'move'],
-        view: slide.view,
-        // En la portada no hay saltos: solo el panorama inicial.
+        // Panoramas sueltos: no hay saltos que atender.
         onHotspot: () => undefined,
       });
     } catch {
       created = null;
     }
 
-    // Mientras cargaba, alguien cambio de propiedad o cerro: se descarta.
+    // Mientras cargaba, alguien cambio de panorama: se descarta.
     if (mine !== generation) {
       created?.destroy();
       return;
     }
 
     if (created === null) {
-      // Se queda la foto; el boton se retira para no invitar a un fallo seguro.
-      slide.container.hidden = true;
-      slide.container.innerHTML = '';
-      slide.root.dataset.viewerFailed = 'true';
-      slide.open.hidden = true;
+      // Sin visor: se queda la foto recortada, sin mensajes.
+      unavailable = true;
+      container.hidden = true;
+      container.innerHTML = '';
       return;
     }
 
     viewer = created;
-    slide.open.hidden = true;
-    slide.root.classList.add('is-live');
+    root.classList.add('is-live');
   };
 
-  root.dataset.interactive = 'true';
+  const show = (next: number): void => {
+    index = next;
+    const url = panoramas[index];
+    if (url !== undefined) still.src = url;
 
-  for (const slide of slides) {
-    slide.open.hidden = false;
-    slide.open.addEventListener('click', () => void openViewer(slide));
-  }
+    if (position !== null) {
+      const [visual, spoken] = [...position.children] as HTMLElement[];
+      if (visual !== undefined) visual.textContent = `${index + 1} / ${panoramas.length}`;
+      if (spoken !== undefined) spoken.textContent = positions[index] ?? '';
+    }
 
-  if (controls !== null && slides.length > 1) {
+    unmount();
+    void mount();
+  };
+
+  if (controls !== null && panoramas.length > 1) {
     controls.hidden = false;
-    root
-      .querySelector('.explore-prev')
-      ?.addEventListener('click', () => show(stepIndex(index, -1, slides.length)));
-    root
-      .querySelector('.explore-next')
-      ?.addEventListener('click', () => show(stepIndex(index, 1, slides.length)));
+    byId<HTMLButtonElement>('explore-prev')?.addEventListener('click', () =>
+      show(stepIndex(index, -1, panoramas.length)),
+    );
+    byId<HTMLButtonElement>('explore-next')?.addEventListener('click', () =>
+      show(stepIndex(index, 1, panoramas.length)),
+    );
   }
 
-  show(0);
+  const start = (): void => {
+    near = true;
+    void mount();
+  };
+
+  if (!('IntersectionObserver' in window)) {
+    start();
+    return;
+  }
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        observer.disconnect();
+        start();
+      }
+    },
+    { rootMargin: '200px 0px' },
+  );
+  observer.observe(root);
 }

@@ -2006,56 +2006,38 @@ a {
 /* Explora Costa Rica                                                         */
 /* -------------------------------------------------------------------------- */
 
-.home-explore-head {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-sm) var(--space-lg);
-  align-items: flex-end;
-  justify-content: space-between;
-}
-
-.home-explore-intro {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2xs);
-  max-width: 40rem;
-}
-
-.home-explore-intro h2 {
-  font-size: clamp(1.75rem, 4vw, 2.5rem);
-}
-
-.home-explore-lead {
-  color: var(--ink-soft);
-}
-
-.explore {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-}
-
-.explore-stage {
-  display: grid;
-  gap: var(--space-md);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
 /*
- * Una pieza fotografica horizontal. Sin JavaScript se ven todas, una debajo de
- * otra; con el, una cada vez.
+ * Un solo panel verde: el 360 a la izquierda, integrado en el panel, y el
+ * texto a la derecha con aire. Sin caja blanca ni fondo marfil alrededor del
+ * visor: todo es la misma pieza.
  */
-.explore-slide {
-  position: relative;
-  aspect-ratio: 16 / 9;
-  overflow: hidden;
+.explore-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 62fr) minmax(0, 38fr);
+  gap: var(--space-lg);
+  padding: var(--space-md);
   border-radius: var(--radius-lg);
   background: var(--jungle);
+  color: var(--ivory);
 }
 
-.explore-poster {
+.explore-visual {
+  position: relative;
+  min-height: 20rem;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: calc(var(--radius-lg) - 4px);
+  background: var(--jungle-deep);
+  box-shadow: inset 0 0 0 1px rgb(250 247 240 / 8%);
+}
+
+/* Sin panoramas aun: un verde algo mas profundo, sin dibujos ni avisos. */
+.explore-visual-empty {
+  background: radial-gradient(120% 90% at 20% 10%, var(--jungle-soft) 0%, var(--jungle-deep) 70%);
+}
+
+/* El panorama como foto recortada: sin JavaScript, antes del visor o si falla. */
+.explore-still {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -2063,105 +2045,92 @@ a {
   object-fit: cover;
 }
 
-.explore-poster-empty {
-  background: linear-gradient(140deg, var(--jungle-soft), var(--jungle-deep));
-}
-
 .explore-viewer {
   position: absolute;
   inset: 0;
 }
 
-/* El mismo boton que abre el recorrido en la ficha, sobre una veladura suave. */
-.explore-open {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  border: 0;
-  background: rgb(10 26 20 / 22%);
-  color: var(--ivory);
-  cursor: pointer;
-  font-size: 1rem;
-  letter-spacing: 0.04em;
-  text-shadow: 0 1px 6px rgb(10 26 20 / 60%);
+/*
+ * Mientras el visor carga, su fondo blanco y su "Loading..." taparian la foto:
+ * aqui se ve la foto recortada hasta que el panorama esta listo.
+ */
+.explore-viewer .psv-container {
+  background: transparent;
 }
 
-.explore-open[disabled] {
-  cursor: progress;
-}
-
-.explore-open .tour-open-mark {
-  background: rgb(10 26 20 / 35%);
-  backdrop-filter: blur(3px);
-}
-
-.explore-open:hover .tour-open-mark {
-  transform: scale(1.06);
-}
-
-/* Titulo, zona y enlace, abajo y sobre un degradado que los hace legibles. */
-.explore-caption {
-  position: absolute;
-  inset: auto 0 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2xs) var(--space-md);
-  align-items: baseline;
-  padding: var(--space-xl) var(--space-lg) var(--space-md);
-  background: linear-gradient(transparent, rgb(10 26 20 / 78%));
-  color: var(--ivory);
-  pointer-events: none;
-}
-
-.explore-title {
-  font-family: var(--font-display);
-  font-size: clamp(1.15rem, 2.4vw, 1.5rem);
-}
-
-.explore-place {
-  color: rgb(250 247 240 / 82%);
-  font-size: 0.9rem;
-}
-
-.explore-link {
-  margin-left: auto;
-  color: var(--sand);
-  font-size: 0.95rem;
-  pointer-events: auto;
-  text-underline-offset: 4px;
-}
-
-/* Con el visor abierto, el pie se retira para no tapar el panorama. */
-.explore-slide.is-live .explore-caption {
-  padding-top: var(--space-md);
-  background: linear-gradient(transparent, rgb(10 26 20 / 55%));
-}
-
-.explore-slide.is-live .explore-title,
-.explore-slide.is-live .explore-place {
+.explore-viewer .psv-loader-container {
   display: none;
 }
 
 .explore-controls {
+  position: absolute;
+  z-index: 2;
+  right: var(--space-sm);
+  bottom: var(--space-sm);
   display: flex;
-  gap: var(--space-md);
+  gap: var(--space-xs);
   align-items: center;
-  justify-content: flex-end;
+  padding: var(--space-2xs);
+  border-radius: 999px;
+  background: rgb(10 26 20 / 62%);
+  backdrop-filter: blur(4px);
+}
+
+/* Con el visor abierto, los controles suben para no tapar su barra. */
+.explore-visual.is-live .explore-controls {
+  top: var(--space-sm);
+  bottom: auto;
+}
+
+.explore-arrow {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 1px solid rgb(250 247 240 / 35%);
+  border-radius: 50%;
+  background: none;
+  color: var(--ivory);
+  cursor: pointer;
+}
+
+.explore-arrow:hover {
+  border-color: var(--sand);
+  color: var(--sand);
 }
 
 .explore-position {
-  min-width: 3.5rem;
-  color: var(--ink-soft);
-  font-size: 0.85rem;
+  min-width: 2.75rem;
+  color: var(--ivory);
+  font-size: 0.8rem;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.04em;
   text-align: center;
 }
+
+.explore-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  align-items: flex-start;
+  justify-content: center;
+  padding: var(--space-lg) var(--space-lg) var(--space-lg) 0;
+}
+
+.explore-body h2 {
+  font-size: clamp(1.75rem, 3.2vw, 2.4rem);
+}
+
+.explore-body p {
+  max-width: 24rem;
+  color: rgb(250 247 240 / 80%);
+}
+
+.explore-map-link {
+  margin-top: var(--space-xs);
+  color: var(--sand);
+}
+
 /* -------------------------------------------------------------------------- */
 /* Cierre                                                                     */
 /* -------------------------------------------------------------------------- */
@@ -2444,21 +2413,20 @@ a {
     text-align: center;
   }
 
-  /* En vertical el 16/9 se queda bajo: cuadrado, para que quepan pie y boton. */
-  .explore-slide {
-    aspect-ratio: 1 / 1;
+  /* El panel sigue siendo una pieza: el 360 arriba y el texto debajo. */
+  .explore-panel {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-sm);
+    padding: var(--space-sm);
   }
 
-  .explore-caption {
-    padding: var(--space-lg) var(--space-md) var(--space-sm);
+  .explore-visual {
+    min-height: 0;
+    aspect-ratio: 4 / 3;
   }
 
-  .explore-link {
-    margin-left: 0;
-  }
-
-  .explore-controls {
-    justify-content: space-between;
+  .explore-body {
+    padding: var(--space-sm) var(--space-sm) var(--space-md);
   }
 
   .home {

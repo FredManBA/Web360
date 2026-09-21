@@ -10,6 +10,9 @@ export const COLUMN_BY_SLOT = {
   favicon: 'faviconObjectKey',
   social: 'socialImageObjectKey',
   hero: 'heroObjectKey',
+  explore360_1: 'explore360_1ObjectKey',
+  explore360_2: 'explore360_2ObjectKey',
+  explore360_3: 'explore360_3ObjectKey',
 } as const;
 export async function readSiteMediaKey(db: AdminDatabase, slot: SiteMediaSlot) {
   const [row] = await db

@@ -4,13 +4,8 @@ import HomeExplore from '../../components/public/HomeExplore.astro';
 import HomeHero from '../../components/public/HomeHero.astro';
 import PropertyCard from '../../components/public/PropertyCard.astro';
 import PublicLayout from '../../layouts/PublicLayout.astro';
-import {
-  featuredOf,
-  hasPlacedProperties,
-  homeCopy,
-  homeExploreSlides,
-} from '../../lib/public/home';
-import { labelsFor, locationLine } from '../../lib/public/labels';
+import { featuredOf, hasPlacedProperties, homeCopy } from '../../lib/public/home';
+import { labelsFor } from '../../lib/public/labels';
 import { catalogueHref, catalogueOf } from '../../lib/public/read-model';
 import { sectionSeo } from '../../lib/public/seo';
 import { loadRuntimePublicSnapshot } from '../../lib/public/snapshot';
@@ -34,13 +29,6 @@ const copy = homeCopy(snapshot.site, locale, {
 
 const featured = featuredOf(properties);
 const showMap = hasPlacedProperties(properties);
-
-/* Destacadas con recorrido: su foto de portada y el panorama inicial. */
-const exploreSlides = homeExploreSlides(
-  snapshot.properties[locale],
-  (property) => locationLine(property.location),
-  (property) => labels.imageOf(property.title),
-);
 
 const seo = sectionSeo({
   locale,
@@ -96,11 +84,8 @@ const jsonLd = organizationJsonLd({
       }
     </section>
 
-    {
-      (showMap || exploreSlides.length > 0) && (
-        <HomeExplore locale={locale} slides={exploreSlides} showMap={showMap} />
-      )
-    }
+    {/* Panoramas del sitio, no de las propiedades: el panel sale aunque no haya. */}
+    <HomeExplore locale={locale} panoramas={snapshot.site.media.explore360} showMap={showMap} />
 
     <HomeContactCta locale={locale} />
   </div>

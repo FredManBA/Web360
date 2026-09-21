@@ -298,10 +298,13 @@ export function initSettings() {
   });
   document.querySelectorAll<HTMLFormElement>('[data-site-slot]').forEach((upload) => {
     const slot = upload.dataset.siteSlot!;
+    // Solo lo tienen los huecos de panorama: "Sin panorama" cuando esta vacio.
+    const empty = upload.querySelector<HTMLElement>('.r2-panorama-empty');
     const reload = () => {
       const image = upload.querySelector<HTMLImageElement>('img')!;
       image.src = `/site-media/${slot}?v=${Date.now()}`;
       image.hidden = false;
+      if (empty) empty.hidden = true;
     };
     upload.addEventListener('submit', (event) => {
       event.preventDefault();
@@ -319,6 +322,7 @@ export function initSettings() {
         void action(remove, async () => {
           await api(`settings/media/${slot}`, 'DELETE');
           upload.querySelector('img')!.hidden = true;
+          if (empty) empty.hidden = false;
           status('Imagen retirada');
         }),
     );

@@ -158,6 +158,8 @@ export interface PublicSiteMedia {
   favicon: string | null;
   social: string | null;
   hero: string | null;
+  /** Panoramas 360 de "Explora Costa Rica", ya ordenados y sin huecos vacios. */
+  explore360: string[];
 }
 
 export interface PublicSite {
@@ -179,6 +181,7 @@ export const EMPTY_SITE_MEDIA: PublicSiteMedia = {
   favicon: null,
   social: null,
   hero: null,
+  explore360: [],
 };
 
 export const EMPTY_SITE: PublicSite = {
@@ -303,6 +306,9 @@ export async function buildPublicSnapshot(
       faviconObjectKey: siteSettings.faviconObjectKey,
       socialImageObjectKey: siteSettings.socialImageObjectKey,
       heroObjectKey: siteSettings.heroObjectKey,
+      explore360_1ObjectKey: siteSettings.explore360_1ObjectKey,
+      explore360_2ObjectKey: siteSettings.explore360_2ObjectKey,
+      explore360_3ObjectKey: siteSettings.explore360_3ObjectKey,
       updatedAt: siteSettings.updatedAt,
     })
     .from(siteSettings)
@@ -424,6 +430,12 @@ export async function buildPublicSnapshot(
         favicon: siteImage('favicon', settings?.faviconObjectKey),
         social: siteImage('social', settings?.socialImageObjectKey),
         hero: siteImage('hero', settings?.heroObjectKey),
+        // Los panoramas de la portada, en orden 1, 2, 3 y sin huecos.
+        explore360: [
+          siteImage('explore360_1', settings?.explore360_1ObjectKey),
+          siteImage('explore360_2', settings?.explore360_2ObjectKey),
+          siteImage('explore360_3', settings?.explore360_3ObjectKey),
+        ].filter((url): url is string => url !== null),
       },
     },
   };

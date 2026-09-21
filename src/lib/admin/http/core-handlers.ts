@@ -31,7 +31,7 @@ import {
 } from './guard';
 import { jsonError, jsonFromResult, jsonInternalError, jsonSuccess } from './responses';
 import { changeSiteImage } from '../settings/site-media';
-import { isSiteMediaSlot } from '../../domain/site-media';
+import { isSiteMediaSlot, SITE_MEDIA_RULES } from '../../domain/site-media';
 import { MEDIA_SIZE_LIMITS } from '../../domain/media-upload';
 
 export interface AdminHttpContext {
@@ -164,7 +164,11 @@ export async function handleAdmin(ctx: AdminHttpContext): Promise<Response> {
       if (!isSiteMediaSlot(slot)) return notFound();
       if (method === 'DELETE') return jsonFromResult(await changeSiteImage(db, bucket, slot, null));
       if (method !== 'PUT') return methodNotAllowed();
-      if (Number(request.headers.get('content-length')) > 9 * 1024 * 1024)
+      // El limite es el del hueco, mas un margen para el envoltorio multipart.
+      if (
+        Number(request.headers.get('content-length')) >
+        SITE_MEDIA_RULES[slot].maxBytes + 1024 * 1024
+      )
         return jsonError('media_upload_rejected', 'Archivo demasiado grande.', 413);
       const form = await readMultipartForm(request);
       if (!form.ok) return form.response;

@@ -1,7 +1,8 @@
 /**
- * La media global del sitio: logo, favicon, imagen social y portada.
+ * La media global del sitio: logo, favicon, imagen social, portada y los tres
+ * panoramas 360 de "Explora Costa Rica".
  *
- * Son cuatro huecos fijos, no una biblioteca. Cada uno admite UNA imagen y se
+ * Son huecos fijos, no una biblioteca. Cada uno admite UNA imagen y se
  * identifica por su nombre, no por un id: no hay nada que listar, ordenar ni
  * relacionar. Por eso vive aqui y no en `property_media`, que es de cada
  * propiedad —con sus roles, su orden y su ciclo de vida— y arrastraria todo
@@ -23,9 +24,27 @@ import { sniffMimeType, type UploadProblem } from './media-upload';
 const KB = 1024;
 const MB = 1024 * KB;
 
-/** Los cuatro huecos. El nombre es el identificador, y no hay mas. */
-export const SITE_MEDIA_SLOTS = ['logo', 'favicon', 'social', 'hero'] as const;
+/**
+ * Los huecos. El nombre es el identificador, y no hay mas. Los tres de
+ * `explore360_*` son panoramas del sitio para la portada; el numero es el
+ * orden en que se muestran.
+ */
+export const SITE_MEDIA_SLOTS = [
+  'logo',
+  'favicon',
+  'social',
+  'hero',
+  'explore360_1',
+  'explore360_2',
+  'explore360_3',
+] as const;
 export type SiteMediaSlot = (typeof SITE_MEDIA_SLOTS)[number];
+
+/** La identidad visual, sin los panoramas: el panel los ensena por separado. */
+export const IDENTITY_SLOTS = ['logo', 'favicon', 'social', 'hero'] as const;
+
+/** Los panoramas de "Explora Costa Rica", en su orden de aparicion. */
+export const EXPLORE_360_SLOTS = ['explore360_1', 'explore360_2', 'explore360_3'] as const;
 
 export function isSiteMediaSlot(value: string): value is SiteMediaSlot {
   return (SITE_MEDIA_SLOTS as readonly string[]).includes(value);
@@ -70,7 +89,19 @@ export const SITE_MEDIA_RULES: Record<SiteMediaSlot, SiteMediaRule> = {
     maxBytes: 8 * MB,
     label: 'Portada de la Home',
   },
+  // Un panorama equirectangular pesa bastante mas que una foto.
+  explore360_1: panoramaRule(1),
+  explore360_2: panoramaRule(2),
+  explore360_3: panoramaRule(3),
 };
+
+function panoramaRule(position: number): SiteMediaRule {
+  return {
+    mimeTypes: ['image/jpeg', 'image/webp', 'image/png'],
+    maxBytes: 30 * MB,
+    label: `Explora Costa Rica 360 · ${position}`,
+  };
+}
 
 export interface SiteUploadCandidate {
   slot: SiteMediaSlot;

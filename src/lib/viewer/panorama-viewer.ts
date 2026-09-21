@@ -182,6 +182,21 @@ ${markers.default}</style>`,
   stylesInjected = true;
 }
 
+/** Si el navegador puede dar un contexto WebGL. El de prueba se libera al momento. */
+function webglAvailable(): boolean {
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = (canvas.getContext('webgl2') ?? canvas.getContext('webgl')) as {
+      getExtension: (name: string) => { loseContext: () => void } | null;
+    } | null;
+    if (gl === null) return false;
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Crea el visor.
  *
@@ -192,6 +207,13 @@ export async function createPanoramaViewer(
   url: string,
   options: PanoramaViewerOptions,
 ): Promise<PanoramaViewer | null> {
+  /*
+   * Sin WebGL, Photo Sphere Viewer no falla: monta su propio aviso en ingles
+   * dentro del contenedor. Se comprueba antes, para que quien llama reciba
+   * `null` y ponga su alternativa.
+   */
+  if (!webglAvailable()) return null;
+
   try {
     const [core, markers] = await Promise.all([
       import('@photo-sphere-viewer/core'),

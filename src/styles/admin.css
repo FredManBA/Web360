@@ -311,6 +311,25 @@
 .r2-media-card label {
   margin: 0.6rem 0;
 }
+/* Un panorama equirectangular es 2:1: se ve entero y sin deformar. */
+.r2-media-card .r2-panorama-preview {
+  height: auto;
+  aspect-ratio: 2 / 1;
+  object-fit: cover;
+  border-radius: 6px;
+}
+.r2-panorama-empty {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 2 / 1;
+  border-radius: 6px;
+  background: #f1f4f0;
+  color: #5b6a61;
+  font-size: 0.9rem;
+}
+.r2-panorama-empty[hidden] {
+  display: none;
+}
 .r2-tour {
   display: grid;
   grid-template-columns: minmax(180px, 250px) 1fr;

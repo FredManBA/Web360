@@ -17,18 +17,11 @@ import {
   featuredOf,
   hasPlacedProperties,
   homeCopy,
-  homeExploreSlides,
   MAX_FEATURED,
   resolveRootLocale,
 } from './home';
 import { labelsFor } from './labels';
-import {
-  EMPTY_SITE,
-  type PublicPropertyCard,
-  type PublicPropertyDetail,
-  type PublicSite,
-  type PublicTour,
-} from './read-model';
+import { EMPTY_SITE, type PublicPropertyCard, type PublicSite } from './read-model';
 
 function read(relative: string): string {
   return readFileSync(path.resolve(process.cwd(), relative), 'utf8');
@@ -154,112 +147,47 @@ describe('la seccion del mapa', () => {
 /* Explora Costa Rica                                                         */
 /* -------------------------------------------------------------------------- */
 
-function detail(overrides: Partial<PublicPropertyDetail> = {}): PublicPropertyDetail {
-  return {
-    ...card(),
-    marketingDescription: null,
-    technicalDescription: null,
-    features: [],
-    tour: null,
-    ...overrides,
-  };
-}
-
-function tourFrom(start: string): PublicTour {
-  return {
-    start,
-    nodes: [
-      { key: '1', name: 'Entrada', url: '/media/1', initialView: null, links: [] },
-      {
-        key: '2',
-        name: 'Centro',
-        url: '/media/2',
-        initialView: { yaw: 1, pitch: 0, fov: null },
-        links: [],
-      },
-    ],
-  };
-}
-
-const place = (): string => 'Quesada, Alajuela';
-const alt = (property: PublicPropertyDetail): string => `Foto de ${property.title}`;
-
 describe('Explora Costa Rica', () => {
-  it('entran las destacadas con recorrido, y de cada una su punto inicial', () => {
-    const slides = homeExploreSlides(
-      [
-        detail({ slug: 'sin-tour', isFeatured: true }),
-        detail({ slug: 'no-destacada', tour: tourFrom('1') }),
-        detail({ slug: 'buena', title: 'Buena', isFeatured: true, tour: tourFrom('2') }),
-      ],
-      place,
-      alt,
-    );
-
-    expect(slides).toHaveLength(1);
-    expect(slides[0]).toMatchObject({
-      title: 'Buena',
-      place: 'Quesada, Alajuela',
-      panoramaUrl: '/media/2',
-      view: { yaw: 1, pitch: 0, fov: null },
-      posterUrl: null,
-      posterAlt: 'Foto de Buena',
-    });
-  });
-
-  it('tres como mucho, en el orden del catalogo', () => {
-    const many = ['a', 'b', 'c', 'd'].map((slug) =>
-      detail({ slug, title: slug, isFeatured: true, tour: tourFrom('1') }),
-    );
-
-    expect(homeExploreSlides(many, place, alt).map((slide) => slide.title)).toEqual([
-      'a',
-      'b',
-      'c',
-    ]);
-  });
-
-  it('el poster es la foto de portada, nunca el panorama crudo', () => {
-    const cover = {
-      kind: 'image' as const,
-      url: '/media/9',
-      youtubeVideoId: null,
-      title: null,
-      altText: 'Vista del lote',
-      caption: null,
-      group: null,
-      isHero: false,
-      isCatalogCover: true,
-    };
-    const [slide] = homeExploreSlides(
-      [
-        detail({
-          isFeatured: true,
-          tour: tourFrom('1'),
-          media: { ...card().media, cover },
-        }),
-      ],
-      place,
-      alt,
-    );
-
-    expect(slide?.posterUrl).toBe('/media/9');
-    expect(slide?.posterAlt).toBe('Vista del lote');
-    expect(slide?.panoramaUrl).toBe('/media/1');
-  });
-
-  it('sin recorridos no hay carrusel, pero la seccion y el mapa siguen', () => {
-    expect(homeExploreSlides([detail({ isFeatured: true })], place, alt)).toEqual([]);
-
+  it('usa los panoramas del sitio, nunca los recorridos de las propiedades', () => {
     for (const page of [HOME_ES, HOME_EN]) {
-      expect(read(page)).toContain('(showMap || exploreSlides.length > 0)');
+      const source = read(page);
+
+      expect(source).toContain('panoramas={snapshot.site.media.explore360}');
+      expect(source).not.toContain('homeExploreSlides');
+      expect(source).not.toContain('.tour');
     }
-    expect(read(EXPLORE)).toContain('total > 0 && (');
+
+    const explore = read(EXPLORE);
+    expect(explore).not.toContain('property');
+    expect(explore).not.toContain('tour');
   });
 
-  it('carrusel manual, visor bajo demanda y sin pantalla completa', () => {
+  it('es un solo panel verde, que sale aunque no haya panoramas', () => {
+    const explore = read(EXPLORE);
+
+    expect(explore).toContain('class="explore-panel"');
+    expect(explore).toContain("first === null && 'explore-visual-empty'");
+    expect(explore).toContain('labels.homeExploreTitle');
+    expect(read(CSS)).toContain('.explore-panel {');
+    expect(read(CSS)).not.toContain('home-map-country');
+  });
+
+  it('con uno no hay flechas; con dos o tres, controles que llegan ocultos', () => {
+    const explore = read(EXPLORE);
+
+    expect(explore).toContain('total > 1 && (');
+    expect(explore).toContain('id="explore-controls" hidden');
+  });
+
+  it('sin JavaScript se ve el panorama como foto recortada', () => {
+    expect(read(EXPLORE)).toContain('class="explore-still"');
+    expect(read(CSS)).toMatch(/\.explore-still \{[^}]*object-fit: cover;/);
+  });
+
+  it('un solo visor, creado al acercarse la seccion y sin pantalla completa', () => {
     const module = read(EXPLORE_MODULE);
 
+    expect(module).toContain('IntersectionObserver');
     expect(module).toContain("await import('../viewer/panorama-viewer')");
     expect(module).toContain("navbar: ['zoom', 'move']");
     expect(module).not.toContain('fullscreen');
@@ -268,20 +196,29 @@ describe('Explora Costa Rica', () => {
     expect(module).not.toContain('setTimeout');
   });
 
-  it('al cambiar de propiedad se destruye el visor; si falla, se queda la foto', () => {
+  it('al cambiar de panorama se destruye el visor; si falla, se queda la foto', () => {
     const module = read(EXPLORE_MODULE);
 
     expect(module).toContain('viewer?.destroy()');
     expect(module).toContain('created === null');
+    expect(module).toContain('unavailable = true');
     expect(module).toContain('mine !== generation');
   });
 
-  it('sin JavaScript se ven las fotos y los enlaces; los controles llegan ocultos', () => {
-    const explore = read(EXPLORE);
+  it('los textos existen en los dos idiomas', () => {
+    const es = labelsFor('es');
+    const en = labelsFor('en');
 
-    expect(explore).toContain('class="explore-open" hidden');
-    expect(explore).toContain('class="explore-controls" hidden');
-    expect(explore).toContain('labels.homeExploreViewProperty');
+    expect([es.homeExploreTitle, es.homeExploreLead]).toEqual([
+      'Explora Costa Rica',
+      'Descubre distintos rincones del país en 360°.',
+    ]);
+    expect([en.homeExploreTitle, en.homeExploreLead]).toEqual([
+      'Explore Costa Rica',
+      'Discover different places across the country in 360°.',
+    ]);
+    expect(es.homeExplorePosition(1, 3)).toBe('Panorama 1 de 3');
+    expect(en.homeExplorePosition(1, 3)).toBe('Panorama 1 of 3');
   });
 });
 
@@ -646,7 +583,7 @@ describe('idiomas', () => {
 
     expect(es.homeHeroTitle).not.toBe(en.homeHeroTitle);
     expect(es.homeExploreTitle).not.toBe(en.homeExploreTitle);
-    expect(es.homeExploreOpen).not.toBe(en.homeExploreOpen);
+    expect(es.homeExploreLead).not.toBe(en.homeExploreLead);
     expect(es.homeContactTitle).not.toBe(en.homeContactTitle);
   });
 

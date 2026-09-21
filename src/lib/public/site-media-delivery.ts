@@ -56,7 +56,7 @@ function notFound(): Response {
 export async function serveSiteMedia(request: SiteMediaRequest): Promise<Response> {
   const { slot, db, bucket } = request;
 
-  // Un nombre que no es de los cuatro no llega ni a consultar la base.
+  // Un nombre que no es de un hueco conocido no llega ni a consultar la base.
   if (!isSiteMediaSlot(slot)) return notFound();
 
   const key = await readSiteMediaKey(db, slot as SiteMediaSlot);

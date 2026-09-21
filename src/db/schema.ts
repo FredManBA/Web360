@@ -156,6 +156,10 @@ export const siteSettings = sqliteTable(
     faviconObjectKey: text('favicon_object_key'),
     socialImageObjectKey: text('social_image_object_key'),
     heroObjectKey: text('hero_object_key'),
+    // Panoramas 360 de "Explora Costa Rica": del sitio, no de ninguna propiedad.
+    explore360_1ObjectKey: text('explore_360_1_object_key'),
+    explore360_2ObjectKey: text('explore_360_2_object_key'),
+    explore360_3ObjectKey: text('explore_360_3_object_key'),
     brandTaglineEs: text('brand_tagline_es'),
     heroTitleEs: text('hero_title_es'),
     heroSubtitleEs: text('hero_subtitle_es'),

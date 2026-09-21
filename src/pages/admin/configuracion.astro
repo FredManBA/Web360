@@ -4,7 +4,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 import Field from '../../components/admin/Field.astro';
 import { getDb } from '../../db/client';
 import { getSettings } from '../../lib/admin/core';
-import { SITE_MEDIA_SLOTS, SITE_MEDIA_RULES } from '../../lib/domain/site-media';
+import { EXPLORE_360_SLOTS, IDENTITY_SLOTS, SITE_MEDIA_RULES } from '../../lib/domain/site-media';
 import { COLUMN_BY_SLOT } from '../../lib/admin/settings/site-media';
 export const prerender = false;
 const s = await getSettings(getDb(env));
@@ -122,7 +122,7 @@ const texts = [
   <section class="admin-panel">
     <h2>Identidad visual</h2><div class="r2-grid">
       {
-        SITE_MEDIA_SLOTS.map((slot) => (
+        IDENTITY_SLOTS.map((slot) => (
           <form data-site-slot={slot} class="r2-media-card">
             <>
               <h3>{SITE_MEDIA_RULES[slot].label}</h3>
@@ -143,6 +143,49 @@ const texts = [
                   </button>
                   <button type="button" class="admin-button" data-remove-slot>
                     Retirar imagen
+                  </button>
+                </>
+              </div>
+            </>
+          </form>
+        ))
+      }
+    </div>
+  </section>
+  <section class="admin-panel">
+    <h2>Explora Costa Rica · panoramas 360</h2>
+    <p>Estos panoramas aparecen en la portada y no pertenecen a ningún lote.</p>
+    <p>Se muestran en orden 1, 2, 3; los huecos vacíos se saltan.</p>
+    <div class="r2-grid">
+      {
+        EXPLORE_360_SLOTS.map((slot, index) => (
+          <form data-site-slot={slot} class="r2-media-card">
+            <>
+              <h3>Panorama {index + 1}</h3>
+              <img
+                class="r2-panorama-preview"
+                src={`/site-media/${slot}?v=${s?.updatedAt.getTime()}`}
+                alt={`Panorama ${index + 1}`}
+                hidden={!s?.[COLUMN_BY_SLOT[slot]]}
+              />
+              <p class="r2-panorama-empty" hidden={Boolean(s?.[COLUMN_BY_SLOT[slot]])}>
+                Sin panorama
+              </p>
+              <label>
+                Imagen equirectangular 360
+                <input name="file" type="file" accept="image/jpeg,image/png,image/webp" required />
+              </label>
+              <p>
+                JPEG, WebP o PNG. Máximo{' '}
+                {Math.round(SITE_MEDIA_RULES[slot].maxBytes / (1024 * 1024))} MB.
+              </p>
+              <div class="r2-actions">
+                <>
+                  <button type="submit" class="admin-button">
+                    Subir / reemplazar
+                  </button>
+                  <button type="button" class="admin-button" data-remove-slot>
+                    Retirar
                   </button>
                 </>
               </div>

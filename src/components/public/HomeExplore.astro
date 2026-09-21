@@ -2,118 +2,104 @@
 /**
  * Explora Costa Rica.
  *
- * Una cabecera corta con el camino al mapa y, debajo, un carrusel manual de
- * propiedades destacadas con recorrido 360. No hay medios propios: cada
- * diapositiva es la foto de portada de la propiedad y el panorama inicial de
- * su recorrido, los mismos que se editan en el panel.
+ * Un solo panel verde: a la izquierda un panorama 360 del sitio y a la
+ * derecha el titulo, una frase y el camino al mapa. Los panoramas son del
+ * sitio (`site_settings`, huecos `explore360_1..3`), no de ninguna propiedad:
+ * se suben, reemplazan y retiran desde Configuracion.
  *
- * Mejora progresiva, como la galeria de la ficha:
+ * Mejora progresiva:
  *
- * - sin JavaScript se ven todas las diapositivas, cada una con su foto y su
- *   enlace; el boton 360 y las flechas no aparecen;
- * - con JavaScript queda una cada vez y el visor se carga solo al pulsar;
- * - si el visor no arranca (sin WebGL, algunos iPhone), se queda la foto. La
- *   portada nunca depende de WebGL para verse bien.
+ * - sin JavaScript se ve el panorama como foto recortada dentro del panel;
+ * - con JavaScript el visor se crea al acercarse la seccion a la pantalla, y
+ *   solo para el panorama visible;
+ * - si el visor no arranca (sin WebGL, algunos iPhone), se queda la foto
+ *   recortada. La portada nunca depende de WebGL para verse bien.
+ *
+ * Sin panoramas configurados, el panel sigue ahi con su texto: nunca se
+ * rellena con propiedades.
  */
 import type { Locale } from '../../lib/domain/vocabularies';
-import type { HomeExploreSlide } from '../../lib/public/home';
 import { labelsFor } from '../../lib/public/labels';
 import { mapHref } from '../../lib/public/navigation';
 
 interface Props {
   locale: Locale;
-  slides: HomeExploreSlide[];
+  /** URLs publicas de los panoramas, ya ordenadas y sin huecos. */
+  panoramas: string[];
   /** El mapa solo se ofrece si hay alguna propiedad situada. */
   showMap: boolean;
 }
 
-const { locale, slides, showMap } = Astro.props;
+const { locale, panoramas, showMap } = Astro.props;
 const labels = labelsFor(locale);
-const total = slides.length;
+const total = panoramas.length;
+const first = panoramas[0] ?? null;
+/* Las posiciones anunciadas, ya traducidas: el modulo no importa la tabla. */
+const positions = panoramas.map((_, index) => labels.homeExplorePosition(index + 1, total));
 ---
 
 <section class="home-section home-explore" aria-labelledby="home-explore-title">
-  <div class="home-explore-head">
-    <div class="home-explore-intro">
-      <h2 id="home-explore-title">{labels.homeExploreTitle}</h2>
-      <p class="home-explore-lead">{labels.homeExploreLead}</p>
-    </div>
+  <div class="explore-panel">
+    <div
+      class:list={['explore-visual', first === null && 'explore-visual-empty']}
+      id="explore"
+      data-panoramas={JSON.stringify(panoramas)}
+      data-positions={JSON.stringify(positions)}
+    >
+      {
+        first !== null && (
+          <>
+            <img
+              class="explore-still"
+              id="explore-still"
+              src={first}
+              alt={labels.homeExploreAlt}
+              loading="lazy"
+              decoding="async"
+            />
+            <div class="explore-viewer" id="explore-viewer" hidden />
+          </>
+        )
+      }
 
-    {
-      showMap && (
-        <a class="home-link home-explore-map" href={mapHref(locale)}>
-          {labels.homeSeeMap} →
-        </a>
-      )
-    }
-  </div>
-
-  {
-    total > 0 && (
-      <div class="explore" id="explore">
-        <ul class="explore-stage">
-          {slides.map((slide, index) => (
-            <li
-              class="explore-slide"
-              data-explore-slide
-              data-panorama={slide.panoramaUrl}
-              data-view={JSON.stringify(slide.view)}
-              data-position={labels.homeExplorePosition(index + 1, total)}
-            >
-              {slide.posterUrl ? (
-                <img
-                  class="explore-poster"
-                  src={slide.posterUrl}
-                  alt={slide.posterAlt}
-                  loading="lazy"
-                  decoding="async"
-                />
-              ) : (
-                <div class="explore-poster explore-poster-empty" aria-hidden="true" />
-              )}
-
-              <div class="explore-viewer" hidden />
-
-              <button type="button" class="explore-open" hidden>
-                {/* El mismo "play" que abre el recorrido de la ficha. */}
-                <span class="tour-open-mark" aria-hidden="true" />
-                <span>{labels.homeExploreOpen}</span>
-              </button>
-
-              <div class="explore-caption">
-                <p class="explore-title">{slide.title}</p>
-                {slide.place && <p class="explore-place">{slide.place}</p>}
-                <a class="explore-link" href={slide.href}>
-                  {labels.homeExploreViewProperty} →
-                </a>
-              </div>
-            </li>
-          ))}
-        </ul>
-
-        {total > 1 && (
-          <div class="explore-controls" hidden>
+      {
+        total > 1 && (
+          <div class="explore-controls" id="explore-controls" hidden>
             <button
               type="button"
-              class="gallery-arrow explore-prev"
+              class="explore-arrow"
+              id="explore-prev"
               aria-label={labels.homeExplorePrevious}
             >
               <span aria-hidden="true">←</span>
             </button>
-            <p class="explore-position" aria-live="polite">
+            <p class="explore-position" id="explore-position" aria-live="polite">
               <span aria-hidden="true">1 / {total}</span>
-              <span class="visually-hidden">{labels.homeExplorePosition(1, total)}</span>
+              <span class="visually-hidden">{positions[0]}</span>
             </p>
             <button
               type="button"
-              class="gallery-arrow explore-next"
+              class="explore-arrow"
+              id="explore-next"
               aria-label={labels.homeExploreNext}
             >
               <span aria-hidden="true">→</span>
             </button>
           </div>
-        )}
-      </div>
-    )
-  }
+        )
+      }
+    </div>
+
+    <div class="explore-body">
+      <h2 id="home-explore-title">{labels.homeExploreTitle}</h2>
+      <p>{labels.homeExploreLead}</p>
+      {
+        showMap && (
+          <a class="home-link explore-map-link" href={mapHref(locale)}>
+            {labels.homeSeeMap} →
+          </a>
+        )
+      }
+    </div>
+  </div>
 </section>
