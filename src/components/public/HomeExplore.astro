@@ -1,0 +1,119 @@
+---
+/**
+ * Explora Costa Rica.
+ *
+ * Una cabecera corta con el camino al mapa y, debajo, un carrusel manual de
+ * propiedades destacadas con recorrido 360. No hay medios propios: cada
+ * diapositiva es la foto de portada de la propiedad y el panorama inicial de
+ * su recorrido, los mismos que se editan en el panel.
+ *
+ * Mejora progresiva, como la galeria de la ficha:
+ *
+ * - sin JavaScript se ven todas las diapositivas, cada una con su foto y su
+ *   enlace; el boton 360 y las flechas no aparecen;
+ * - con JavaScript queda una cada vez y el visor se carga solo al pulsar;
+ * - si el visor no arranca (sin WebGL, algunos iPhone), se queda la foto. La
+ *   portada nunca depende de WebGL para verse bien.
+ */
+import type { Locale } from '../../lib/domain/vocabularies';
+import type { HomeExploreSlide } from '../../lib/public/home';
+import { labelsFor } from '../../lib/public/labels';
+import { mapHref } from '../../lib/public/navigation';
+
+interface Props {
+  locale: Locale;
+  slides: HomeExploreSlide[];
+  /** El mapa solo se ofrece si hay alguna propiedad situada. */
+  showMap: boolean;
+}
+
+const { locale, slides, showMap } = Astro.props;
+const labels = labelsFor(locale);
+const total = slides.length;
+---
+
+<section class="home-section home-explore" aria-labelledby="home-explore-title">
+  <div class="home-explore-head">
+    <div class="home-explore-intro">
+      <h2 id="home-explore-title">{labels.homeExploreTitle}</h2>
+      <p class="home-explore-lead">{labels.homeExploreLead}</p>
+    </div>
+
+    {
+      showMap && (
+        <a class="home-link home-explore-map" href={mapHref(locale)}>
+          {labels.homeSeeMap} →
+        </a>
+      )
+    }
+  </div>
+
+  {
+    total > 0 && (
+      <div class="explore" id="explore">
+        <ul class="explore-stage">
+          {slides.map((slide, index) => (
+            <li
+              class="explore-slide"
+              data-explore-slide
+              data-panorama={slide.panoramaUrl}
+              data-view={JSON.stringify(slide.view)}
+              data-position={labels.homeExplorePosition(index + 1, total)}
+            >
+              {slide.posterUrl ? (
+                <img
+                  class="explore-poster"
+                  src={slide.posterUrl}
+                  alt={slide.posterAlt}
+                  loading="lazy"
+                  decoding="async"
+                />
+              ) : (
+                <div class="explore-poster explore-poster-empty" aria-hidden="true" />
+              )}
+
+              <div class="explore-viewer" hidden />
+
+              <button type="button" class="explore-open" hidden>
+                {/* El mismo "play" que abre el recorrido de la ficha. */}
+                <span class="tour-open-mark" aria-hidden="true" />
+                <span>{labels.homeExploreOpen}</span>
+              </button>
+
+              <div class="explore-caption">
+                <p class="explore-title">{slide.title}</p>
+                {slide.place && <p class="explore-place">{slide.place}</p>}
+                <a class="explore-link" href={slide.href}>
+                  {labels.homeExploreViewProperty} →
+                </a>
+              </div>
+            </li>
+          ))}
+        </ul>
+
+        {total > 1 && (
+          <div class="explore-controls" hidden>
+            <button
+              type="button"
+              class="gallery-arrow explore-prev"
+              aria-label={labels.homeExplorePrevious}
+            >
+              <span aria-hidden="true">←</span>
+            </button>
+            <p class="explore-position" aria-live="polite">
+              <span aria-hidden="true">1 / {total}</span>
+              <span class="visually-hidden">{labels.homeExplorePosition(1, total)}</span>
+            </p>
+            <button
+              type="button"
+              class="gallery-arrow explore-next"
+              aria-label={labels.homeExploreNext}
+            >
+              <span aria-hidden="true">→</span>
+            </button>
+          </div>
+        )}
+      </div>
+    )
+  }
+</section>

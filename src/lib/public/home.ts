@@ -10,7 +10,13 @@
  */
 
 import type { Locale } from '../domain/vocabularies';
-import type { PublicPropertyCard, PublicSite, PublicSiteTexts } from './read-model';
+import type {
+  PublicPropertyCard,
+  PublicPropertyDetail,
+  PublicSite,
+  PublicSiteTexts,
+} from './read-model';
+import { startNode } from './tour';
 
 /**
  * Cuantas propiedades caben en la portada.
@@ -39,6 +45,61 @@ export function featuredOf(properties: readonly PublicPropertyCard[]): PublicPro
  */
 export function hasPlacedProperties(properties: readonly PublicPropertyCard[]): boolean {
   return properties.some((property) => property.location.coordinates !== null);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Explora Costa Rica                                                         */
+/* -------------------------------------------------------------------------- */
+
+/** Una propiedad del carrusel 360 de la portada. */
+export interface HomeExploreSlide {
+  title: string;
+  place: string | null;
+  href: string;
+  /** Foto de portada: lo que se ve antes de abrir el 360. */
+  posterUrl: string | null;
+  posterAlt: string;
+  /** Panorama inicial del recorrido, tal y como lo eligio el editor. */
+  panoramaUrl: string;
+  view: { yaw: number; pitch: number; fov: number | null } | null;
+}
+
+/**
+ * Las propiedades que entran en "Explora Costa Rica".
+ *
+ * No hay medios propios de la portada: se reutilizan los recorridos que ya se
+ * editan en cada propiedad. Entran las destacadas que tienen recorrido, tres
+ * como mucho, y de cada una su punto inicial (`tour.start`). Asi la portada se
+ * administra desde el panel de siempre: destacar la propiedad y elegir el
+ * punto inicial de su recorrido.
+ */
+export function homeExploreSlides(
+  properties: readonly PublicPropertyDetail[],
+  placeOf: (property: PublicPropertyDetail) => string | null,
+  altOf: (property: PublicPropertyDetail) => string,
+): HomeExploreSlide[] {
+  return properties
+    .filter((property) => property.isFeatured && property.tour !== null)
+    .flatMap((property) => {
+      const start = property.tour === null ? null : startNode(property.tour);
+      if (start === null) return [];
+
+      const cover =
+        property.media.cover ?? property.media.items.find((item) => item.kind === 'image') ?? null;
+
+      return [
+        {
+          title: property.title,
+          place: placeOf(property),
+          href: property.href,
+          posterUrl: cover?.url ?? null,
+          posterAlt: cover?.altText ?? altOf(property),
+          panoramaUrl: start.url,
+          view: start.initialView,
+        },
+      ];
+    })
+    .slice(0, MAX_FEATURED);
 }
 
 /* -------------------------------------------------------------------------- */

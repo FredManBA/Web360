@@ -510,7 +510,9 @@ describe('el mapa de la ficha', () => {
 
     // Anillo abierto y a rayas, sin punto central que senale un sitio.
     expect(css).toContain('.map-pin--approximate .map-pin-mark');
-    expect(css).toContain('border: 2px dashed var(--sand-deep)');
+    expect(css).toContain('border: 2px dashed var(--map-accent-deep)');
+    // Y la exacta, en un acento que no se pierde sobre el verde del mapa.
+    expect(css).toContain('background: var(--map-accent);');
   });
 
   it('en movil el mapa tiene sus propias medidas', () => {

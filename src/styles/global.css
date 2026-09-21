@@ -27,6 +27,10 @@
   --sand-deep: #9a7b46;
   --sand-tint: #f6efe1;
 
+  /* Terracota: solo para los marcadores, que deben verse sobre el verde del mapa. */
+  --map-accent: #d9643a;
+  --map-accent-deep: #b24f2b;
+
   --ink: #16211c;
   --ink-soft: #55655c;
   --line: #e2dbcc;
@@ -1304,12 +1308,14 @@ a {
 }
 
 .map-pin-mark {
-  width: 1rem;
-  height: 1rem;
-  border: 2px solid var(--ivory);
+  width: 1.2rem;
+  height: 1.2rem;
+  border: 2.5px solid var(--ivory);
   border-radius: 50%;
-  background: var(--jungle);
-  box-shadow: 0 1px 4px rgb(10 26 20 / 45%);
+  background: var(--map-accent);
+  box-shadow:
+    0 0 0 1px rgb(178 79 43 / 55%),
+    0 2px 6px rgb(10 26 20 / 45%);
   transition: transform 0.15s ease;
 }
 
@@ -1318,11 +1324,12 @@ a {
   transform: scale(1.2);
 }
 
+/* Aproximada: anillo abierto y a rayas, nunca un punto que senale un sitio. */
 .map-pin--approximate .map-pin-mark {
   width: 1.75rem;
   height: 1.75rem;
-  border: 2px dashed var(--sand-deep);
-  background: rgb(201 168 106 / 30%);
+  border: 2px dashed var(--map-accent-deep);
+  background: rgb(217 100 58 / 26%);
   box-shadow: none;
 }
 
@@ -1996,110 +2003,165 @@ a {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Que ofrece el sitio                                                        */
+/* Explora Costa Rica                                                         */
 /* -------------------------------------------------------------------------- */
 
-.intro-list {
+.home-explore-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm) var(--space-lg);
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.home-explore-intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  max-width: 40rem;
+}
+
+.home-explore-intro h2 {
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+}
+
+.home-explore-lead {
+  color: var(--ink-soft);
+}
+
+.explore {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.explore-stage {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
-  gap: var(--space-lg);
+  gap: var(--space-md);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.intro-item {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2xs);
-  padding-top: var(--space-sm);
-  border-top: 1px solid var(--line);
-}
-
-.intro-item h3 {
-  font-size: 1.15rem;
-}
-
-.intro-item p {
-  color: var(--ink-soft);
-}
-
-/* -------------------------------------------------------------------------- */
-/* Invitacion al mapa                                                         */
-/* -------------------------------------------------------------------------- */
-
 /*
- * Aqui NO se carga Mapbox. El dibujo es un degradado con curvas de nivel, del
- * mismo lenguaje que el hero: sugiere un mapa sin serlo y no cuesta nada.
+ * Una pieza fotografica horizontal. Sin JavaScript se ven todas, una debajo de
+ * otra; con el, una cada vez.
  */
-.home-map {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+.explore-slide {
+  position: relative;
+  aspect-ratio: 16 / 9;
   overflow: hidden;
   border-radius: var(--radius-lg);
   background: var(--jungle);
-  color: var(--ivory);
 }
 
-.home-map-art {
-  display: grid;
-  place-items: center;
-  min-height: 16rem;
-  padding: var(--space-lg);
-  background-image:
-    repeating-radial-gradient(
-      70% 60% at 30% 40%,
-      transparent 0 2.2rem,
-      rgb(201 168 106 / 9%) 2.2rem 2.3rem
-    ),
-    linear-gradient(140deg, var(--jungle-soft), var(--jungle-deep));
+.explore-poster {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
-/* Silueta del pais: tierra clara con borde arena, y una marca de mapa. */
-.home-map-country {
-  width: min(100%, 22rem);
-  height: auto;
-  overflow: visible;
+.explore-poster-empty {
+  background: linear-gradient(140deg, var(--jungle-soft), var(--jungle-deep));
 }
 
-.home-map-land {
-  fill: rgb(250 247 240 / 10%);
-  stroke: var(--sand);
-  stroke-linejoin: round;
-  stroke-width: 1.5;
+.explore-viewer {
+  position: absolute;
+  inset: 0;
 }
 
-.home-map-pin circle:first-child {
-  fill: rgb(201 168 106 / 22%);
-  stroke: var(--sand);
-  stroke-width: 1;
-}
-
-.home-map-pin circle:last-child {
-  fill: var(--sand);
-}
-
-.home-map-body {
+/* El mismo boton que abre el recorrido en la ficha, sobre una veladura suave. */
+.explore-open {
+  position: absolute;
+  inset: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
-  align-items: flex-start;
+  gap: var(--space-xs);
+  align-items: center;
   justify-content: center;
-  padding: var(--space-xl) var(--space-lg);
+  width: 100%;
+  border: 0;
+  background: rgb(10 26 20 / 22%);
+  color: var(--ivory);
+  cursor: pointer;
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+  text-shadow: 0 1px 6px rgb(10 26 20 / 60%);
 }
 
-.home-map-body h2 {
-  font-size: clamp(1.5rem, 3vw, 2.1rem);
+.explore-open[disabled] {
+  cursor: progress;
 }
 
-.home-map-body p {
-  color: rgb(250 247 240 / 80%);
+.explore-open .tour-open-mark {
+  background: rgb(10 26 20 / 35%);
+  backdrop-filter: blur(3px);
 }
 
-.home-map-body .home-link {
+.explore-open:hover .tour-open-mark {
+  transform: scale(1.06);
+}
+
+/* Titulo, zona y enlace, abajo y sobre un degradado que los hace legibles. */
+.explore-caption {
+  position: absolute;
+  inset: auto 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2xs) var(--space-md);
+  align-items: baseline;
+  padding: var(--space-xl) var(--space-lg) var(--space-md);
+  background: linear-gradient(transparent, rgb(10 26 20 / 78%));
+  color: var(--ivory);
+  pointer-events: none;
+}
+
+.explore-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.15rem, 2.4vw, 1.5rem);
+}
+
+.explore-place {
+  color: rgb(250 247 240 / 82%);
+  font-size: 0.9rem;
+}
+
+.explore-link {
+  margin-left: auto;
   color: var(--sand);
+  font-size: 0.95rem;
+  pointer-events: auto;
+  text-underline-offset: 4px;
 }
 
+/* Con el visor abierto, el pie se retira para no tapar el panorama. */
+.explore-slide.is-live .explore-caption {
+  padding-top: var(--space-md);
+  background: linear-gradient(transparent, rgb(10 26 20 / 55%));
+}
+
+.explore-slide.is-live .explore-title,
+.explore-slide.is-live .explore-place {
+  display: none;
+}
+
+.explore-controls {
+  display: flex;
+  gap: var(--space-md);
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.explore-position {
+  min-width: 3.5rem;
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  text-align: center;
+}
 /* -------------------------------------------------------------------------- */
 /* Cierre                                                                     */
 /* -------------------------------------------------------------------------- */
@@ -2382,23 +2444,21 @@ a {
     text-align: center;
   }
 
-  /* El dibujo del mapa pasa arriba y el texto debajo, no en dos columnas. */
-  .home-map {
-    grid-template-columns: minmax(0, 1fr);
+  /* En vertical el 16/9 se queda bajo: cuadrado, para que quepan pie y boton. */
+  .explore-slide {
+    aspect-ratio: 1 / 1;
   }
 
-  .home-map-art {
-    min-height: 11rem;
-    padding: var(--space-md);
+  .explore-caption {
+    padding: var(--space-lg) var(--space-md) var(--space-sm);
   }
 
-  /* Cabe entera en el panel (11rem menos el relleno). */
-  .home-map-country {
-    width: min(100%, 9rem);
+  .explore-link {
+    margin-left: 0;
   }
 
-  .home-map-body {
-    padding: var(--space-lg) var(--space-md);
+  .explore-controls {
+    justify-content: space-between;
   }
 
   .home {

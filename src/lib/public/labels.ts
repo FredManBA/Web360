@@ -138,15 +138,13 @@ export interface PublicLabels {
   homeFeaturedTitle: string;
   homeFeaturedEmpty: string;
   homeSeeAll: string;
-  homeIntroTitle: string;
-  homeIntroPhotos: string;
-  homeIntroPhotosText: string;
-  homeIntroTour: string;
-  homeIntroTourText: string;
-  homeIntroMap: string;
-  homeIntroMapText: string;
-  homeMapTitle: string;
-  homeMapLead: string;
+  homeExploreTitle: string;
+  homeExploreLead: string;
+  homeExploreOpen: string;
+  homeExploreViewProperty: string;
+  homeExplorePrevious: string;
+  homeExploreNext: string;
+  homeExplorePosition: (index: number, total: number) => string;
   homeContactTitle: string;
   homeContactLead: string;
   /* -- Pagina no encontrada ---------------------------------------------- */
@@ -279,15 +277,13 @@ const ES: PublicLabels = {
   homeFeaturedTitle: 'Selección',
   homeFeaturedEmpty: 'Todavía no hay una selección. Mientras tanto, están todas en Propiedades.',
   homeSeeAll: 'Ver todas las propiedades',
-  homeIntroTitle: 'Antes de visitarla',
-  homeIntroPhotos: 'Fotos',
-  homeIntroPhotosText: 'Mira la propiedad tal como es.',
-  homeIntroTour: 'Recorrido 360°',
-  homeIntroTourText: 'Recórrela desde cualquier lugar.',
-  homeIntroMap: 'Ubicación',
-  homeIntroMapText: 'Consulta su zona en el mapa.',
-  homeMapTitle: 'Explora por zona',
-  homeMapLead: 'Encuentra propiedades en la zona que te interesa.',
+  homeExploreTitle: 'Explora Costa Rica',
+  homeExploreLead: 'Recorre algunas propiedades en 360° o encuentra la zona que te interesa.',
+  homeExploreOpen: 'Explorar en 360°',
+  homeExploreViewProperty: 'Ver propiedad',
+  homeExplorePrevious: 'Propiedad anterior',
+  homeExploreNext: 'Propiedad siguiente',
+  homeExplorePosition: (index, total) => `Propiedad ${index} de ${total}`,
   homeContactTitle: '¿Hablamos?',
   homeContactLead: 'Cuéntanos qué buscas y te respondemos por donde prefieras.',
   notFoundTitle: 'Esta página no existe',
@@ -417,15 +413,13 @@ const EN: PublicLabels = {
   homeFeaturedTitle: 'Selection',
   homeFeaturedEmpty: 'There is no selection yet. In the meantime, they are all under Properties.',
   homeSeeAll: 'See every property',
-  homeIntroTitle: 'Before you visit',
-  homeIntroPhotos: 'Photos',
-  homeIntroPhotosText: 'See the property as it is.',
-  homeIntroTour: '360° tour',
-  homeIntroTourText: 'Explore it from wherever you are.',
-  homeIntroMap: 'Location',
-  homeIntroMapText: 'See the area on the map.',
-  homeMapTitle: 'Explore by area',
-  homeMapLead: 'Find properties in the area that interests you.',
+  homeExploreTitle: 'Explore Costa Rica',
+  homeExploreLead: 'Explore selected properties in 360° or find the area that interests you.',
+  homeExploreOpen: 'Explore in 360°',
+  homeExploreViewProperty: 'View property',
+  homeExplorePrevious: 'Previous property',
+  homeExploreNext: 'Next property',
+  homeExplorePosition: (index, total) => `Property ${index} of ${total}`,
   homeContactTitle: 'Shall we talk?',
   homeContactLead: 'Tell us what you are after and we will reply however you prefer.',
   notFoundTitle: 'This page does not exist',

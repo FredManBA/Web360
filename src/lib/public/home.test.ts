@@ -17,11 +17,18 @@ import {
   featuredOf,
   hasPlacedProperties,
   homeCopy,
+  homeExploreSlides,
   MAX_FEATURED,
   resolveRootLocale,
 } from './home';
 import { labelsFor } from './labels';
-import { EMPTY_SITE, type PublicPropertyCard, type PublicSite } from './read-model';
+import {
+  EMPTY_SITE,
+  type PublicPropertyCard,
+  type PublicPropertyDetail,
+  type PublicSite,
+  type PublicTour,
+} from './read-model';
 
 function read(relative: string): string {
   return readFileSync(path.resolve(process.cwd(), relative), 'utf8');
@@ -31,8 +38,8 @@ const HOME_ES = 'src/pages/es/index.astro';
 const HOME_EN = 'src/pages/en/index.astro';
 const ROOT = 'src/pages/index.astro';
 const HERO = 'src/components/public/HomeHero.astro';
-const INTRO = 'src/components/public/HomeIntro.astro';
-const MAP_TEASER = 'src/components/public/HomeMapTeaser.astro';
+const EXPLORE = 'src/components/public/HomeExplore.astro';
+const EXPLORE_MODULE = 'src/lib/public/home-explore.ts';
 const CONTACT_CTA = 'src/components/public/HomeContactCta.astro';
 const LAYOUT = 'src/layouts/PublicLayout.astro';
 const CONFIG = 'astro.config.mjs';
@@ -141,14 +148,140 @@ describe('la seccion del mapa', () => {
     expect(hasPlacedProperties([card()])).toBe(false);
     expect(hasPlacedProperties([])).toBe(false);
   });
+});
 
-  it('se ilustra con la silueta de Costa Rica, inline y sin peticiones', () => {
-    const teaser = read(MAP_TEASER);
+/* -------------------------------------------------------------------------- */
+/* Explora Costa Rica                                                         */
+/* -------------------------------------------------------------------------- */
 
-    expect(teaser).toContain('<svg class="home-map-country"');
-    expect(teaser).toContain('class="home-map-land"');
-    expect(teaser).toContain('aria-hidden="true"');
-    expect(teaser).not.toContain('<img');
+function detail(overrides: Partial<PublicPropertyDetail> = {}): PublicPropertyDetail {
+  return {
+    ...card(),
+    marketingDescription: null,
+    technicalDescription: null,
+    features: [],
+    tour: null,
+    ...overrides,
+  };
+}
+
+function tourFrom(start: string): PublicTour {
+  return {
+    start,
+    nodes: [
+      { key: '1', name: 'Entrada', url: '/media/1', initialView: null, links: [] },
+      {
+        key: '2',
+        name: 'Centro',
+        url: '/media/2',
+        initialView: { yaw: 1, pitch: 0, fov: null },
+        links: [],
+      },
+    ],
+  };
+}
+
+const place = (): string => 'Quesada, Alajuela';
+const alt = (property: PublicPropertyDetail): string => `Foto de ${property.title}`;
+
+describe('Explora Costa Rica', () => {
+  it('entran las destacadas con recorrido, y de cada una su punto inicial', () => {
+    const slides = homeExploreSlides(
+      [
+        detail({ slug: 'sin-tour', isFeatured: true }),
+        detail({ slug: 'no-destacada', tour: tourFrom('1') }),
+        detail({ slug: 'buena', title: 'Buena', isFeatured: true, tour: tourFrom('2') }),
+      ],
+      place,
+      alt,
+    );
+
+    expect(slides).toHaveLength(1);
+    expect(slides[0]).toMatchObject({
+      title: 'Buena',
+      place: 'Quesada, Alajuela',
+      panoramaUrl: '/media/2',
+      view: { yaw: 1, pitch: 0, fov: null },
+      posterUrl: null,
+      posterAlt: 'Foto de Buena',
+    });
+  });
+
+  it('tres como mucho, en el orden del catalogo', () => {
+    const many = ['a', 'b', 'c', 'd'].map((slug) =>
+      detail({ slug, title: slug, isFeatured: true, tour: tourFrom('1') }),
+    );
+
+    expect(homeExploreSlides(many, place, alt).map((slide) => slide.title)).toEqual([
+      'a',
+      'b',
+      'c',
+    ]);
+  });
+
+  it('el poster es la foto de portada, nunca el panorama crudo', () => {
+    const cover = {
+      kind: 'image' as const,
+      url: '/media/9',
+      youtubeVideoId: null,
+      title: null,
+      altText: 'Vista del lote',
+      caption: null,
+      group: null,
+      isHero: false,
+      isCatalogCover: true,
+    };
+    const [slide] = homeExploreSlides(
+      [
+        detail({
+          isFeatured: true,
+          tour: tourFrom('1'),
+          media: { ...card().media, cover },
+        }),
+      ],
+      place,
+      alt,
+    );
+
+    expect(slide?.posterUrl).toBe('/media/9');
+    expect(slide?.posterAlt).toBe('Vista del lote');
+    expect(slide?.panoramaUrl).toBe('/media/1');
+  });
+
+  it('sin recorridos no hay carrusel, pero la seccion y el mapa siguen', () => {
+    expect(homeExploreSlides([detail({ isFeatured: true })], place, alt)).toEqual([]);
+
+    for (const page of [HOME_ES, HOME_EN]) {
+      expect(read(page)).toContain('(showMap || exploreSlides.length > 0)');
+    }
+    expect(read(EXPLORE)).toContain('total > 0 && (');
+  });
+
+  it('carrusel manual, visor bajo demanda y sin pantalla completa', () => {
+    const module = read(EXPLORE_MODULE);
+
+    expect(module).toContain("await import('../viewer/panorama-viewer')");
+    expect(module).toContain("navbar: ['zoom', 'move']");
+    expect(module).not.toContain('fullscreen');
+    // Nada de cambio automatico.
+    expect(module).not.toContain('setInterval');
+    expect(module).not.toContain('setTimeout');
+  });
+
+  it('al cambiar de propiedad se destruye el visor; si falla, se queda la foto', () => {
+    const module = read(EXPLORE_MODULE);
+
+    expect(module).toContain('viewer?.destroy()');
+    expect(module).toContain('created === null');
+    expect(module).toContain('mine !== generation');
+  });
+
+  it('sin JavaScript se ven las fotos y los enlaces; los controles llegan ocultos', () => {
+    const explore = read(EXPLORE);
+
+    expect(explore).toContain('class="explore-open" hidden');
+    expect(explore).toContain('class="explore-controls" hidden');
+    expect(explore).toContain('labels.homeExploreViewProperty');
   });
 });
 
@@ -358,13 +491,13 @@ describe('el <head> de la portada', () => {
 
   it('un solo H1, y es el del hero', () => {
     expect(read(HERO)).toContain('<h1');
-    for (const file of [HOME_ES, HOME_EN, INTRO, MAP_TEASER, CONTACT_CTA]) {
+    for (const file of [HOME_ES, HOME_EN, EXPLORE, CONTACT_CTA]) {
       expect(read(file)).not.toContain('<h1');
     }
   });
 
   it('cada seccion tiene su encabezado y su etiqueta', () => {
-    for (const file of [INTRO, MAP_TEASER, CONTACT_CTA]) {
+    for (const file of [EXPLORE, CONTACT_CTA]) {
       expect(read(file)).toContain('aria-labelledby');
       expect(read(file)).toContain('<h2');
     }
@@ -396,7 +529,7 @@ describe('la portada', () => {
   });
 
   it('no carga Mapbox, ni el visor 360, ni YouTube', () => {
-    for (const file of [HOME_ES, HOME_EN, HERO, INTRO, MAP_TEASER, CONTACT_CTA]) {
+    for (const file of [HOME_ES, HOME_EN, HERO, EXPLORE, CONTACT_CTA]) {
       const source = read(file);
 
       expect(source).not.toContain('mapbox');
@@ -407,7 +540,7 @@ describe('la portada', () => {
   });
 
   it('la seccion del mapa enlaza, no monta un mapa', () => {
-    const teaser = read(MAP_TEASER);
+    const teaser = read(EXPLORE);
 
     expect(teaser).toContain('mapHref(locale)');
     expect(teaser).not.toContain('createPublicMap');
@@ -512,8 +645,8 @@ describe('idiomas', () => {
     const en = labelsFor('en');
 
     expect(es.homeHeroTitle).not.toBe(en.homeHeroTitle);
-    expect(es.homeIntroTitle).not.toBe(en.homeIntroTitle);
-    expect(es.homeMapTitle).not.toBe(en.homeMapTitle);
+    expect(es.homeExploreTitle).not.toBe(en.homeExploreTitle);
+    expect(es.homeExploreOpen).not.toBe(en.homeExploreOpen);
     expect(es.homeContactTitle).not.toBe(en.homeContactTitle);
   });
 
