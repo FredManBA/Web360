@@ -632,11 +632,32 @@ a {
   gap: var(--space-xl);
 }
 
+/*
+ * Foto, titulo y franja de datos forman un solo bloque: mismo ancho maximo y
+ * centrado, con el texto alineado a la izquierda dentro de el.
+ */
+.property-detail > .gallery,
+.property-detail > .state-empty,
+.property-detail-head,
+.property-detail > .property-facts {
+  width: 100%;
+  max-width: 60rem;
+  margin-inline: auto;
+}
+
 .property-detail-head {
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
-  max-width: 46rem;
+}
+
+/* Dentro del bloque, menos aire que entre secciones: se leen como una pieza. */
+.property-detail > .property-detail-head {
+  margin-top: calc(var(--space-lg) - var(--space-xl));
+}
+
+.property-detail > .property-facts {
+  margin-top: calc(var(--space-md) - var(--space-xl));
 }
 
 .property-detail-head h1 {
@@ -810,6 +831,19 @@ a {
 }
 
 .gallery[data-interactive] .gallery-slide {
+  aspect-ratio: 16 / 10;
+}
+
+/*
+ * Una sola foto no activa la galeria interactiva (no hay nada que pasar), pero
+ * tampoco debe quedarse en una columna de la cuadricula: ocupa todo el bloque,
+ * con la misma proporcion que la foto grande.
+ */
+.gallery-stage:has(> .gallery-slide:only-child) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.gallery-stage:has(> .gallery-slide:only-child) .gallery-slide {
   aspect-ratio: 16 / 10;
 }
 
@@ -2245,7 +2279,8 @@ a {
   }
 
   /* En movil la foto manda: mas alta y sin cuadricula alrededor. */
-  .gallery[data-interactive] .gallery-slide {
+  .gallery[data-interactive] .gallery-slide,
+  .gallery-stage:has(> .gallery-slide:only-child) .gallery-slide {
     aspect-ratio: 4 / 3;
   }
 
