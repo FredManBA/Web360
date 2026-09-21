@@ -20,12 +20,15 @@ import '../styles/global.css';
 
 import { labelsFor } from '../lib/public/labels';
 import { LANGUAGE_STORAGE_KEY } from '../lib/public/language-preference';
+import { absoluteUrl } from '../lib/public/seo';
 
 // La raiz no tiene idioma propio: se presenta en los dos.
 const es = labelsFor('es');
 const en = labelsFor('en');
 
 const brand = es.brandName;
+const esUrl = absoluteUrl(Astro.site, '/es/');
+const enUrl = absoluteUrl(Astro.site, '/en/');
 ---
 
 <!doctype html>
@@ -37,10 +40,10 @@ const brand = es.brandName;
     <meta name="description" content={es.homeSeoDescription} />
 
     {/* La raiz no se indexa: lo que se indexa son las dos portadas. */}
-    <link rel="canonical" href="/es/" />
-    <link rel="alternate" hreflang="es" href="/es/" />
-    <link rel="alternate" hreflang="en" href="/en/" />
-    <link rel="alternate" hreflang="x-default" href="/es/" />
+    <link rel="canonical" href={esUrl} />
+    <link rel="alternate" hreflang="es" href={esUrl} />
+    <link rel="alternate" hreflang="en" href={enUrl} />
+    <link rel="alternate" hreflang="x-default" href={esUrl} />
 
     {
       /*
