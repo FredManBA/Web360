@@ -21,10 +21,10 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "db:generate": "drizzle-kit generate",
-    "db:migrate:local": "wrangler d1 migrations apply codeloba-db --local",
-    "db:migrate:remote": "wrangler d1 migrations apply codeloba-db --remote",
-    "db:seed:local": "wrangler d1 execute codeloba-db --local --file=src/db/seed/seed.sql",
-    "db:seed:remote": "wrangler d1 execute codeloba-db --remote --file=src/db/seed/seed.sql",
+    "db:migrate:local": "wrangler d1 migrations apply cr360-db --local",
+    "db:migrate:remote": "wrangler d1 migrations apply cr360-db --remote",
+    "db:seed:local": "wrangler d1 execute cr360-db --local --file=src/db/seed/seed.sql",
+    "db:seed:remote": "wrangler d1 execute cr360-db --remote --file=src/db/seed/seed.sql",
     "cf:typegen": "wrangler types"
   },
   "dependencies": {

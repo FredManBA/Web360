@@ -67,7 +67,7 @@ beforeAll(async () => {
     ),
   );
   // Base vacia: el baseline crea las cuatro tablas y no hay datos previos.
-  await run(wrangler, ['d1', 'migrations', 'apply', 'codeloba-db', '--local']);
+  await run(wrangler, ['d1', 'migrations', 'apply', 'cr360-db', '--local']);
   writeFileSync(path.join(temporary, '.dev.vars'), 'ADMIN_DEV_BYPASS=true\n');
   server = spawn(process.execPath, [astro, 'dev', '--host', '127.0.0.1', '--port', '0'], {
     cwd: temporary,
@@ -157,7 +157,7 @@ async function sql(command: string): Promise<Record<string, unknown>[]> {
   const result = await run(wrangler, [
     'd1',
     'execute',
-    'codeloba-db',
+    'cr360-db',
     '--local',
     `--command=${command}`,
     '--json',

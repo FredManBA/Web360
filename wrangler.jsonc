@@ -11,13 +11,14 @@
     "enabled": true,
   },
 
-  // Base de datos D1. El `database_id` real se obtiene al crear la base
-  // con `wrangler d1 create codeloba-db` y NO se versiona en el repositorio.
+  // Base de datos D1. El `database_id` identifica la base dentro de la cuenta
+  // y no es un secreto: se versiona aqui como parte de la configuracion.
+  // El binding es `DB`, que es el que usa el runtime.
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "codeloba-db",
-      "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+      "database_name": "cr360-db",
+      "database_id": "c522a9bc-14ec-4471-8bbc-00466d7b6b84",
       "migrations_dir": "drizzle",
     },
   ],

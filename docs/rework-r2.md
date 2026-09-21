@@ -8,9 +8,10 @@ Retirar la devuelve a borrador inmediatamente.
 El admin crea el siguiente CR360-XXX y abre una pantalla de edición. Guardar
 envía ES, EN, información y características en un único UPDATE atómico. No hay
 autosave. Multimedia se gestiona aparte: imagen, panorama o YouTube; una portada
-sirve para catálogo y hero. El tour migrado permanece de solo lectura, y no se
-puede eliminar un panorama que pertenezca a él. Configuración y contactos tienen
-pantallas pequeñas. Access, same-origin, JSON estricto y no-store se conservan.
+sirve para catálogo y hero. El recorrido 360 se edita visualmente desde el admin
+y se guarda aparte; al quitar un panorama que usaba, el recorrido se limpia en la
+misma operación y nunca queda apuntando a un archivo que ya no existe.
+Configuración y contactos tienen pantallas pequeñas. Access, same-origin, JSON estricto y no-store se conservan.
 
 ## Base de datos
 

@@ -65,11 +65,11 @@ La configuracion vive en `wrangler.jsonc`. El adaptador `@astrojs/cloudflare`
 inyecta automaticamente el punto de entrada del Worker y el binding de assets
 durante el build, por lo que no se declaran a mano.
 
-Antes del primer despliegue hay que crear los recursos y pegar el ID de D1 en
-`wrangler.jsonc`:
+Los recursos se crean una vez; `wrangler.jsonc` ya trae el nombre y el
+`database_id` de la D1 en uso:
 
 ```bash
-npx wrangler d1 create codeloba-db      # devuelve el database_id
+npx wrangler d1 create cr360-db         # devuelve el database_id
 npx wrangler r2 bucket create codeloba-media
 ```
 
@@ -90,7 +90,7 @@ Bindings declarados en `wrangler.jsonc`:
 
 | Binding | Recurso               | Uso                            |
 | ------- | --------------------- | ------------------------------ |
-| `DB`    | D1 (`codeloba-db`)    | contenido vivo y configuración |
+| `DB`    | D1 (`cr360-db`)       | contenido vivo y configuración |
 | `MEDIA` | R2 (`codeloba-media`) | imágenes, 360 y multimedia     |
 
 Los bindings solo existen dentro de una peticion on-demand y se acceden asi:
