@@ -166,7 +166,7 @@ Conviene tener claro que:
 - El **MFA se configura en Cloudflare Access**, no en la aplicacion.
 - El Worker valida el JWT aunque Access proteja la ruta en el borde: el
   perimetro no sustituye a la comprobacion.
-- La Access Application remota **todavia no esta creada**.
+- En produccion, la Access Application protege `/admin/*` y `/api/admin/*`.
 
 ## Estructura
 

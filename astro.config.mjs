@@ -8,15 +8,12 @@ export default defineConfig({
   output: 'static',
 
   /*
-   * El dominio publico, cuando lo haya.
+   * El origen publico para canonical, hreflang y sitemap.
    *
-   * Sale del entorno y no del codigo: el dominio es cosa del despliegue, no
-   * del repositorio, y asi el mismo build sirve para cualquiera. Sin la
-   * variable, `Astro.site` queda `undefined` y el sitio se construye igual:
-   * las URL del `<head>` salen relativas y el sitemap se queda vacio,
-   * explicando por que. Nunca se inventa un host.
+   * `CODELOBA_SITE_URL` tiene prioridad: cuando haya dominio propio basta con
+   * definirla al construir. Sin ella se usa el host de produccion actual.
    */
-  site: process.env.CODELOBA_SITE_URL || undefined,
+  site: process.env.CODELOBA_SITE_URL || 'https://properties.costarica360.workers.dev',
 
   adapter: cloudflare({
     // 'compile': las imagenes se optimizan en el build con sharp.
