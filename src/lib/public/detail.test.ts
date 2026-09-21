@@ -341,6 +341,16 @@ describe('el visor 360 publico', () => {
     expect(page).toContain('onHotspot');
   });
 
+  it('la lista de puntos es fija: se pinta una vez y solo se marca el activo', () => {
+    const page = read(PAGE_MODULE);
+
+    // Todos los puntos, no solo los destinos del actual: nada cambia de sitio.
+    expect(page).toContain('navList.innerHTML = tour.nodes');
+    expect(page).toContain("classList.toggle('is-current', active)");
+    expect(page).toContain("setAttribute('aria-current', 'location')");
+    expect(read(CSS)).toContain('.tour-jump.is-current');
+  });
+
   it('dice en que punto se esta', () => {
     expect(read(TOUR)).toContain('id="tour-current"');
     expect(read(TOUR)).toContain('aria-live="polite"');

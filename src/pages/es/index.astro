@@ -58,11 +58,7 @@ const jsonLd = organizationJsonLd({
   <HomeHero copy={copy} locale={locale} showMap={showMap} image={snapshot.site.media.hero} />
 
   <div class="home">
-    <section class="home-section home-featured" aria-labelledby="featured-title">
-      <div class="home-section-head">
-        <h2 id="featured-title">{labels.homeFeaturedTitle}</h2>
-      </div>
-
+    <section class="home-section home-featured" aria-label={labels.homeFeaturedTitle}>
       {
         featured.length === 0 ? (
           /* Sin seleccion la portada no se rompe: se dice y se sigue. */

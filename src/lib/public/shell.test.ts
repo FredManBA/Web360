@@ -28,12 +28,10 @@ function read(relative: string): string {
 const LAYOUT = 'src/layouts/PublicLayout.astro';
 const HEADER = 'src/components/public/SiteHeader.astro';
 const FOOTER = 'src/components/public/SiteFooter.astro';
-const CONTROLS = 'src/components/public/CatalogueControls.astro';
 const CARD = 'src/components/public/PropertyCard.astro';
 const CATALOGUE_ES = 'src/pages/es/propiedades/index.astro';
 const CATALOGUE_EN = 'src/pages/en/propiedades/index.astro';
 const DETAIL_ES = 'src/pages/es/propiedades/[slug].astro';
-const PAGE_MODULE = 'src/lib/public/catalogue-page.ts';
 const CSS = 'src/styles/global.css';
 
 /* -------------------------------------------------------------------------- */
@@ -94,14 +92,10 @@ describe('navegacion', () => {
 });
 
 describe('recuento de resultados', () => {
-  it('el singular no se arma con la plantilla del plural', () => {
-    // "1 propiedades" se ve en cuanto queda una sola tarjeta.
+  it('el recuento sale del servidor con el total publicado', () => {
     for (const page of [CATALOGUE_ES, CATALOGUE_EN]) {
-      expect(read(page)).toContain('data-template-one={labels.results(1)}');
+      expect(read(page)).toContain('{labels.results(properties.length)}');
     }
-
-    expect(read(PAGE_MODULE)).toContain('view.total === 1');
-    expect(read(PAGE_MODULE)).toContain('dataset.templateOne');
   });
 
   it('cada idioma tiene su singular y su plural', () => {
@@ -300,81 +294,24 @@ describe('pagina de catalogo', () => {
     }
   });
 
-  it('los datos de filtrado viajan en el HTML, sin duplicar el catalogo', () => {
-    const card = read(CARD);
+  it('se ven todas las tarjetas, sin filtros ni paginacion', () => {
+    for (const page of [CATALOGUE_ES, CATALOGUE_EN]) {
+      const source = read(page);
 
-    expect(card).toContain('data-catalogue-item');
-    expect(card).toContain('data-type=');
-    expect(card).toContain('data-zone=');
-    expect(card).toContain('data-price=');
-    expect(card).toContain('data-surface=');
-    // Nada de un JSON aparte con todo el catalogo.
-    expect(read(CATALOGUE_ES)).not.toContain('JSON.stringify');
-  });
-
-  it('los controles llegan ocultos y el script los revela', () => {
-    expect(read(CONTROLS)).toContain('hidden');
-    expect(read(PAGE_MODULE)).toContain('controls.hidden = false');
-  });
-
-  it('sin JavaScript se ven todas las tarjetas', () => {
-    const page = read(CATALOGUE_ES);
-
-    /*
-     * El servidor pinta la lista entera y sin recortar: esconder y paginar es
-     * cosa del modulo del navegador, que solo existe si hay JavaScript.
-     */
-    expect(page).toContain('properties.map((property)');
-    expect(page).not.toContain('.slice(');
-    expect(page).not.toContain('hidden={');
+      // El servidor pinta la lista entera; no hay modulo que la recorte.
+      expect(source).toContain('properties.map((property)');
+      expect(source).not.toContain('.slice(');
+      expect(source).not.toContain('CatalogueControls');
+      expect(source).not.toContain('catalogue-page');
+    }
 
     // La tarjeta no nace oculta (`aria-hidden` del enlace decorativo no cuenta).
     expect(read(CARD)).not.toMatch(/<article[^>]*\shidden/);
   });
 
-  it('ofrece los cuatro filtros y las cinco ordenaciones', () => {
-    const controls = read(CONTROLS);
-
-    for (const id of ['filter-type', 'filter-zone', 'filter-price', 'filter-surface']) {
-      expect(controls).toContain(`id="${id}"`);
-    }
-
-    for (const sort of ['newest', 'price-asc', 'price-desc', 'area-asc', 'area-desc']) {
-      expect(controls).toContain(`value="${sort}"`);
-    }
-  });
-
-  it('no hay busqueda de texto', () => {
-    expect(read(CONTROLS)).not.toContain('type="search"');
-  });
-
-  it('muestra el recuento y permite limpiar', () => {
-    expect(read(CATALOGUE_ES)).toContain('id="catalogue-count"');
-    expect(read(CONTROLS)).toContain('id="catalogue-clear"');
-    expect(read(PAGE_MODULE)).toContain('EMPTY_FILTERS');
-  });
-
-  it('tiene los tres estados vacios', () => {
-    const page = read(CATALOGUE_ES);
-
-    // Sin nada publicado, y sin resultados con los filtros puestos.
-    expect(page).toContain('labels.empty');
-    expect(page).toContain('labels.noMatches');
-    // Y una tarjeta sin foto no deja un hueco vacio.
+  it('sin nada publicado se dice, y una tarjeta sin foto no deja hueco', () => {
+    expect(read(CATALOGUE_ES)).toContain('labels.empty');
     expect(read(CARD)).toContain('property-card-placeholder');
-  });
-
-  it('el boton de ver mas existe y sabe cuantas quedan', () => {
-    expect(read(CATALOGUE_ES)).toContain('id="catalogue-more"');
-    expect(read(PAGE_MODULE)).toContain('view.remaining');
-    expect(read(PAGE_MODULE)).toContain('pages += 1');
-  });
-
-  it('la URL guarda el estado sin llenar el historial', () => {
-    const module = read(PAGE_MODULE);
-
-    expect(module).toContain('history.replaceState');
-    expect(module).not.toContain('history.pushState');
   });
 });
 
@@ -389,24 +326,8 @@ describe('accesibilidad y peso', () => {
     expect(read(LAYOUT)).toContain('id="contenido"');
   });
 
-  it('la navegacion y los filtros se anuncian', () => {
+  it('la navegacion se anuncia', () => {
     expect(read(HEADER)).toContain('aria-label={labels.mainNavigation}');
-    expect(read(CONTROLS)).toContain('aria-label={labels.filters}');
-    expect(read(CATALOGUE_ES)).toContain('role="status"');
-  });
-
-  it('cada control tiene su etiqueta', () => {
-    const controls = read(CONTROLS);
-
-    for (const id of [
-      'filter-type',
-      'filter-zone',
-      'filter-price',
-      'filter-surface',
-      'filter-sort',
-    ]) {
-      expect(controls).toContain(`<label for="${id}">`);
-    }
   });
 
   it('el menu movil funciona sin JavaScript', () => {
@@ -421,10 +342,6 @@ describe('accesibilidad y peso', () => {
 
     expect(css).toContain(':focus-visible');
     expect(css).toContain('@media (prefers-reduced-motion: reduce)');
-  });
-
-  it('al mostrar mas, el foco va al contenido nuevo', () => {
-    expect(read(PAGE_MODULE)).toContain(".querySelector('a')?.focus()");
   });
 
   it('el idioma del documento acompaña a la ruta', () => {

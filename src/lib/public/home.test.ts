@@ -141,6 +141,27 @@ describe('la seccion del mapa', () => {
     expect(hasPlacedProperties([card()])).toBe(false);
     expect(hasPlacedProperties([])).toBe(false);
   });
+
+  it('se ilustra con la silueta de Costa Rica, inline y sin peticiones', () => {
+    const teaser = read(MAP_TEASER);
+
+    expect(teaser).toContain('<svg class="home-map-country"');
+    expect(teaser).toContain('class="home-map-land"');
+    expect(teaser).toContain('aria-hidden="true"');
+    expect(teaser).not.toContain('<img');
+  });
+});
+
+describe('las destacadas sin titulo visible', () => {
+  it('la seccion conserva su nombre accesible, pero no pinta "Seleccion"', () => {
+    for (const page of [HOME_ES, HOME_EN]) {
+      const source = read(page);
+
+      expect(source).toContain('aria-label={labels.homeFeaturedTitle}');
+      expect(source).not.toContain('id="featured-title"');
+      expect(source).toContain('labels.homeSeeAll');
+    }
+  });
 });
 
 /* -------------------------------------------------------------------------- */

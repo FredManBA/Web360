@@ -424,69 +424,9 @@ a {
   gap: var(--space-md);
 }
 
-.catalogue-controls {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
-  gap: var(--space-sm) var(--space-md);
-  align-items: end;
-  padding: var(--space-md);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  background: var(--surface);
-}
-
-.catalogue-field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2xs);
-  min-width: 0;
-}
-
-.catalogue-field label {
-  color: var(--ink-soft);
-  font-size: 0.8rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.catalogue-field select,
-.catalogue-field input {
-  padding: 0.55rem 0.65rem;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--surface);
-  color: var(--ink);
-}
-
-.catalogue-clear,
-.button-outline {
-  padding: 0.55rem 1.1rem;
-  border: 1px solid var(--jungle-soft);
-  border-radius: var(--radius);
-  background: transparent;
-  color: var(--jungle-soft);
-  cursor: pointer;
-  font-size: 0.9rem;
-  letter-spacing: 0.03em;
-  transition:
-    background-color 160ms ease,
-    color 160ms ease;
-}
-
-.catalogue-clear:hover,
-.button-outline:hover {
-  background: var(--jungle-soft);
-  color: var(--ivory);
-}
-
 .catalogue-count {
   color: var(--ink-soft);
   font-size: 0.9rem;
-}
-
-.catalogue-more-row {
-  display: flex;
-  justify-content: center;
 }
 
 .property-list {
@@ -1078,6 +1018,14 @@ a {
 .tour-close:hover {
   border-color: var(--sand);
   color: var(--sand);
+}
+
+/* El punto activo cambia de aspecto, no de sitio ni de tamaño. */
+.tour-jump.is-current {
+  border-color: var(--sand);
+  background: var(--sand);
+  color: var(--jungle-deep);
+  cursor: default;
 }
 
 .tour-close {
@@ -2094,14 +2042,41 @@ a {
 }
 
 .home-map-art {
+  display: grid;
+  place-items: center;
   min-height: 16rem;
+  padding: var(--space-lg);
   background-image:
     repeating-radial-gradient(
       70% 60% at 30% 40%,
       transparent 0 2.2rem,
-      rgb(201 168 106 / 20%) 2.2rem 2.3rem
+      rgb(201 168 106 / 9%) 2.2rem 2.3rem
     ),
     linear-gradient(140deg, var(--jungle-soft), var(--jungle-deep));
+}
+
+/* Silueta del pais: tierra clara con borde arena, y una marca de mapa. */
+.home-map-country {
+  width: min(100%, 22rem);
+  height: auto;
+  overflow: visible;
+}
+
+.home-map-land {
+  fill: rgb(250 247 240 / 10%);
+  stroke: var(--sand);
+  stroke-linejoin: round;
+  stroke-width: 1.5;
+}
+
+.home-map-pin circle:first-child {
+  fill: rgb(201 168 106 / 22%);
+  stroke: var(--sand);
+  stroke-width: 1;
+}
+
+.home-map-pin circle:last-child {
+  fill: var(--sand);
 }
 
 .home-map-body {
@@ -2300,10 +2275,6 @@ a {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .catalogue-controls {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   .property-feature-group dl {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -2418,6 +2389,12 @@ a {
 
   .home-map-art {
     min-height: 11rem;
+    padding: var(--space-md);
+  }
+
+  /* Cabe entera en el panel (11rem menos el relleno). */
+  .home-map-country {
+    width: min(100%, 9rem);
   }
 
   .home-map-body {

@@ -224,23 +224,40 @@ function initTour(): void {
   frame.hidden = false;
 
   let viewer: PanoramaViewer | null = null;
+  let currentKey: string | null = null;
+
+  /*
+   * La lista lleva TODOS los puntos, en el orden del recorrido, y se pinta una
+   * sola vez: al cambiar de punto solo se marca el activo. Asi nada cambia de
+   * sitio bajo el dedo.
+   */
+  if (navList !== null) {
+    navList.innerHTML = tour.nodes
+      .map((node) => {
+        const name = nodeLabel(tour, node, naming);
+        return (
+          `<li><button type="button" class="tour-jump" data-tour-to="${escapeHtml(node.key)}" ` +
+          `aria-label="${escapeHtml(texts.goTo.replace('{name}', name))}">${escapeHtml(name)}</button></li>`
+        );
+      })
+      .join('');
+  }
 
   const paint = (node: PublicTourNode): void => {
+    currentKey = node.key;
+
     if (current !== null) {
       current.textContent = `${texts.current}: ${nodeLabel(tour, node, naming)}`;
     }
 
-    const destinations = destinationsOf(tour, node, naming);
-
-    if (navList !== null) {
-      navList.innerHTML = destinations
-        .map(
-          (destination) =>
-            `<li><button type="button" class="tour-jump" data-tour-to="${escapeHtml(destination.key)}">` +
-            `${escapeHtml(texts.goTo.replace('{name}', destination.label))}</button></li>`,
-        )
-        .join('');
+    for (const button of all<HTMLButtonElement>('#tour-nav-list .tour-jump')) {
+      const active = button.dataset.tourTo === node.key;
+      button.classList.toggle('is-current', active);
+      if (active) button.setAttribute('aria-current', 'location');
+      else button.removeAttribute('aria-current');
     }
+
+    const destinations = destinationsOf(tour, node, naming);
 
     viewer?.setHotspots(
       destinations.map((destination) => ({
@@ -276,7 +293,8 @@ function initTour(): void {
     if (!(target instanceof HTMLElement)) return;
 
     const key = target.dataset.tourTo;
-    if (key !== undefined) void goTo(key);
+    // El activo sigue siendo boton, pero pulsarlo no recarga el mismo panorama.
+    if (key !== undefined && key !== currentKey) void goTo(key);
   });
 
   byId<HTMLButtonElement>('tour-close')?.addEventListener('click', () => {
