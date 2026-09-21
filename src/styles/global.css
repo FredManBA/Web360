@@ -1778,7 +1778,7 @@ a {
 .hero {
   position: relative;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   min-height: min(78vh, 40rem);
   overflow: hidden;
   background:
@@ -1838,14 +1838,18 @@ a {
   pointer-events: none;
 }
 
-/* El contenido queda por encima de la foto y de su degradado. */
+/*
+ * El contenido queda por encima de la foto y de su degradado. Centrado en
+ * vertical, con algo mas de aire abajo: el centro optico queda un poco por
+ * encima del matematico.
+ */
 .hero-inner {
   position: relative;
   z-index: 1;
   width: 100%;
   max-width: var(--content-width);
   margin: 0 auto;
-  padding: var(--space-xl) var(--space-md);
+  padding: var(--space-xl) var(--space-md) calc(var(--space-xl) + var(--space-lg));
 }
 
 .hero-brand {
@@ -1961,11 +1965,6 @@ a {
   font-size: clamp(1.75rem, 4vw, 2.5rem);
 }
 
-.home-section-lead {
-  color: var(--ink-soft);
-  font-size: 1.05rem;
-}
-
 .home-empty {
   padding: var(--space-lg) var(--space-md);
   border: 1px dashed var(--line);
@@ -1976,7 +1975,7 @@ a {
 }
 
 .home-more {
-  margin-top: calc(var(--space-md) * -1);
+  margin-top: calc(var(--space-xs) * -1);
 }
 
 .home-link {
@@ -1985,9 +1984,18 @@ a {
   text-underline-offset: 4px;
 }
 
-/* Tres como mucho: una portada no es el catalogo. */
+/*
+ * Tres como mucho: una portada no es el catalogo. Cada tarjeta tiene un ancho
+ * maximo, asi que una sola no se estira como un banner; con tres se reparten
+ * la fila. En movil manda la regla de `.property-list`: una columna.
+ */
 .home-featured-list {
-  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 24rem));
+}
+
+/* Sola, la tarjeta puede crecer un poco mas sin llegar a ser un banner. */
+.home-featured-list:has(> li:only-child) {
+  grid-template-columns: minmax(0, 29rem);
 }
 
 /* -------------------------------------------------------------------------- */

@@ -150,11 +150,9 @@ export interface PublicLabels {
   homeSeeProperties: string;
   homeSeeMap: string;
   homeFeaturedTitle: string;
-  homeFeaturedLead: string;
   homeFeaturedEmpty: string;
   homeSeeAll: string;
   homeIntroTitle: string;
-  homeIntroLead: string;
   homeIntroPhotos: string;
   homeIntroPhotosText: string;
   homeIntroTour: string;
@@ -310,20 +308,17 @@ const ES: PublicLabels = {
   homeSeeProperties: 'Ver propiedades',
   homeSeeMap: 'Explorar el mapa',
   homeFeaturedTitle: 'Selección',
-  homeFeaturedLead: 'Unas pocas, escogidas a mano.',
   homeFeaturedEmpty: 'Todavía no hay una selección. Mientras tanto, están todas en Propiedades.',
   homeSeeAll: 'Ver todas las propiedades',
-  homeIntroTitle: 'Verla antes de verla',
-  homeIntroLead:
-    'Cada propiedad se cuenta con lo que hace falta para entenderla desde lejos, sin adornos ni prisa.',
-  homeIntroPhotos: 'Fotografía y vídeo',
-  homeIntroPhotosText: 'La propiedad tal como es, con luz de verdad.',
+  homeIntroTitle: 'Antes de visitarla',
+  homeIntroPhotos: 'Fotos',
+  homeIntroPhotosText: 'Mira la propiedad tal como es.',
   homeIntroTour: 'Recorrido 360°',
-  homeIntroTourText: 'Camina por el terreno desde donde estés.',
+  homeIntroTourText: 'Recórrela desde cualquier lugar.',
   homeIntroMap: 'Ubicación',
-  homeIntroMapText: 'Dónde está, y qué tiene alrededor.',
-  homeMapTitle: 'Empieza por el dónde',
-  homeMapLead: 'De Guanacaste al Pacífico sur. Mira qué hay en la zona que te interesa.',
+  homeIntroMapText: 'Consulta su zona en el mapa.',
+  homeMapTitle: 'Explora por zona',
+  homeMapLead: 'Encuentra propiedades en la zona que te interesa.',
   homeContactTitle: '¿Hablamos?',
   homeContactLead: 'Cuéntanos qué buscas y te respondemos por donde prefieras.',
   notFoundTitle: 'Esta página no existe',
@@ -467,20 +462,17 @@ const EN: PublicLabels = {
   homeSeeProperties: 'See properties',
   homeSeeMap: 'Explore the map',
   homeFeaturedTitle: 'Selection',
-  homeFeaturedLead: 'A few, picked by hand.',
   homeFeaturedEmpty: 'There is no selection yet. In the meantime, they are all under Properties.',
   homeSeeAll: 'See every property',
-  homeIntroTitle: 'See it before you see it',
-  homeIntroLead:
-    'Every property is shown with what it takes to understand it from far away, with no frills and no rush.',
-  homeIntroPhotos: 'Photography and video',
-  homeIntroPhotosText: 'The property as it is, in real light.',
+  homeIntroTitle: 'Before you visit',
+  homeIntroPhotos: 'Photos',
+  homeIntroPhotosText: 'See the property as it is.',
   homeIntroTour: '360° tour',
-  homeIntroTourText: 'Walk the land from wherever you are.',
+  homeIntroTourText: 'Explore it from wherever you are.',
   homeIntroMap: 'Location',
-  homeIntroMapText: 'Where it sits, and what surrounds it.',
-  homeMapTitle: 'Start with the where',
-  homeMapLead: 'From Guanacaste to the southern Pacific. See what is in the area you care about.',
+  homeIntroMapText: 'See the area on the map.',
+  homeMapTitle: 'Explore by area',
+  homeMapLead: 'Find properties in the area that interests you.',
   homeContactTitle: 'Shall we talk?',
   homeContactLead: 'Tell us what you are after and we will reply however you prefer.',
   notFoundTitle: 'This page does not exist',
