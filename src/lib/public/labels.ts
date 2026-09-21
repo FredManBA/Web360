@@ -198,7 +198,7 @@ const ES: PublicLabels = {
   menu: 'Menú',
   mainNavigation: 'Navegación principal',
   comingSoon: 'Próximamente',
-  footerNote: 'Terrenos y propiedades en la costa de Costa Rica.',
+  footerNote: 'Terrenos y propiedades en Costa Rica.',
 
   filters: 'Filtros',
   filterType: 'Tipo',
@@ -244,7 +244,7 @@ const ES: PublicLabels = {
   tourLoading: 'Cargando el recorrido…',
 
   mapTitle: 'Mapa',
-  mapDescription: 'Dónde está cada propiedad en la costa de Costa Rica.',
+  mapDescription: 'Dónde está cada propiedad en Costa Rica.',
   mapEmpty: 'Todavía no hay propiedades situadas en el mapa.',
   mapEmptyHint: 'Mientras tanto puedes verlas todas en Propiedades.',
   mapUnavailable:
@@ -299,12 +299,10 @@ const ES: PublicLabels = {
   errorTooFast: 'El envío llegó demasiado rápido. Inténtalo otra vez.',
   errorServer: 'No hemos podido enviar la consulta. Inténtalo de nuevo en un momento.',
 
-  homeSeoTitle: 'Propiedades en la costa de Costa Rica',
-  homeSeoDescription:
-    'Lotes, casas y fincas en la costa de Costa Rica, con fotografía, recorrido 360° y mapa.',
-  homeHeroTitle: 'Un pedazo de costa, contado como se merece',
-  homeHeroSubtitle:
-    'Lotes, casas y fincas en el Pacífico de Costa Rica. Míralos con calma antes de venir.',
+  homeSeoTitle: 'Propiedades en Costa Rica',
+  homeSeoDescription: 'Lotes, casas y fincas en Costa Rica, con fotografía, recorrido 360° y mapa.',
+  homeHeroTitle: 'Costa Rica, contada como se merece',
+  homeHeroSubtitle: 'Lotes, casas y fincas en Costa Rica. Míralos con calma antes de venir.',
   homeSeeProperties: 'Ver propiedades',
   homeSeeMap: 'Explorar el mapa',
   homeFeaturedTitle: 'Selección',
@@ -354,7 +352,7 @@ const EN: PublicLabels = {
   menu: 'Menu',
   mainNavigation: 'Main navigation',
   comingSoon: 'Coming soon',
-  footerNote: 'Land and properties on the coast of Costa Rica.',
+  footerNote: 'Land and properties in Costa Rica.',
 
   filters: 'Filters',
   filterType: 'Type',
@@ -400,7 +398,7 @@ const EN: PublicLabels = {
   tourLoading: 'Loading the tour…',
 
   mapTitle: 'Map',
-  mapDescription: 'Where each property sits on the coast of Costa Rica.',
+  mapDescription: 'Where each property is located in Costa Rica.',
   mapEmpty: 'No properties are placed on the map yet.',
   mapEmptyHint: 'In the meantime you can see them all under Properties.',
   mapUnavailable: 'The map is unavailable right now. The list below links to every property.',
@@ -453,12 +451,11 @@ const EN: PublicLabels = {
   errorTooFast: 'That submission arrived too fast. Please try again.',
   errorServer: 'We could not send the enquiry. Please try again in a moment.',
 
-  homeSeoTitle: 'Property on the coast of Costa Rica',
+  homeSeoTitle: 'Properties in Costa Rica',
   homeSeoDescription:
-    'Lots, houses and farms on the coast of Costa Rica, with photography, a 360° tour and a map.',
-  homeHeroTitle: 'A piece of the coast, told properly',
-  homeHeroSubtitle:
-    'Lots, houses and farms on the Pacific coast of Costa Rica. Take your time before you fly out.',
+    'Lots, houses and farms in Costa Rica, with photography, a 360° tour and a map.',
+  homeHeroTitle: 'Costa Rica, presented with care',
+  homeHeroSubtitle: 'Lots, houses and farms across Costa Rica. Take your time before you visit.',
   homeSeeProperties: 'See properties',
   homeSeeMap: 'Explore the map',
   homeFeaturedTitle: 'Selection',

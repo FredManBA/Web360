@@ -1779,7 +1779,8 @@ a {
   position: relative;
   display: flex;
   align-items: center;
-  min-height: min(78vh, 40rem);
+  /* Llena la ventana bajo la cabecera (~4.4rem); crece si el contenido lo pide. */
+  min-height: calc(100svh - 4.4rem);
   overflow: hidden;
   background:
     radial-gradient(120% 90% at 15% 0%, var(--jungle-soft) 0%, transparent 55%),
@@ -2324,7 +2325,6 @@ a {
   /* -- Portada ------------------------------------------------------------ */
 
   .hero {
-    min-height: auto;
     padding-top: var(--space-lg);
   }
 
