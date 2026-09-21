@@ -6,12 +6,14 @@
  * se carga al abrir la ficha: llega solo cuando alguien pulsa el boton. Quien
  * pasa por la pagina y no entra al recorrido no paga nada por el.
  *
- * Y hay camino cuando el visor no es una opcion:
+ * Cuando el visor no es una opcion, la seccion no se rompe:
  *
- * - sin JavaScript, el marco entero no aparece y queda la lista de puntos, con
- *   un enlace al panorama de cada uno;
- * - si el visor no arranca —sin WebGL, navegador viejo, red caida— se dice por
- *   que y la lista sigue ahi.
+ * - sin JavaScript, el marco no aparece y queda la presentacion del recorrido;
+ * - si el visor no arranca —sin WebGL, navegador viejo, red caida— se queda el
+ *   poster y se dice que no se pudo abrir.
+ *
+ * No hay enlaces a los panoramas sueltos: la imagen equirectangular cruda no se
+ * entiende fuera del visor.
  *
  * Los datos del recorrido viajan incrustados en la propia pagina: es lo que ya
  * publica el snapshot, no hay una peticion mas y no aparece ni una clave de R2
@@ -20,7 +22,6 @@
 import type { Locale } from '../../lib/domain/vocabularies';
 import { labelsFor } from '../../lib/public/labels';
 import type { PublicTour } from '../../lib/public/read-model';
-import { nodeLabel } from '../../lib/public/tour';
 
 interface Props {
   tour: PublicTour;
@@ -32,9 +33,6 @@ interface Props {
 
 const { tour, locale, posterUrl = null, posterAlt = '' } = Astro.props;
 const labels = labelsFor(locale);
-
-const naming = { pointName: labels.tourPointName };
-const points = tour.nodes.map((node) => ({ url: node.url, label: nodeLabel(tour, node, naming) }));
 
 /*
  * `<` escapado: el JSON va dentro de un `<script>` y una cadena que contuviera
@@ -60,7 +58,7 @@ const tourLabels = JSON.stringify({
   <div class="property-tour-head">
     <h2 id="tour-title">{labels.tourTitle}</h2>
     <p class="property-tour-lead">{labels.tourLead}</p>
-    <p class="property-tour-count">{labels.tourPointCount(points.length)}</p>
+    <p class="property-tour-count">{labels.tourPointCount(tour.nodes.length)}</p>
   </div>
 
   {/* El marco solo aparece si hay JavaScript: sin el no habria nada que abrir. */}
@@ -74,7 +72,8 @@ const tourLabels = JSON.stringify({
     <div class="tour-viewer" id="tour-viewer" hidden></div>
 
     <button type="button" class="tour-open" id="tour-open">
-      <span class="tour-open-mark" aria-hidden="true">360°</span>
+      {/* Solo la forma: el triangulo de "play" se dibuja en CSS. */}
+      <span class="tour-open-mark" aria-hidden="true"></span>
       <span>{labels.tourOpen}</span>
     </button>
   </div>
@@ -94,19 +93,6 @@ const tourLabels = JSON.stringify({
     <ul class="tour-nav-list" id="tour-nav-list"></ul>
 
     <button type="button" class="tour-close" id="tour-close">{labels.tourClose}</button>
-  </div>
-
-  <div class="tour-points" id="tour-points">
-    <h3>{labels.tourPoints}</h3>
-    <ul class="property-link-list">
-      {
-        points.map((point) => (
-          <li>
-            <a href={point.url}>{point.label}</a>
-          </li>
-        ))
-      }
-    </ul>
   </div>
 
   <script is:inline type="application/json" id="tour-data" set:html={tourJson} />

@@ -13,7 +13,7 @@
  */
 import type { Locale } from '../../lib/domain/vocabularies';
 import { labelsFor, locationLine } from '../../lib/public/labels';
-import { mapPointsOf } from '../../lib/public/map';
+import { formatCoordinates, mapPointsOf } from '../../lib/public/map';
 import type { PublicPropertyDetail } from '../../lib/public/read-model';
 
 interface Props {
@@ -26,6 +26,10 @@ const labels = labelsFor(locale);
 
 const place = locationLine(property.location);
 const approximate = property.location.precision === 'approximate';
+
+/* La misma coordenada publica que pinta el mapa, como texto para copiar. */
+const coordinates =
+  property.location.coordinates === null ? null : formatCoordinates(property.location.coordinates);
 
 const points = mapPointsOf([property], () => place);
 const point = points[0] ?? null;
@@ -52,6 +56,31 @@ const mapLabels = JSON.stringify({
 
   {/* Primero el texto, y siempre. El mapa viene despues y puede no venir. */}
   <p class="property-location-line">{place ?? '—'}</p>
+
+  {
+    /*
+      Texto real, seleccionable sin JavaScript. El boton llega oculto y solo
+      aparece cuando hay script que lo haga funcionar.
+    */
+    coordinates !== null && (
+      <p class="property-coordinates">
+        <span class="property-coordinates-label">{labels.coordinates}</span>
+        <span class="property-coordinates-value" id="property-coordinates">
+          {coordinates}
+        </span>
+        <button
+          type="button"
+          class="property-coordinates-copy"
+          id="property-coordinates-copy"
+          data-copied={labels.coordinatesCopied}
+          aria-live="polite"
+          hidden
+        >
+          {labels.copyCoordinates}
+        </button>
+      </p>
+    )
+  }
 
   {
     approximate && (

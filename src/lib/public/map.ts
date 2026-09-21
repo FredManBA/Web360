@@ -42,6 +42,16 @@ export interface MapPoint {
 /* -------------------------------------------------------------------------- */
 
 /**
+ * Coordenada publica como texto para copiar: "lat, lng", con seis decimales
+ * como mucho y sin ceros de relleno. Es la que ya publica el read model; aqui
+ * no se redondea hacia ninguna otra.
+ */
+export function formatCoordinates(coordinates: { latitude: number; longitude: number }): string {
+  const format = (value: number): string => String(Number(value.toFixed(6)));
+  return `${format(coordinates.latitude)}, ${format(coordinates.longitude)}`;
+}
+
+/**
  * Convierte propiedades publicadas en puntos.
  *
  * Solo entran las que tienen coordenada publica utilizable. Una propiedad sin

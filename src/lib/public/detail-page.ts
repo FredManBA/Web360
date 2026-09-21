@@ -1,15 +1,16 @@
 /**
  * La ficha en el navegador.
  *
- * Tres cosas independientes, todas mejora progresiva: la galeria, el video de
- * YouTube y el recorrido 360. Si este modulo no llega a ejecutarse, la ficha
- * sigue completa —fotos, enlaces al video, lista de panoramas—, solo que sin
- * interaccion.
+ * Cuatro cosas independientes, todas mejora progresiva: la galeria, el video
+ * de YouTube, el recorrido 360 y el boton de copiar coordenadas. Si este modulo
+ * no llega a ejecutarse, la ficha sigue completa —fotos, enlaces al video,
+ * coordenadas en texto—, solo que sin interaccion.
  *
  * Nada de esto pide datos al servidor: la pagina es estatica y todo lo que
  * hace falta ya viaja en el HTML.
  */
 
+import { initCoordinatesCopy } from './coordinates-copy';
 import { stepIndex, swipeStep } from './gallery';
 import type { PublicTourNode } from './read-model';
 import { destinationsOf, nodeByKey, nodeLabel, parseTour, startNode } from './tour';
@@ -217,7 +218,6 @@ function initTour(): void {
   const nav = byId<HTMLElement>('tour-nav');
   const navList = byId<HTMLElement>('tour-nav-list');
   const current = byId<HTMLElement>('tour-current');
-  const points = byId<HTMLElement>('tour-points');
   const poster = byId<HTMLElement>('tour-poster');
 
   // Hay JavaScript: ahora el marco significa algo.
@@ -260,7 +260,7 @@ function initTour(): void {
     paint(node);
   };
 
-  /** El visor no ha podido cargarse: se dice, y la lista de puntos se queda. */
+  /** El visor no ha podido cargarse: se dice, y el poster se queda. */
   const giveUp = (): void => {
     open.hidden = true;
     container.hidden = true;
@@ -286,7 +286,6 @@ function initTour(): void {
     container.hidden = true;
     container.innerHTML = '';
     if (nav !== null) nav.hidden = true;
-    if (points !== null) points.hidden = false;
     if (poster !== null) poster.hidden = false;
 
     open.hidden = false;
@@ -335,7 +334,6 @@ function initTour(): void {
 
       open.hidden = true;
       if (poster !== null) poster.hidden = true;
-      if (points !== null) points.hidden = true;
       if (nav !== null) nav.hidden = false;
 
       paint(first);
@@ -349,4 +347,5 @@ export function initPropertyDetail(): void {
   initGallery();
   initVideoFacades();
   initTour();
+  initCoordinatesCopy();
 }

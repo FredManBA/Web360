@@ -347,12 +347,22 @@ describe('el visor 360 publico', () => {
     expect(read(PAGE_MODULE)).toContain('nodeLabel(tour, node, naming)');
   });
 
-  it('sin JavaScript quedan los panoramas, y el marco no aparece', () => {
+  it('sin JavaScript el marco no aparece, y nunca se enlaza el panorama crudo', () => {
     const tour = read(TOUR);
 
     expect(tour).toContain('id="tour-frame" hidden');
-    expect(tour).toContain('id="tour-points"');
-    expect(tour).toContain('point.url');
+    // La imagen equirectangular suelta no se entiende fuera del visor.
+    expect(tour).not.toContain('tour-points');
+    expect(tour).not.toContain('node.url');
+    expect(read(PAGE_MODULE)).not.toContain('tour-points');
+  });
+
+  it('el boton de inicio lleva un "play" dibujado, y el texto sigue siendo el nombre', () => {
+    const tour = read(TOUR);
+
+    expect(tour).toContain('<span class="tour-open-mark" aria-hidden="true"></span>');
+    expect(tour).toContain('{labels.tourOpen}');
+    expect(read(CSS)).toContain('.tour-open-mark::before');
   });
 
   it('si el visor no arranca, se dice y no se reintenta', () => {

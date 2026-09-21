@@ -75,7 +75,6 @@ export interface PublicLabels {
   tourLead: string;
   tourOpen: string;
   tourClose: string;
-  tourPoints: string;
   tourPointCount: (count: number) => string;
   tourPointName: (position: number) => string;
   tourGoTo: (name: string) => string;
@@ -97,6 +96,9 @@ export interface PublicLabels {
   locationOnMap: string;
   approximateLocation: string;
   approximateLocationNote: string;
+  coordinates: string;
+  copyCoordinates: string;
+  coordinatesCopied: string;
   noMapLocation: string;
   zoomIn: string;
   zoomOut: string;
@@ -234,13 +236,11 @@ const ES: PublicLabels = {
   tourLead: 'Camina por la propiedad desde donde estés.',
   tourOpen: 'Abrir el recorrido 360°',
   tourClose: 'Cerrar el recorrido',
-  tourPoints: 'Puntos del recorrido',
   tourPointCount: (count) => (count === 1 ? '1 punto' : `${count} puntos`),
   tourPointName: (position) => `Punto ${position}`,
   tourGoTo: (name) => `Ir a ${name}`,
   tourCurrentPoint: 'Punto actual',
-  tourUnavailable:
-    'No se pudo abrir el visor 360° en este navegador. Puedes ver cada panorama por separado.',
+  tourUnavailable: 'No se pudo abrir el recorrido 360° en este navegador.',
   tourLoading: 'Cargando el recorrido…',
 
   mapTitle: 'Mapa',
@@ -257,6 +257,9 @@ const ES: PublicLabels = {
   approximateLocation: 'Ubicación aproximada',
   approximateLocationNote:
     'La posición en el mapa es aproximada; la ubicación exacta se comparte al visitar.',
+  coordinates: 'Coordenadas',
+  copyCoordinates: 'Copiar',
+  coordinatesCopied: 'Copiadas',
   noMapLocation: 'Esta propiedad todavía no está situada en el mapa.',
   zoomIn: 'Acercar',
   zoomOut: 'Alejar',
@@ -388,13 +391,11 @@ const EN: PublicLabels = {
   tourLead: 'Walk the property from wherever you are.',
   tourOpen: 'Open the 360° tour',
   tourClose: 'Close the tour',
-  tourPoints: 'Tour points',
   tourPointCount: (count) => (count === 1 ? '1 point' : `${count} points`),
   tourPointName: (position) => `Point ${position}`,
   tourGoTo: (name) => `Go to ${name}`,
   tourCurrentPoint: 'Current point',
-  tourUnavailable:
-    'The 360° viewer could not be opened in this browser. You can still view each panorama on its own.',
+  tourUnavailable: 'The 360° tour could not be opened in this browser.',
   tourLoading: 'Loading the tour…',
 
   mapTitle: 'Map',
@@ -410,6 +411,9 @@ const EN: PublicLabels = {
   approximateLocation: 'Approximate location',
   approximateLocationNote:
     'The position on the map is approximate; the exact location is shared on a visit.',
+  coordinates: 'Coordinates',
+  copyCoordinates: 'Copy',
+  coordinatesCopied: 'Copied',
   noMapLocation: 'This property is not placed on the map yet.',
   zoomIn: 'Zoom in',
   zoomOut: 'Zoom out',

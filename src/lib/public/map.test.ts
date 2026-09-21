@@ -18,6 +18,7 @@ import { describe, expect, it } from 'vitest';
 import { labelsFor } from './labels';
 import {
   boundsOf,
+  formatCoordinates,
   mapPointsOf,
   MAX_ZOOM,
   parseMapPoints,
@@ -517,5 +518,43 @@ describe('el mapa de la ficha', () => {
 
     expect(css).toMatch(/\.map-explorer\.has-map\s*\{\s*grid-template-columns: minmax\(0, 1fr\);/);
     expect(css).toMatch(/\.property-map\s*\{\s*aspect-ratio: 4 \/ 3;/);
+  });
+});
+
+describe('las coordenadas de la ficha', () => {
+  it('seis decimales como mucho, sin ceros de relleno y con su signo', () => {
+    expect(formatCoordinates({ latitude: 10.313307, longitude: -84.443279 })).toBe(
+      '10.313307, -84.443279',
+    );
+    expect(formatCoordinates({ latitude: 9.9281234567, longitude: -84.0907654321 })).toBe(
+      '9.928123, -84.090765',
+    );
+    expect(formatCoordinates({ latitude: 10.5, longitude: -85 })).toBe('10.5, -85');
+  });
+
+  it('salen de la coordenada publica, como texto real y con el boton oculto sin script', () => {
+    const map = read(PROPERTY_MAP);
+
+    expect(map).toContain('formatCoordinates(property.location.coordinates)');
+    expect(map).toContain('id="property-coordinates"');
+    expect(map).toMatch(/id="property-coordinates-copy"[\s\S]*?hidden/);
+    expect(map).toContain('<button');
+    expect(map).toContain('type="button"');
+  });
+
+  it('los textos nuevos existen en los dos idiomas', () => {
+    const es = labelsFor('es');
+    const en = labelsFor('en');
+
+    expect([es.coordinates, es.copyCoordinates, es.coordinatesCopied]).toEqual([
+      'Coordenadas',
+      'Copiar',
+      'Copiadas',
+    ]);
+    expect([en.coordinates, en.copyCoordinates, en.coordinatesCopied]).toEqual([
+      'Coordinates',
+      'Copy',
+      'Copied',
+    ]);
   });
 });
