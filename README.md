@@ -43,6 +43,12 @@ El build produce:
 - `dist/client/` — paginas estaticas prerenderizadas y assets.
 - `dist/server/` — el Worker con las rutas on-demand.
 
+`npm run build` funciona sin Mapbox: los mapas se quedan en texto. Para un
+build que se vaya a desplegar a producción usa `npm run build:production`, que
+falla si no hay un `PUBLIC_MAPBOX_TOKEN` público (`pk.`) válido. El token se
+incrusta al construir y puede venir de `.env` local o del entorno/CI. Nunca se
+imprime ni se versiona su valor.
+
 ## Regla de renderizado
 
 Las páginas de contenido ES/EN y `/sitemap.xml` declaran `prerender = false`.
@@ -194,13 +200,14 @@ existe una traducción válida. La raíz recuerda la preferencia de idioma.
 
 ## Scripts
 
-| Script                | Descripcion                           |
-| --------------------- | ------------------------------------- |
-| `npm run dev`         | servidor de desarrollo                |
-| `npm run build`       | build de produccion                   |
-| `npm run preview`     | sirve el build en local               |
-| `npm run check`       | comprobacion de tipos (`astro check`) |
-| `npm run lint`        | ESLint                                |
-| `npm run format`      | Prettier                              |
-| `npm run db:generate` | genera migraciones de Drizzle         |
-| `npm run cf:typegen`  | regenera los tipos de los bindings    |
+| Script                     | Descripcion                              |
+| -------------------------- | ---------------------------------------- |
+| `npm run dev`              | servidor de desarrollo                   |
+| `npm run build`            | build sin requisitos (mapas opcionales)  |
+| `npm run build:production` | build para desplegar; exige token Mapbox |
+| `npm run preview`          | sirve el build en local                  |
+| `npm run check`            | comprobacion de tipos (`astro check`)    |
+| `npm run lint`             | ESLint                                   |
+| `npm run format`           | Prettier                                 |
+| `npm run db:generate`      | genera migraciones de Drizzle            |
+| `npm run cf:typegen`       | regenera los tipos de los bindings       |

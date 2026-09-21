@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
+    "build:production": "node --env-file-if-exists=.env scripts/check-production-env.mjs && astro build",
     "preview": "astro preview",
     "check": "astro check",
     "typecheck": "astro check",
