@@ -2244,8 +2244,34 @@ a {
 /* -------------------------------------------------------------------------- */
 
 @media (max-width: 52rem) {
+  /* El panel del menu se ancla aqui para flotar a todo el ancho. */
+  .site-header {
+    position: relative;
+    z-index: 20;
+  }
+
+  /*
+   * Marca y boton en una sola fila: si el nombre no cabe, se encoge el
+   * nombre, no baja el boton dejando un hueco al lado.
+   */
   .site-header-inner {
-    align-items: flex-start;
+    flex-wrap: nowrap;
+  }
+
+  .site-brand {
+    min-width: 0;
+  }
+
+  .site-brand-name {
+    overflow: hidden;
+    font-size: 1.2rem;
+    letter-spacing: 0.04em;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .site-nav-toggle {
+    flex-shrink: 0;
   }
 
   .site-nav-toggle summary {
@@ -2276,11 +2302,22 @@ a {
       0 -5px currentcolor;
   }
 
+  /*
+   * Abierto, el menu flota bajo la cabecera en vez de empujarla: la cabecera
+   * mide lo mismo y la pagina no se mueve.
+   */
   .site-nav-toggle > .site-nav {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    left: 0;
     flex-direction: column;
     align-items: flex-start;
     gap: var(--space-md);
-    padding: var(--space-md) 0 var(--space-xs);
+    padding: var(--space-xs) var(--space-md) var(--space-md);
+    border-top: 1px solid rgb(250 247 240 / 12%);
+    background: var(--jungle);
+    box-shadow: 0 12px 24px rgb(10 26 20 / 25%);
   }
 
   /* Aqui el menu si se despliega, asi que cerrado vuelve a esconderse. */
@@ -2296,6 +2333,7 @@ a {
   .site-nav ul {
     flex-direction: column;
     gap: var(--space-sm);
+    align-items: flex-start;
   }
 
   .page {
