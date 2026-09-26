@@ -2312,7 +2312,7 @@ a {
     right: 0;
     left: 0;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: flex-end;
     gap: var(--space-md);
     padding: var(--space-xs) var(--space-md) var(--space-md);
     border-top: 1px solid rgb(250 247 240 / 12%);
@@ -2330,10 +2330,15 @@ a {
     block-size: 0;
   }
 
+  /* Las opciones cuelgan del boton: alineadas a su derecha. */
   .site-nav ul {
     flex-direction: column;
     gap: var(--space-sm);
-    align-items: flex-start;
+    align-items: flex-end;
+  }
+
+  .site-nav a::after {
+    transform-origin: right;
   }
 
   .page {
