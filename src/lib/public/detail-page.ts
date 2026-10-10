@@ -11,6 +11,7 @@
  */
 
 import { initCoordinatesCopy } from './coordinates-copy';
+import { initPropertyShare } from './property-share';
 import { stepIndex, swipeStep } from './gallery';
 import type { PublicTourNode } from './read-model';
 import { destinationsOf, nodeByKey, nodeLabel, parseTour, startNode } from './tour';
@@ -366,4 +367,5 @@ export function initPropertyDetail(): void {
   initVideoFacades();
   initTour();
   initCoordinatesCopy();
+  initPropertyShare();
 }

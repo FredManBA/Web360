@@ -43,6 +43,10 @@ export interface PublicLabels {
   /* -- Ficha ------------------------------------------------------------- */
   price: string;
   overview: string;
+  shareTitle: string;
+  shareNative: string;
+  shareCopy: string;
+  shareCopied: string;
   video: string;
   photographs: string;
   contactComingSoon: string;
@@ -189,6 +193,10 @@ const ES: PublicLabels = {
 
   price: 'Precio',
   overview: 'Resumen',
+  shareTitle: 'Compartir esta propiedad',
+  shareNative: 'Compartir…',
+  shareCopy: 'Copiar enlace',
+  shareCopied: 'Enlace copiado',
   video: 'Vídeo',
   photographs: 'Fotografías',
   contactComingSoon: 'El formulario de contacto llegará en breve.',
@@ -326,6 +334,10 @@ const EN: PublicLabels = {
 
   price: 'Price',
   overview: 'Overview',
+  shareTitle: 'Share this property',
+  shareNative: 'Share…',
+  shareCopy: 'Copy link',
+  shareCopied: 'Link copied',
   video: 'Video',
   photographs: 'Photographs',
   contactComingSoon: 'The contact form is coming soon.',

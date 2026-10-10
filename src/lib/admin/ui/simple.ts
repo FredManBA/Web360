@@ -137,6 +137,8 @@ export function initEditor() {
     const state = document.getElementById('r2-publication-state')!;
     state.textContent = p.status === 'published' ? 'Publicada' : 'Borrador';
     state.dataset.state = p.status;
+    // Compartir rehace el enlace y el QR con el slug y el estado guardados.
+    document.dispatchEvent(new CustomEvent('r2-property', { detail: p }));
   }
   async function save() {
     const data = formValues(form!);

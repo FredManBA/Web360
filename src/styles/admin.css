@@ -813,6 +813,113 @@
   display: none;
 }
 
+/* -- Compartir -------------------------------------------------------------- */
+
+/* Plegable: se abre cuando hace falta, no empuja el formulario hacia abajo. */
+.admin-share > summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem var(--space-sm);
+  align-items: baseline;
+  cursor: pointer;
+  list-style: none;
+}
+
+.admin-share > summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Flecha dibujada que gira al abrir: se ve que es desplegable. */
+.admin-share > summary::before {
+  align-self: center;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-right: 0.15rem;
+  border-right: 2px solid var(--admin-text-soft);
+  border-bottom: 2px solid var(--admin-text-soft);
+  content: '';
+  transform: rotate(-45deg);
+  transition: transform 200ms var(--ease-out);
+}
+
+.admin-share[open] > summary::before {
+  transform: rotate(45deg);
+}
+
+.admin-share-heading {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+}
+
+.admin-share-lead {
+  color: var(--admin-text-soft);
+}
+
+.admin-share-draft {
+  margin-top: var(--space-md);
+  padding: 0.55rem 0.9rem;
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-accent-tint);
+  color: var(--sand-ink);
+  font-weight: 500;
+}
+
+.admin-share-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr));
+  gap: var(--space-md);
+  margin-top: var(--space-md);
+}
+
+.admin-share-item {
+  padding: var(--space-md);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius);
+}
+
+.admin-share-item h3 {
+  margin-bottom: var(--space-sm);
+}
+
+.admin-share-missing {
+  color: var(--admin-text-soft);
+}
+
+.admin-share-body {
+  display: grid;
+  grid-template-columns: 9.5rem minmax(0, 1fr);
+  gap: var(--space-md);
+  align-items: start;
+}
+
+.admin-share-qr {
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-sm);
+  background: #ffffff;
+}
+
+.admin-share-qr svg {
+  width: 100%;
+  height: 100%;
+}
+
+.admin-share-tools {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  min-width: 0;
+}
+
+.admin-share-tools .r2-actions {
+  margin: var(--space-2xs) 0 0;
+}
+
+.admin-share-tools input {
+  font-size: 0.88rem;
+}
+
 /* -- Recorrido 360 ---------------------------------------------------------- */
 
 .r2-tour {
@@ -1016,5 +1123,14 @@
 
   .admin-publication {
     padding: var(--space-sm);
+  }
+
+  /* En movil el QR va arriba, grande, para poder escanearlo desde otro telefono. */
+  .admin-share-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-share-qr {
+    width: min(100%, 14rem);
   }
 }

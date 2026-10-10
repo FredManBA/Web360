@@ -6,6 +6,7 @@ import { alternateHref, findBySlug } from '../../../lib/public/read-model';
 import { labelsFor } from '../../../lib/public/labels';
 import { brandOf, propertySeo, notFoundSeo } from '../../../lib/public/seo';
 import { loadRuntimePublicSnapshot } from '../../../lib/public/snapshot';
+import { shareOrigin } from '../../../lib/public/share';
 import { propertyJsonLd } from '../../../lib/public/structured-data';
 
 export const prerender = false;
@@ -44,6 +45,17 @@ const jsonLd =
           .filter((item): item is string => item !== null)
           .map(url),
       });
+/*
+ * Enlace para compartir: el de esta ficha, con el dominio publico en
+ * produccion y el host local en desarrollo.
+ */
+const shareUrl =
+  property === null
+    ? null
+    : new URL(
+        property.href,
+        shareOrigin({ site: Astro.site, request: Astro.url, dev: import.meta.env.DEV }),
+      ).href;
 if (property === null) Astro.response.status = 404;
 ---
 
@@ -53,7 +65,12 @@ if (property === null) Astro.response.status = 404;
       <NotFound locale={locale} />
     ) : (
       <div class="page">
-        <PropertyDetail property={property} locale={locale} channels={snapshot.contact} />
+        <PropertyDetail
+          property={property}
+          locale={locale}
+          channels={snapshot.contact}
+          shareUrl={shareUrl}
+        />
       </div>
     )
   }

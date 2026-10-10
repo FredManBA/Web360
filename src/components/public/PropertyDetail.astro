@@ -12,6 +12,7 @@
 import PropertyContact from './PropertyContact.astro';
 import PropertyGallery from './PropertyGallery.astro';
 import PropertyMap from './PropertyMap.astro';
+import PropertyShare from './PropertyShare.astro';
 import PropertyTour from './PropertyTour.astro';
 import PropertyVideo from './PropertyVideo.astro';
 import type { Locale } from '../../lib/domain/vocabularies';
@@ -28,9 +29,11 @@ interface Props {
   locale: Locale;
   /** Canales publicados; salen del snapshot, no del codigo. */
   channels?: PublicContactChannels;
+  /** Enlace absoluto de esta ficha, para compartirla. */
+  shareUrl?: string | null;
 }
 
-const { property, locale, channels = EMPTY_CONTACT } = Astro.props;
+const { property, locale, channels = EMPTY_CONTACT, shareUrl = null } = Astro.props;
 const labels = labelsFor(locale);
 const place = locationLine(property.location);
 
@@ -215,6 +218,8 @@ const tour = property.tour;
           </a>
         )
       }
+
+      {shareUrl && <PropertyShare locale={locale} title={property.title} url={shareUrl} />}
     </aside>
   </div>
 

@@ -36,6 +36,7 @@
     "drizzle-orm": "^0.45.2",
     "jose": "^6.2.12",
     "mapbox-gl": "^3.30.0",
+    "uqr": "^0.1.3",
     "zod": "^4.5.4"
   },
   "devDependencies": {

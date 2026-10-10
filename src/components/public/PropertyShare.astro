@@ -1,0 +1,64 @@
+---
+/**
+ * Compartir la ficha.
+ *
+ * Tres caminos, del mas comodo al mas universal:
+ *
+ * - "Compartir…": el menu nativo del movil (Web Share). Solo aparece si el
+ *   navegador lo tiene;
+ * - "Copiar enlace": llega oculto y lo activa el script, porque sin
+ *   JavaScript no haria nada;
+ * - WhatsApp: un enlace normal, que funciona incluso sin JavaScript.
+ *
+ * El enlace es el de la propia ficha publica. El QR no se ofrece aqui: es una
+ * herramienta del panel, para rotulos y folletos.
+ */
+import type { Locale } from '../../lib/domain/vocabularies';
+import { labelsFor } from '../../lib/public/labels';
+import { whatsappShareHref } from '../../lib/public/share';
+
+interface Props {
+  locale: Locale;
+  title: string;
+  /** Enlace absoluto de esta ficha. */
+  url: string;
+}
+
+const { locale, title, url } = Astro.props;
+const labels = labelsFor(locale);
+---
+
+<div class="property-share" id="property-share" data-share-url={url} data-share-title={title}>
+  <p class="property-share-title">{labels.shareTitle}</p>
+  <div class="property-share-actions">
+    <button type="button" class="property-share-button" id="property-share-native" hidden>
+      <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+        <path
+          d="M10 3v10M6 7l4-4 4 4M4 11v4.5A1.5 1.5 0 0 0 5.5 17h9a1.5 1.5 0 0 0 1.5-1.5V11"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"></path>
+      </svg>
+      {labels.shareNative}
+    </button>
+    <button
+      type="button"
+      class="property-share-button"
+      id="property-share-copy"
+      data-copied={labels.shareCopied}
+      hidden
+    >
+      {labels.shareCopy}
+    </button>
+    <a
+      class="property-share-button"
+      href={whatsappShareHref(title, url)}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      {labels.contactWhatsapp}
+    </a>
+  </div>
+</div>

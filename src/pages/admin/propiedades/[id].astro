@@ -12,12 +12,15 @@ import {
 } from '../../../lib/domain/vocabularies';
 import { formatMinorAsDecimal } from '../../../lib/domain/money';
 import { COMMERCIAL_STATUS_LABELS } from '../../../lib/admin/ui/labels';
+import { shareOrigin } from '../../../lib/public/share';
 export const prerender = false;
 const id = parseRouteId(Astro.params.id);
 const db = getDb(env);
 const p = id === null ? undefined : await getProperty(db, id);
 const files = p ? await propertyMedia(db, p.id) : [];
 if (!p) Astro.response.status = 404;
+/* El QR impreso debe llevar al dominio publico, no al host del panel. */
+const origin = shareOrigin({ site: Astro.site, request: Astro.url, dev: import.meta.env.DEV });
 ---
 
 <AdminLayout title={p ? `Editar ${p.code}` : 'Propiedad no encontrada'}>
@@ -61,6 +64,74 @@ if (!p) Astro.response.status = 404;
             </button>
           </div>
         </div>
+        <details
+          class="admin-panel admin-share"
+          id="r2-share"
+          data-origin={origin}
+          data-code={p.code}
+          data-status={p.status}
+          data-slug-es={p.slugEs ?? ''}
+          data-slug-en={p.slugEn ?? ''}
+        >
+          <summary>
+            <span class="admin-share-heading">Compartir</span>
+            <span class="admin-share-lead">Enlace y código QR de la ficha pública</span>
+          </summary>
+          <p class="admin-share-draft" id="r2-share-draft" hidden={p.status === 'published'}>
+            Esta propiedad es un borrador: el enlace y el QR no funcionarán hasta que la publiques.
+          </p>
+          <div class="admin-share-grid">
+            {(['es', 'en'] as const).map((locale) => (
+              <section class="admin-share-item" data-share-locale={locale}>
+                <h3>{locale === 'es' ? 'Español' : 'English'}</h3>
+                <p class="admin-share-missing" data-share-missing hidden>
+                  {locale === 'es'
+                    ? 'Falta el slug en español: guárdalo para obtener el enlace.'
+                    : 'Sin slug en inglés: no hay versión pública en este idioma.'}
+                </p>
+                <div class="admin-share-body" data-share-body>
+                  <div class="admin-share-qr" data-share-qr />
+                  <div class="admin-share-tools">
+                    <label>
+                      Enlace
+                      <input type="url" readonly data-share-url />
+                    </label>
+                    <div class="r2-actions">
+                      <button
+                        type="button"
+                        class="admin-button"
+                        data-share-action="copy"
+                        data-copied="Enlace copiado"
+                      >
+                        Copiar enlace
+                      </button>
+                      <a
+                        class="admin-button"
+                        data-share-action="open"
+                        target="_blank"
+                        rel="noopener"
+                      >
+                        Abrir
+                      </a>
+                    </div>
+                    <div class="r2-actions">
+                      <button type="button" class="admin-button" data-share-action="png">
+                        Descargar QR (PNG)
+                      </button>
+                      <button type="button" class="admin-button" data-share-action="svg">
+                        Descargar QR (SVG)
+                      </button>
+                    </div>
+                    <p class="admin-panel-note">
+                      PNG para enviar o imprimir en casa; SVG para la imprenta, escala sin perder
+                      nitidez.
+                    </p>
+                  </div>
+                </div>
+              </section>
+            ))}
+          </div>
+        </details>
         <form id="r2-property" data-id={p.id}>
           <section class="admin-panel">
             <>
@@ -412,6 +483,8 @@ if (!p) Astro.response.status = 404;
 <script>
   import { initEditor } from '../../../lib/admin/ui/simple';
   import { initTour } from '../../../lib/admin/ui/tour';
+  import { initShare } from '../../../lib/admin/ui/share';
   initEditor();
   initTour();
+  initShare();
 </script>
