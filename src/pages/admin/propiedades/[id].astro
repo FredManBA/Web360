@@ -21,15 +21,20 @@ if (!p) Astro.response.status = 404;
 ---
 
 <AdminLayout title={p ? `Editar ${p.code}` : 'Propiedad no encontrada'}>
-  <p><a href="/admin/propiedades">← Propiedades</a></p>
+  <p><a class="admin-back" href="/admin/propiedades">← Propiedades</a></p>
   {
     p && (
       <>
-        <div class="r2-actions">
-          <>
-            <strong id="r2-publication-state">
+        <div class="admin-publication">
+          <p class="admin-publication-state">
+            <span>
+              Código <span class="admin-code">{p.code}</span>
+            </span>
+            <strong id="r2-publication-state" class="admin-badge" data-state={p.status}>
               {p.status === 'published' ? 'Publicada' : 'Borrador'}
             </strong>
+          </p>
+          <div class="r2-actions">
             <button
               type="button"
               id="r2-publish"
@@ -54,123 +59,140 @@ if (!p) Astro.response.status = 404;
             >
               Retirar
             </button>
-          </>
+          </div>
         </div>
-        <p id="r2-status" role="status" aria-live="polite" />
         <form id="r2-property" data-id={p.id}>
           <section class="admin-panel">
             <>
               <h2>Información</h2>
-              <p>
-                Código: <strong>{p.code}</strong>
-              </p>
-              <div class="r2-grid">
-                <Field
-                  name="type"
-                  label="Tipo"
-                  value={p.type}
-                  options={SYSTEM_PROPERTY_TYPE_KEYS.map((value) => ({
-                    value,
-                    label: TYPE_LABELS.es[value],
-                  }))}
-                />
-                <Field
-                  name="commercialStatus"
-                  label="Estado comercial"
-                  value={p.commercialStatus}
-                  options={COMMERCIAL_STATUSES.map((value) => ({
-                    value,
-                    label: COMMERCIAL_STATUS_LABELS[value],
-                  }))}
-                />
-                <Field name="featured" label="Destacada" type="checkbox" value={p.featured} />
-                <Field
-                  name="priceMode"
-                  label="Precio"
-                  value={p.priceMode}
-                  options={[
-                    { value: 'contact', label: 'Consultar' },
-                    { value: 'exact', label: 'Exacto' },
-                    { value: 'negotiable', label: 'Negociable' },
-                  ]}
-                />
-                <Field name="currencyCode" label="Moneda (USD / CRC)" value={p.currencyCode} />
-                <Field
-                  name="priceAmount"
-                  label="Importe"
-                  value={
-                    p.priceAmountMinor === null || !p.currencyCode
-                      ? ''
-                      : formatMinorAsDecimal(p.priceAmountMinor, p.currencyCode)
-                  }
-                />
-                <Field
-                  name="areaSquareMeters"
-                  label="Superficie (m²)"
-                  type="number"
-                  value={p.areaSquareMeters}
-                />
-                <>
-                  <Field name="province" label="Provincia" value={p.province} />
-                  <Field name="canton" label="Cantón" value={p.canton} />
-                  <Field name="district" label="Distrito" value={p.district} />
-                  <Field name="locality" label="Localidad" value={p.locality} />
-                </>
-                <>
+              <div class="admin-group">
+                <div class="r2-grid">
                   <Field
-                    name="mapLatitude"
-                    label="Latitud del mapa"
-                    type="number"
-                    value={p.mapLatitude}
+                    name="type"
+                    label="Tipo"
+                    value={p.type}
+                    options={SYSTEM_PROPERTY_TYPE_KEYS.map((value) => ({
+                      value,
+                      label: TYPE_LABELS.es[value],
+                    }))}
                   />
                   <Field
-                    name="mapLongitude"
-                    label="Longitud del mapa"
-                    type="number"
-                    value={p.mapLongitude}
+                    name="commercialStatus"
+                    label="Estado comercial"
+                    value={p.commercialStatus}
+                    options={COMMERCIAL_STATUSES.map((value) => ({
+                      value,
+                      label: COMMERCIAL_STATUS_LABELS[value],
+                    }))}
                   />
-                </>
-                <Field
-                  name="locationPrecision"
-                  label="Ubicación"
-                  value={p.locationPrecision}
-                  options={[
-                    { value: 'approximate', label: 'Aproximada' },
-                    { value: 'exact', label: 'Exacta' },
-                  ]}
-                />
+                  <Field
+                    name="featured"
+                    label="Destacada en la portada"
+                    type="checkbox"
+                    value={p.featured}
+                  />
+                </div>
               </div>
-              <p>La coordenada guardada es la que se muestra en el mapa público.</p>
+              <div class="admin-group">
+                <h3>Precio y superficie</h3>
+                <div class="r2-grid">
+                  <Field
+                    name="priceMode"
+                    label="Precio"
+                    value={p.priceMode}
+                    options={[
+                      { value: 'contact', label: 'Consultar' },
+                      { value: 'exact', label: 'Exacto' },
+                      { value: 'negotiable', label: 'Negociable' },
+                    ]}
+                  />
+                  <Field name="currencyCode" label="Moneda (USD / CRC)" value={p.currencyCode} />
+                  <Field
+                    name="priceAmount"
+                    label="Importe"
+                    value={
+                      p.priceAmountMinor === null || !p.currencyCode
+                        ? ''
+                        : formatMinorAsDecimal(p.priceAmountMinor, p.currencyCode)
+                    }
+                  />
+                  <Field
+                    name="areaSquareMeters"
+                    label="Superficie (m²)"
+                    type="number"
+                    value={p.areaSquareMeters}
+                  />
+                </div>
+              </div>
+              <div class="admin-group">
+                <h3>Ubicación</h3>
+                <div class="r2-grid">
+                  <>
+                    <Field name="province" label="Provincia" value={p.province} />
+                    <Field name="canton" label="Cantón" value={p.canton} />
+                    <Field name="district" label="Distrito" value={p.district} />
+                    <Field name="locality" label="Localidad" value={p.locality} />
+                  </>
+                  <>
+                    <Field
+                      name="mapLatitude"
+                      label="Latitud del mapa"
+                      type="number"
+                      value={p.mapLatitude}
+                    />
+                    <Field
+                      name="mapLongitude"
+                      label="Longitud del mapa"
+                      type="number"
+                      value={p.mapLongitude}
+                    />
+                  </>
+                  <Field
+                    name="locationPrecision"
+                    label="Ubicación"
+                    value={p.locationPrecision}
+                    options={[
+                      { value: 'approximate', label: 'Aproximada' },
+                      { value: 'exact', label: 'Exacta' },
+                    ]}
+                  />
+                </div>
+                <p class="admin-panel-note">
+                  La coordenada guardada es la que se muestra en el mapa público.
+                </p>
+              </div>
             </>
           </section>
-          <section class="admin-panel">
-            <>
-              <h2>Español</h2>
-              <Field name="titleEs" label="Título" value={p.titleEs} />
-              <Field name="slugEs" label="Slug" value={p.slugEs} />
-              <Field
-                name="descriptionEs"
-                label="Descripción"
-                type="textarea"
-                value={p.descriptionEs}
-              />
-              <Field name="detailsEs" label="Detalles" type="textarea" value={p.detailsEs} />
-            </>
-          </section>
-          <section class="admin-panel">
-            <>
-              <h2>English (opcional)</h2>
-              <Field name="titleEn" label="Title" value={p.titleEn} />
-              <Field name="slugEn" label="Slug EN" value={p.slugEn} />
-              <Field
-                name="descriptionEn"
-                label="Description"
-                type="textarea"
-                value={p.descriptionEn}
-              />
-              <Field name="detailsEn" label="Details" type="textarea" value={p.detailsEn} />
-            </>
-          </section>
+          <div class="admin-locales">
+            <section class="admin-panel">
+              <>
+                <h2>Español</h2>
+                <Field name="titleEs" label="Título" value={p.titleEs} />
+                <Field name="slugEs" label="Slug" value={p.slugEs} />
+                <Field
+                  name="descriptionEs"
+                  label="Descripción"
+                  type="textarea"
+                  value={p.descriptionEs}
+                />
+                <Field name="detailsEs" label="Detalles" type="textarea" value={p.detailsEs} />
+              </>
+            </section>
+            <section class="admin-panel">
+              <>
+                <h2>English (opcional)</h2>
+                <Field name="titleEn" label="Title" value={p.titleEn} />
+                <Field name="slugEn" label="Slug EN" value={p.slugEn} />
+                <Field
+                  name="descriptionEn"
+                  label="Description"
+                  type="textarea"
+                  value={p.descriptionEn}
+                />
+                <Field name="detailsEn" label="Details" type="textarea" value={p.detailsEn} />
+              </>
+            </section>
+          </div>
           <section class="admin-panel">
             <>
               <h2>Características</h2>
@@ -214,9 +236,12 @@ if (!p) Astro.response.status = 404;
               </button>
             </>
           </section>
-          <button type="submit" class="admin-button admin-button-primary" id="r2-save">
-            Guardar cambios
-          </button>
+          <div class="admin-savebar">
+            <p id="r2-status" role="status" aria-live="polite" />
+            <button type="submit" class="admin-button admin-button-primary" id="r2-save">
+              Guardar cambios
+            </button>
+          </div>
         </form>
         <template id="r2-feature-template">
           <div class="r2-row" data-row>

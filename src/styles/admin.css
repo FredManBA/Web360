@@ -1,9 +1,10 @@
 /*
- * CodeLoba - base visual del panel administrativo.
+ * Costa Rica 360 - base visual del panel administrativo.
  *
- * Sobria y funcional, no un dashboard de widgets: fondo ivory, verde profundo
- * como color estructural y dorado arena muy contenido como acento. Clases
- * semanticas, sin utilidades ni sistema de diseno extenso.
+ * La misma familia que el sitio publico —verde selva, marfil, niebla y arena,
+ * Newsreader para los titulos y Hanken Grotesk para todo lo demas— pero mas
+ * densa: aqui se trabaja, no se pasea. Sin dashboard de widgets, sin
+ * utilidades: clases semanticas y los tokens de `global.css`.
  */
 
 .admin {
@@ -11,36 +12,37 @@
      controles nativos en oscuro sobre esta paleta. */
   color-scheme: light;
 
-  --admin-bg: #faf8f3;
-  --admin-surface: #ffffff;
-  --admin-surface-muted: #f4f1e9;
+  --admin-bg: var(--ivory);
+  --admin-surface: var(--surface);
+  --admin-surface-muted: #f6f3ec;
 
-  --admin-text: #1b2a23;
-  --admin-text-soft: #5b6b62;
+  --admin-text: var(--ink);
+  --admin-text-soft: var(--ink-soft);
 
-  --admin-border: #e4ded1;
-  --admin-border-strong: #d3cbb9;
+  --admin-border: var(--line);
+  --admin-border-strong: var(--line-strong);
 
-  --admin-green: #1f4034;
+  --admin-green: var(--jungle-soft);
   --admin-green-hover: #2b5544;
-  --admin-green-tint: #eaefea;
+  --admin-green-tint: var(--jungle-tint);
 
-  --admin-accent: #9a7b46;
-  --admin-accent-tint: #f5efe2;
+  --admin-accent: var(--sand);
+  --admin-accent-tint: var(--sand-tint);
 
   --admin-danger: #8a2f24;
   --admin-danger-tint: #fbeeec;
 
-  --admin-radius: 10px;
-  --admin-radius-sm: 6px;
-  --admin-shadow: 0 1px 2px rgb(27 42 35 / 6%);
+  --admin-radius: var(--radius-lg);
+  --admin-radius-sm: var(--radius);
+  --admin-shadow: 0 1px 2px rgb(16 41 31 / 5%), 0 4px 16px rgb(16 41 31 / 4%);
 
-  --admin-sidebar-width: 15rem;
+  --admin-sidebar-width: 15.5rem;
 
   min-height: 100vh;
   background: var(--admin-bg);
   color: var(--admin-text);
   font-family: var(--font-base);
+  font-size: 0.95rem;
   line-height: 1.5;
 }
 
@@ -50,75 +52,124 @@
   border-radius: var(--admin-radius-sm);
 }
 
+.admin [hidden] {
+  display: none !important;
+}
+
+.admin h2 {
+  font-size: 1.35rem;
+}
+
+.admin h3 {
+  font-size: 1.05rem;
+}
+
+.admin a {
+  color: var(--admin-green);
+  text-underline-offset: 3px;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Estructura                                                                 */
 /* -------------------------------------------------------------------------- */
 
 .admin-shell {
   display: grid;
-  grid-template-columns: var(--admin-sidebar-width) 1fr;
+  grid-template-columns: var(--admin-sidebar-width) minmax(0, 1fr);
   min-height: 100vh;
 }
 
 .admin-sidebar {
+  position: sticky;
+  top: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-lg);
-  padding: var(--space-lg) var(--space-md);
-  background: var(--admin-green);
+  height: 100vh;
+  padding: var(--space-lg) var(--space-sm);
+  background: var(--jungle);
   color: #f3f1ea;
 }
 
 .admin-brand {
-  font-size: 1.05rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  padding-inline: var(--space-sm);
   color: #ffffff;
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 450;
+  line-height: 1.15;
 }
 
 .admin-brand span {
   display: block;
-  font-size: 0.75rem;
+  margin-top: 0.2rem;
+  color: rgb(250 247 240 / 60%);
+  font-family: var(--font-base);
+  font-size: 0.8rem;
   font-weight: 400;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #b9cbc0;
 }
 
 .admin-nav ul {
-  list-style: none;
-  margin: 0;
-  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.2rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .admin-nav a {
-  display: block;
-  padding: 0.55rem 0.7rem;
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+  padding: 0.6rem var(--space-sm);
   border-radius: var(--admin-radius-sm);
-  color: #dce6df;
+  color: rgb(250 247 240 / 78%);
+  font-weight: 500;
   text-decoration: none;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.admin-nav svg {
+  flex-shrink: 0;
+  width: 1.15rem;
+  height: 1.15rem;
 }
 
 .admin-nav a:hover {
-  background: var(--admin-green-hover);
+  background: rgb(250 247 240 / 7%);
   color: #ffffff;
 }
 
 .admin-nav a[aria-current='page'] {
-  background: var(--admin-green-hover);
+  background: rgb(250 247 240 / 11%);
   color: #ffffff;
   /* El estado activo no depende solo del color. */
   box-shadow: inset 3px 0 0 var(--admin-accent);
-  font-weight: 600;
+}
+
+.admin-nav a[aria-current='page'] svg {
+  color: var(--admin-accent);
 }
 
 .admin-sidebar-footer {
   margin-top: auto;
-  font-size: 0.78rem;
-  color: #a9bdb1;
+  padding: var(--space-sm);
+  border-top: 1px solid rgb(250 247 240 / 12%);
+  font-size: 0.85rem;
+}
+
+.admin-sidebar-footer a {
+  display: inline-flex;
+  gap: 0.35rem;
+  color: var(--admin-accent);
+  text-decoration: none;
+}
+
+.admin-sidebar-footer a:hover {
+  text-decoration: underline;
 }
 
 .admin-main {
@@ -128,26 +179,30 @@
 }
 
 .admin-header {
-  padding: var(--space-lg);
-  border-bottom: 1px solid var(--admin-border);
-  background: var(--admin-surface);
+  padding: var(--space-lg) clamp(var(--space-md), 3vw, var(--space-xl)) var(--space-md);
 }
 
 .admin-header h1 {
   margin: 0;
-  font-size: 1.5rem;
-  letter-spacing: -0.01em;
+  font-size: clamp(1.75rem, 1.4rem + 1.2vw, 2.4rem);
+  font-weight: 400;
+  letter-spacing: -0.02em;
 }
 
 .admin-header p {
-  margin: 0.35rem 0 0;
-  color: var(--admin-text-soft);
   max-width: 60ch;
+  margin: 0.3rem 0 0;
+  color: var(--admin-text-soft);
 }
 
 .admin-content {
-  padding: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  width: 100%;
+  max-width: 76rem;
   min-width: 0;
+  padding: var(--space-sm) clamp(var(--space-md), 3vw, var(--space-xl)) var(--space-xl);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -159,25 +214,32 @@
   align-items: center;
   gap: var(--space-sm);
   padding: var(--space-sm) var(--space-md);
-  background: var(--admin-green);
+  background: var(--jungle);
   color: #ffffff;
+}
+
+.admin-topbar .admin-brand {
+  padding: 0;
+  font-size: 1.15rem;
 }
 
 .admin-nav-toggle {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.45rem 0.7rem;
-  border: 1px solid rgb(255 255 255 / 35%);
-  border-radius: var(--admin-radius-sm);
+  min-height: 2.5rem;
+  padding: 0.45rem 0.8rem;
+  border: 1px solid rgb(255 255 255 / 30%);
+  border-radius: var(--radius-pill);
   background: transparent;
   color: inherit;
   cursor: pointer;
   font: inherit;
+  font-weight: 500;
 }
 
 .admin-nav-toggle:hover {
-  background: var(--admin-green-hover);
+  background: rgb(250 247 240 / 8%);
 }
 
 .admin-nav-toggle svg {
@@ -186,183 +248,619 @@
 }
 
 /* -------------------------------------------------------------------------- */
-/* Filtros                                                                    */
+/* Botones                                                                    */
 /* -------------------------------------------------------------------------- */
 
 .admin-button {
-  padding: 0.5rem 0.9rem;
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.5rem;
+  padding: 0.5rem 1rem;
   border: 1px solid var(--admin-border-strong);
-  border-radius: var(--admin-radius-sm);
+  border-radius: var(--radius-pill);
   background: var(--admin-surface);
   color: var(--admin-text);
   cursor: pointer;
   font: inherit;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 140ms var(--ease-out);
 }
 
 .admin-button:hover {
+  border-color: var(--admin-green);
   background: var(--admin-surface-muted);
 }
 
+.admin-button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
 .admin-button-primary {
-  border-color: var(--admin-green);
-  background: var(--admin-green);
+  border-color: var(--jungle);
+  background: var(--jungle);
   color: #ffffff;
 }
 
 .admin-button-primary:hover {
+  border-color: var(--admin-green-hover);
   background: var(--admin-green-hover);
+}
+
+/*
+ * Lo que borra o retira: mismo boton, pero en rojo tierra. Se reconoce por lo
+ * que hace (sus `data-*`), no por una clase que el JavaScript tendria que
+ * acordarse de poner.
+ */
+.admin-button[data-row-action='remove'],
+.admin-button[data-media-action='delete'],
+.admin-button[data-remove-slot],
+.admin-button[data-remove-link],
+#r2-withdraw,
+#r2-tour-remove {
+  color: var(--admin-danger);
+}
+
+.admin-button[data-row-action='remove']:hover,
+.admin-button[data-media-action='delete']:hover,
+.admin-button[data-remove-slot]:hover,
+.admin-button[data-remove-link]:hover,
+#r2-withdraw:hover,
+#r2-tour-remove:hover {
+  border-color: var(--admin-danger);
+  background: var(--admin-danger-tint);
+}
+
+/* Las flechas de ordenar son cuadradas: iconos, no palabras. */
+.admin-button[data-row-action='up'],
+.admin-button[data-row-action='down'] {
+  width: 2.5rem;
+  padding: 0;
+}
+
+.admin button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Paneles y campos                                                           */
+/* -------------------------------------------------------------------------- */
+
+.admin-panel {
+  margin: 0;
+  padding: clamp(var(--space-md), 2.5vw, var(--space-lg));
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius);
+  background: var(--admin-surface);
+  box-shadow: var(--admin-shadow);
+}
+
+.admin-panel > h2 {
+  margin: 0 0 var(--space-xs);
+}
+
+.admin-panel > h2 + p,
+.admin-panel-note {
+  margin-bottom: var(--space-sm);
+  color: var(--admin-text-soft);
+}
+
+/* Un grupo dentro de un panel: titulo pequeno y una linea encima. */
+.admin-group + .admin-group {
+  margin-top: var(--space-md);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--admin-border);
+}
+
+.admin-group > h3 {
+  margin-bottom: var(--space-2xs);
+  color: var(--admin-text-soft);
+  font-family: var(--font-base);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.admin-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0.6rem 0;
+}
+
+.admin label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  color: var(--admin-text);
+  font-weight: 500;
+}
+
+.admin input,
+.admin select,
+.admin textarea {
+  max-width: 100%;
+  min-height: 2.6rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--field-border);
+  border-radius: var(--admin-radius-sm);
+  background: #ffffff;
+  color: var(--admin-text);
+  font: inherit;
+  font-weight: 400;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.admin input:hover,
+.admin select:hover,
+.admin textarea:hover {
+  border-color: var(--ink-soft);
+}
+
+.admin input:focus-visible,
+.admin select:focus-visible,
+.admin textarea:focus-visible {
+  border-color: var(--admin-green);
+  outline: none;
+  box-shadow: 0 0 0 3px rgb(31 64 52 / 16%);
+}
+
+.admin textarea {
+  resize: vertical;
+  line-height: 1.55;
+}
+
+.admin input[type='file'] {
+  padding: 0.4rem;
+  background: var(--admin-surface-muted);
+  cursor: pointer;
+}
+
+.admin input[type='file']::file-selector-button {
+  margin-right: var(--space-sm);
+  padding: 0.35rem 0.8rem;
+  border: 1px solid var(--admin-border-strong);
+  border-radius: var(--radius-pill);
+  background: #ffffff;
+  color: var(--admin-text);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 500;
+}
+
+.admin input[type='checkbox'] {
+  width: 1.25rem;
+  height: 1.25rem;
+  min-height: 0;
+  padding: 0;
+  accent-color: var(--jungle);
+}
+
+/* Casilla: en fila con su etiqueta, como se lee una opcion de si o no. */
+.admin-field:has(> input[type='checkbox']) {
+  flex-direction: row-reverse;
+  gap: var(--space-xs);
+  align-items: center;
+  justify-content: flex-end;
+  align-self: end;
+  min-height: 2.6rem;
+}
+
+.admin label:has(> input[type='checkbox']) {
+  flex-direction: row;
+  align-items: center;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Estado y avisos                                                            */
+/* -------------------------------------------------------------------------- */
+
+/*
+ * El mensaje de estado. Vacio no ocupa nada; con texto se ve como una nota
+ * con su color, para que "Guardado" y un error no se confundan.
+ */
+#r2-status {
+  min-height: 0;
+  white-space: pre-line;
+  font-weight: 500;
+}
+
+#r2-status:not(:empty) {
+  padding: 0.55rem 0.9rem;
+  border-radius: var(--admin-radius-sm);
+  background: var(--mist);
+  color: var(--jungle-soft);
+}
+
+/* Barra de guardado: siempre a mano mientras se edita el formulario. */
+.admin-savebar {
+  position: sticky;
+  z-index: 5;
+  bottom: var(--space-md);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm) var(--space-md);
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-sm) var(--space-sm) var(--space-sm) var(--space-md);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--radius-pill);
+  background: rgb(255 255 255 / 94%);
+  box-shadow: 0 8px 30px rgb(16 41 31 / 14%);
+  backdrop-filter: blur(8px);
+}
+
+.admin-savebar #r2-status:not(:empty) {
+  padding: 0;
+  background: none;
+}
+
+.admin-savebar #r2-status:empty::before {
+  color: var(--admin-text-soft);
+  font-weight: 400;
+  content: 'Sin cambios pendientes';
+}
+
+/* Distintivos: publicacion, estado comercial, consultas. */
+.admin-badge {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+  padding: 0.15rem 0.6rem;
+  border-radius: var(--radius-pill);
+  background: var(--admin-surface-muted);
+  color: var(--admin-text-soft);
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Un punto delante: el estado se lee por la palabra, el color solo ayuda. */
+.admin-badge::before {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: currentcolor;
+  content: '';
+}
+
+.admin-badge[data-state='published'],
+.admin-badge[data-state='reviewed'] {
+  background: var(--admin-green-tint);
+  color: var(--admin-green);
+}
+
+.admin-badge[data-state='new'],
+.admin-badge[data-state='reserved'],
+.admin-badge[data-state='offer_received'] {
+  background: var(--admin-accent-tint);
+  color: var(--sand-ink);
+}
+
+.admin-badge[data-state='sold'] {
+  background: var(--admin-danger-tint);
+  color: var(--admin-danger);
 }
 
 /* -------------------------------------------------------------------------- */
 /* Listado                                                                    */
 /* -------------------------------------------------------------------------- */
 
-.admin [hidden] {
-  display: none !important;
-}
-.admin-panel {
-  background: var(--admin-panel, #fff);
-  border: 1px solid #d8ded9;
-  border-radius: 10px;
-  padding: 1.25rem;
-  margin: 1.25rem 0;
-}
-.admin-panel h2 {
-  margin-top: 0;
-}
-.admin-field {
+.admin-toolbar {
   display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  margin: 0.7rem 0;
+  flex-wrap: wrap;
+  gap: var(--space-sm) var(--space-md);
+  align-items: flex-end;
+  justify-content: space-between;
 }
-.admin label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
+
+.admin-toolbar label {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-xs);
+  color: var(--admin-text-soft);
 }
-.admin input,
-.admin select,
-.admin textarea {
-  font: inherit;
-  border: 1px solid #98aaa0;
-  border-radius: 5px;
-  padding: 0.65rem;
-  background: #fff;
-  color: #17281f;
-  max-width: 100%;
-}
-.admin input[type='checkbox'] {
-  width: 1.4rem;
-  height: 1.4rem;
-}
-.admin button:disabled {
-  opacity: 0.6;
-  cursor: wait;
-}
+
 .admin-table {
   width: 100%;
   border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
 }
+
 .admin-table th,
 .admin-table td {
-  text-align: left;
   padding: 0.8rem;
-  border-bottom: 1px solid #d8ded9;
-}
-.admin-table caption {
+  border-bottom: 1px solid var(--admin-border);
   text-align: left;
-  padding-bottom: 1rem;
+  vertical-align: middle;
 }
+
+.admin-table thead th {
+  border-bottom-color: var(--admin-border-strong);
+  color: var(--admin-text-soft);
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.admin-table tbody tr {
+  transition: background-color 120ms ease;
+}
+
+.admin-table tbody tr:hover {
+  background: var(--admin-surface-muted);
+}
+
+.admin-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.admin-table caption {
+  padding-bottom: var(--space-sm);
+  color: var(--admin-text-soft);
+  text-align: left;
+}
+
+/* La columna del nombre no se estruja aunque la tabla tenga que desplazarse. */
+.admin-table td:first-child {
+  min-width: 14rem;
+}
+
+.admin-table-title {
+  color: var(--admin-text);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.admin-table-title:hover {
+  text-decoration: underline;
+}
+
+.admin-table-code,
+.admin-table-muted {
+  color: var(--admin-text-soft);
+  font-size: 0.88rem;
+  white-space: nowrap;
+}
+
+.admin-table-actions {
+  display: flex;
+  gap: var(--space-xs);
+  justify-content: flex-end;
+}
+
+.admin-empty {
+  padding: var(--space-xl) var(--space-md);
+  color: var(--admin-text-soft);
+  text-align: center;
+}
+
+/* `relative`: lo que va oculto dentro (posicion absoluta) no se escapa del scroll. */
 .r2-table-scroll {
+  position: relative;
   overflow-x: auto;
 }
+
+/* -------------------------------------------------------------------------- */
+/* Editor                                                                     */
+/* -------------------------------------------------------------------------- */
+
+.admin-back {
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.admin-back:hover {
+  text-decoration: underline;
+}
+
+/* Publicacion: estado y acciones, en una franja propia arriba. */
+.admin-publication {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm) var(--space-md);
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-sm) var(--space-sm) var(--space-sm) var(--space-md);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius);
+  background: var(--admin-surface);
+}
+
+.admin-publication .r2-actions {
+  margin: 0;
+}
+
+.admin-publication-state {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+  color: var(--admin-text-soft);
+}
+
+.admin-code {
+  color: var(--admin-text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+#r2-property,
+.admin-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.admin-savebar-note {
+  color: var(--admin-text-soft);
+}
+
+/* Los dos idiomas lado a lado: se escriben uno mirando al otro. */
+.admin-locales {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-md);
+}
+
 .r2-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 0 var(--space-md);
 }
+
 .r2-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.6rem;
-  align-items: center;
-  margin: 0.8rem 0;
+  gap: var(--space-xs);
+  align-items: flex-end;
+  margin: var(--space-sm) 0;
 }
+
 .r2-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
-  gap: 0.75rem;
-  border-bottom: 1px solid #d8ded9;
-  padding: 1rem 0;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+  gap: var(--space-sm);
+  align-items: end;
+  padding: var(--space-sm) 0;
+  border-bottom: 1px solid var(--admin-border);
 }
+
+.r2-row .r2-actions {
+  flex-wrap: nowrap;
+  margin: 0;
+}
+
+/* En configuracion las filas son dos campos: plataforma y URL. */
+#r2-social .r2-row {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) auto;
+}
+
 .r2-media-card {
-  padding: 1rem;
-  border: 1px solid #d8ded9;
-  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
   min-width: 0;
+  padding: var(--space-sm);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius);
+  background: var(--admin-surface);
 }
+
+.r2-media-card > p {
+  color: var(--admin-text-soft);
+  font-size: 0.88rem;
+}
+
+/* Miniatura recortada: se reconoce la foto sin bandas alrededor. */
 .r2-media-card img {
   width: 100%;
-  height: 180px;
-  object-fit: contain;
-  background: #f1f4f0;
+  height: auto;
+  aspect-ratio: 3 / 2;
+  border-radius: var(--admin-radius-sm);
+  background: var(--mist);
+  object-fit: cover;
 }
+
 .r2-media-card label {
-  margin: 0.6rem 0;
+  margin: 0.2rem 0;
 }
+
+.r2-media-card .r2-actions {
+  gap: 0.35rem;
+  margin: var(--space-2xs) 0 0;
+}
+
+/* Dentro de una tarjeta los botones son de apoyo: mas pequenos, en fila. */
+.r2-media-card .admin-button {
+  min-height: 2.15rem;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.85rem;
+}
+
+.r2-media-card input {
+  min-height: 2.3rem;
+  padding: 0.4rem 0.65rem;
+}
+
 /* Un panorama equirectangular es 2:1: se ve entero y sin deformar. */
 .r2-media-card .r2-panorama-preview {
   height: auto;
   aspect-ratio: 2 / 1;
   object-fit: cover;
-  border-radius: 6px;
 }
+
 .r2-panorama-empty {
   display: grid;
   place-items: center;
   aspect-ratio: 2 / 1;
-  border-radius: 6px;
-  background: #f1f4f0;
-  color: #5b6a61;
+  border: 1px dashed var(--admin-border-strong);
+  border-radius: var(--admin-radius-sm);
+  background: var(--mist);
+  color: var(--admin-text-soft);
   font-size: 0.9rem;
 }
+
 .r2-panorama-empty[hidden] {
   display: none;
 }
+
+/* -- Recorrido 360 ---------------------------------------------------------- */
+
 .r2-tour {
   display: grid;
-  grid-template-columns: minmax(180px, 250px) 1fr;
-  gap: 1rem;
+  grid-template-columns: minmax(180px, 250px) minmax(0, 1fr);
+  gap: var(--space-lg);
   align-items: start;
+  margin: var(--space-sm) 0;
 }
+
 .r2-tour-nodes,
 .r2-tour-links {
-  list-style: none;
-  margin: 0 0 0.8rem;
-  padding: 0;
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
+  margin: 0 0 0.8rem;
+  padding: 0;
+  list-style: none;
 }
+
+.r2-tour-nodes .admin-button {
+  justify-content: flex-start;
+  width: 100%;
+  border-radius: var(--admin-radius-sm);
+}
+
 .r2-tour-links li {
   display: flex;
   gap: 0.6rem;
   align-items: center;
   justify-content: space-between;
 }
+
 .r2-tour-nodes button[aria-current='true'] {
   border-color: var(--admin-green);
+  background: var(--admin-green-tint);
   box-shadow: inset 3px 0 0 var(--admin-green);
   font-weight: 600;
 }
+
 .r2-tour-viewer {
   width: 100%;
   aspect-ratio: 16 / 9;
   min-height: 320px;
-  background: #101a15;
-  border-radius: var(--admin-radius-sm);
+  border-radius: var(--admin-radius);
+  background: var(--jungle-deep);
 }
+
 /* Misma marca que en la ficha pública; allí la regla cuelga de `.property-tour`. */
 .admin .tour-hotspot {
   display: block;
@@ -372,44 +870,151 @@
   border-radius: 50%;
   background: rgb(201 168 106 / 75%);
 }
+
 #r2-tour-status {
   min-height: 1.5rem;
   font-weight: 600;
 }
-@media (max-width: 760px) {
-  .r2-tour {
-    grid-template-columns: 1fr;
+
+/* -- Consultas -------------------------------------------------------------- */
+
+.admin-contacts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+  gap: var(--space-md);
+}
+
+.admin-contact {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.admin-contact-head {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.admin-contact-head h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.admin-contact-meta {
+  color: var(--admin-text-soft);
+  font-size: 0.88rem;
+}
+
+.admin-contact-reach {
+  font-weight: 500;
+}
+
+.admin-contact .admin-button {
+  align-self: flex-start;
+  margin-top: auto;
+}
+
+.r2-message {
+  padding: var(--space-sm);
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-surface-muted);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.r2-message:empty {
+  display: none;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Movil                                                                      */
+/* -------------------------------------------------------------------------- */
+
+@media (max-width: 1100px) {
+  .admin-locales {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .r2-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .r2-row .r2-actions,
+  #r2-social .r2-row .r2-actions {
+    grid-column: 1 / -1;
+  }
+
+  #r2-social .r2-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
   }
 }
-#r2-status {
-  white-space: pre-line;
-  min-height: 1.5rem;
-  font-weight: 600;
-}
-.r2-message {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
+
 @media (max-width: 760px) {
   .admin-shell {
     display: block;
   }
+
   .admin-topbar {
+    position: sticky;
+    z-index: 10;
+    top: 0;
     display: flex;
   }
+
   .admin-sidebar {
-    display: none;
     position: static;
+    display: none;
     width: auto;
+    height: auto;
   }
+
   .admin-sidebar[data-open='true'] {
-    display: block;
+    display: flex;
   }
-  .admin-main {
-    padding: 1rem;
-    min-width: 0;
+
+  /* La marca ya esta en la barra de arriba. */
+  .admin-sidebar .admin-brand {
+    display: none;
   }
+
+  .admin-header {
+    padding: var(--space-md) var(--space-md) var(--space-xs);
+  }
+
+  .admin-content {
+    padding: var(--space-xs) var(--space-md) var(--space-lg);
+  }
+
   .admin-button {
     min-height: 44px;
+  }
+
+  .r2-tour {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Los campos de una fila de acciones ocupan la fila entera y se encogen. */
+  .r2-actions > label {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .admin input[type='file'] {
+    width: 100%;
+  }
+
+  .r2-row,
+  #r2-social .r2-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-savebar {
+    border-radius: var(--admin-radius);
+  }
+
+  .admin-publication {
+    padding: var(--space-sm);
   }
 }

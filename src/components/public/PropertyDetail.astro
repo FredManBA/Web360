@@ -55,6 +55,13 @@ const tour = property.tour;
 ---
 
 <article class="property-detail">
+  <p class="property-crumb">
+    <a href={catalogueHref(locale)}>
+      <span aria-hidden="true">←</span>
+      {labels.backToCatalogue}
+    </a>
+  </p>
+
   {
     ordered.length > 0 ? (
       <PropertyGallery
@@ -68,126 +75,148 @@ const tour = property.tour;
     )
   }
 
-  <header class="property-detail-head">
-    <p class="property-code">{labels.code} {property.code}</p>
-    <h1>{property.title}</h1>
+  {
+    /*
+     * Dos columnas en escritorio: el contenido a la izquierda y, a la derecha,
+     * lo que decide una visita —precio, superficie, donde esta— fijo mientras
+     * se baja, con el camino a la consulta siempre a mano.
+     */
+  }
+  <div class="property-layout">
+    <div class="property-main">
+      <header class="property-detail-head">
+        <h1>{property.title}</h1>
+        {place && <p class="property-detail-place place">{place}</p>}
 
-    <p class="property-detail-meta">
-      {property.propertyType && <span>{property.propertyType}</span>}
-      {place && <span>{place}</span>}
+        <p class="property-detail-meta">
+          {property.propertyType && <span class="property-chip">{property.propertyType}</span>}
+          {
+            property.commercialStatus && (
+              <span class="property-chip property-status">
+                {commercialStatusLabel(property.commercialStatus, locale)}
+              </span>
+            )
+          }
+          <span class="property-code">{`${labels.code} ${property.code}`}</span>
+        </p>
+      </header>
+
       {
-        property.commercialStatus && (
-          <span class="property-status">
-            {commercialStatusLabel(property.commercialStatus, locale)}
-          </span>
+        tour && (
+          <PropertyTour
+            tour={tour}
+            locale={locale}
+            posterUrl={lead?.url ?? null}
+            posterAlt={labels.imageOf(property.title)}
+          />
         )
       }
-    </p>
-  </header>
 
-  {/* Lo que decide una visita, junto y sin ruido alrededor. */}
-  <dl class="property-facts" aria-label={labels.overview}>
-    <div class="property-fact property-fact-price">
-      <dt>{labels.price}</dt>
-      <dd>{property.price.text}</dd>
+      {
+        property.marketingDescription && (
+          <section class="property-section">
+            <h2>{labels.description}</h2>
+            <p class="property-prose">{property.marketingDescription}</p>
+          </section>
+        )
+      }
+
+      {
+        property.features.length > 0 && (
+          <section class="property-section property-section-wide">
+            <h2>{labels.features}</h2>
+
+            <div class="property-feature-groups">
+              {property.features.map((group) => (
+                <div class="property-feature-group">
+                  {group.name && <h3>{group.name}</h3>}
+                  <dl>
+                    {group.items.map((item) => (
+                      <>
+                        <dt>{item.label}</dt>
+                        <dd>{item.value ?? '—'}</dd>
+                      </>
+                    ))}
+                  </dl>
+                </div>
+              ))}
+            </div>
+          </section>
+        )
+      }
+
+      {
+        videos.length > 0 && (
+          <PropertyVideo videos={videos} locale={locale} propertyTitle={property.title} />
+        )
+      }
+
+      {
+        property.technicalDescription && (
+          <section class="property-section">
+            <h2>{labels.technical}</h2>
+            <p class="property-prose">{property.technicalDescription}</p>
+          </section>
+        )
+      }
+
+      {
+        documents.length > 0 && (
+          <section class="property-section">
+            <h2>{labels.documents}</h2>
+            <ul class="property-link-list">
+              {documents.map((document) => (
+                <li>
+                  <a href={document.url ?? '#'}>
+                    {document.title ?? document.altText ?? labels.documents}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )
+      }
+
+      <PropertyMap property={property} locale={locale} />
     </div>
 
-    {
-      property.area && (
-        <div class="property-fact">
-          <dt>{labels.area}</dt>
-          <dd>{property.area.text}</dd>
+    <aside class="property-aside" aria-label={labels.overview}>
+      {/* Lo que decide una visita, junto y sin ruido alrededor. */}
+      <dl class="property-facts">
+        <div class="property-fact property-fact-price">
+          <dt>{labels.price}</dt>
+          <dd>{property.price.text}</dd>
         </div>
-      )
-    }
 
-    {
-      place && (
-        <div class="property-fact">
-          <dt>{labels.location}</dt>
-          <dd>{place}</dd>
-        </div>
-      )
-    }
-  </dl>
-
-  {
-    tour && (
-      <PropertyTour
-        tour={tour}
-        locale={locale}
-        posterUrl={lead?.url ?? null}
-        posterAlt={labels.imageOf(property.title)}
-      />
-    )
-  }
-
-  {
-    property.marketingDescription && (
-      <section class="property-section">
-        <h2>{labels.description}</h2>
-        <p class="property-prose">{property.marketingDescription}</p>
-      </section>
-    )
-  }
-
-  {
-    property.features.length > 0 && (
-      <section class="property-section property-section-wide">
-        <h2>{labels.features}</h2>
-
-        <div class="property-feature-groups">
-          {property.features.map((group) => (
-            <div class="property-feature-group">
-              {group.name && <h3>{group.name}</h3>}
-              <dl>
-                {group.items.map((item) => (
-                  <>
-                    <dt>{item.label}</dt>
-                    <dd>{item.value ?? '—'}</dd>
-                  </>
-                ))}
-              </dl>
+        {
+          property.area && (
+            <div class="property-fact">
+              <dt>{labels.area}</dt>
+              <dd>{property.area.text}</dd>
             </div>
-          ))}
-        </div>
-      </section>
-    )
-  }
+          )
+        }
 
-  {
-    videos.length > 0 && (
-      <PropertyVideo videos={videos} locale={locale} propertyTitle={property.title} />
-    )
-  }
+        {
+          place && (
+            <div class="property-fact">
+              <dt>{labels.location}</dt>
+              <dd class="place">{place}</dd>
+            </div>
+          )
+        }
+      </dl>
 
-  {
-    property.technicalDescription && (
-      <section class="property-section">
-        <h2>{labels.technical}</h2>
-        <p class="property-prose">{property.technicalDescription}</p>
-      </section>
-    )
-  }
-
-  {
-    documents.length > 0 && (
-      <section class="property-section">
-        <h2>{labels.documents}</h2>
-        <ul class="property-link-list">
-          {documents.map((document) => (
-            <li>
-              <a href={document.url ?? '#'}>
-                {document.title ?? document.altText ?? labels.documents}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </section>
-    )
-  }
-
-  <PropertyMap property={property} locale={locale} />
+      <a class="property-aside-cta" href="#contacto">{labels.writeToUs}</a>
+      {
+        tour && (
+          <a class="property-aside-tour" href="#recorrido">
+            {labels.tourTitle}
+          </a>
+        )
+      }
+    </aside>
+  </div>
 
   <PropertyContact property={property} channels={channels} locale={locale} />
 

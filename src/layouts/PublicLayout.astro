@@ -17,9 +17,11 @@ interface Props {
   section?: SectionId;
   /** Datos estructurados, ya construidos por la pagina. */
   jsonLd?: JsonLd | null;
+  /** Cabecera flotante sobre el hero: solo la portada la pide. */
+  overlayHeader?: boolean;
 }
 
-const { site, seo, section, jsonLd = null } = Astro.props;
+const { site, seo, section, jsonLd = null, overlayHeader = false } = Astro.props;
 
 /*
  * Las URL del `<head>` se emiten absolutas SOLO cuando el proyecto tiene un
@@ -54,6 +56,20 @@ const favicon = site.media.favicon;
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link
+      rel="preload"
+      href="/fonts/newsreader-latin-wght-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonts/hanken-grotesk-latin-wght-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
     <title>{seo.title}</title>
     {seo.description && <meta name="description" content={seo.description} />}
 
@@ -109,12 +125,18 @@ const favicon = site.media.favicon;
       alternateHref={seo.alternatePath}
       brand={brand}
       logo={site.media.logo}
+      overlay={overlayHeader}
     />
 
     <main id="contenido">
       <slot />
     </main>
 
-    <SiteFooter locale={locale} brand={brand} logo={site.media.logo} />
+    <SiteFooter
+      locale={locale}
+      brand={brand}
+      logo={site.media.logo}
+      alternateHref={seo.alternatePath}
+    />
   </body>
 </html>

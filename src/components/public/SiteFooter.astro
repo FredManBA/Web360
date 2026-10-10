@@ -1,6 +1,7 @@
 ---
 import type { Locale } from '../../lib/domain/vocabularies';
 import { labelsFor } from '../../lib/public/labels';
+import { languageOptions, navigationFor } from '../../lib/public/navigation';
 
 interface Props {
   locale: Locale;
@@ -8,35 +9,65 @@ interface Props {
   brand: string;
   /** Logo configurado, si lo hay. */
   logo?: string | null;
+  /** La misma pagina en el otro idioma, si existe. */
+  alternateHref?: string | null;
 }
 
-const { locale, brand, logo = null } = Astro.props;
+const { locale, brand, logo = null, alternateHref = null } = Astro.props;
 const labels = labelsFor(locale);
 const year = new Date().getFullYear();
+const items = navigationFor(locale).filter((item) => item.available);
+const other = languageOptions(locale, alternateHref)[1];
 ---
 
 <footer class="site-footer">
   <div class="site-footer-inner">
-    {
-      /*
-       * Con logo, se ensena encima del nombre; sin el, el nombre solo. El
-       * nombre no desaparece nunca: es lo que identifica al negocio para
-       * quien no ve la imagen.
-       */
-      logo !== null && (
-        <img
-          class="site-footer-logo"
-          src={logo}
-          alt=""
-          width="48"
-          height="48"
-          loading="lazy"
-          decoding="async"
-        />
-      )
-    }
-    <p class="site-footer-brand">{brand}</p>
-    <p class="site-footer-note">{labels.footerNote}</p>
-    <p class="site-footer-legal">© {year} {brand}</p>
+    <div class="site-footer-identity">
+      {
+        /*
+         * Con logo, se ensena encima del nombre; sin el, el nombre solo. El
+         * nombre no desaparece nunca: es lo que identifica al negocio para
+         * quien no ve la imagen.
+         */
+        logo !== null && (
+          <img
+            class="site-footer-logo"
+            src={logo}
+            alt=""
+            width="48"
+            height="48"
+            loading="lazy"
+            decoding="async"
+          />
+        )
+      }
+      <p class="site-footer-brand">{brand}</p>
+      <p class="site-footer-note">{labels.footerNote}</p>
+    </div>
+
+    <nav class="site-footer-nav" aria-label={labels.footerNavigation}>
+      <ul>
+        {
+          items.map((item) => (
+            <li>
+              <a href={item.href}>{item.label}</a>
+            </li>
+          ))
+        }
+        {
+          other && (
+            <li>
+              <a href={other.href} lang={other.locale} data-locale={other.locale}>
+                {other.label}
+              </a>
+            </li>
+          )
+        }
+      </ul>
+    </nav>
+
+    <div class="site-footer-base">
+      <p class="site-footer-legal">© {year} {brand}</p>
+    </div>
   </div>
 </footer>

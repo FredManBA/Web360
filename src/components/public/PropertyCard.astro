@@ -30,32 +30,52 @@ const cover =
         <span class="property-card-placeholder" />
       )
     }
-  </a>
 
-  <h2 class="property-card-title">
-    <a href={property.href}>{property.title}</a>
-  </h2>
-
-  <p class="property-card-meta">
-    <span class="property-code">{labels.code} {property.code}</span>
-    {property.propertyType && <span>{property.propertyType}</span>}
     {
-      property.commercialStatus && (
-        <span class="property-status">
-          {commercialStatusLabel(property.commercialStatus, locale)}
+      /*
+       * Distintivos sobre la foto: solo aparecen cuando dicen algo. El enlace
+       * que los contiene esta oculto a los lectores de pantalla, asi que lo
+       * mismo se repite, legible, en los datos de abajo.
+       */
+      (property.commercialStatus || property.media.hasTour) && (
+        <span class="property-card-flags">
+          {property.commercialStatus && (
+            <span class="property-card-flag">
+              {commercialStatusLabel(property.commercialStatus, locale)}
+            </span>
+          )}
+          {property.media.hasTour && (
+            <span class="property-card-flag property-card-flag-tour">360°</span>
+          )}
         </span>
       )
     }
-  </p>
+  </a>
 
-  {place && <p class="property-card-place">{place}</p>}
+  <div class="property-card-body">
+    <h2 class="property-card-title">
+      <a href={property.href}>{property.title}</a>
+    </h2>
 
-  <p class="property-card-price">{property.price.text}</p>
-  {
-    property.area && (
-      <p class="property-card-area">
-        {labels.area}: {property.area.text}
-      </p>
-    )
-  }
+    {place && <p class="property-card-place place">{place}</p>}
+
+    <p class="property-card-price">{property.price.text}</p>
+
+    <p class="property-card-meta">
+      {property.propertyType && <span>{property.propertyType}</span>}
+      {property.area && <span class="property-card-area">{property.area.text}</span>}
+      {
+        property.commercialStatus && (
+          <span class="property-status visually-hidden">
+            {commercialStatusLabel(property.commercialStatus, locale)}
+          </span>
+        )
+      }
+      {property.media.hasTour && <span class="visually-hidden">{labels.tourAvailable}</span>}
+      <span class="property-code">
+        <span class="visually-hidden">{`${labels.code} `}</span>
+        {property.code}
+      </span>
+    </p>
+  </div>
 </article>

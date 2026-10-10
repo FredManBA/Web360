@@ -38,6 +38,13 @@ export function initHomeExplore(): void {
   if (panoramas.length === 0) return;
 
   const controls = byId<HTMLElement>('explore-controls');
+  const heading = byId<HTMLElement>('explore-heading');
+
+  /* La regla de rumbo se mueve con la camara: una vuelta entera es 1. */
+  const turn = (yaw: number): void => {
+    const fraction = (((yaw / (2 * Math.PI)) % 1) + 1) % 1;
+    heading?.style.setProperty('--turn', fraction.toFixed(4));
+  };
   const position = byId<HTMLElement>('explore-position');
 
   let index = 0;
@@ -77,6 +84,7 @@ export function initHomeExplore(): void {
         navbar: ['zoom', 'move'],
         // Panoramas sueltos: no hay saltos que atender.
         onHotspot: () => undefined,
+        onTurn: turn,
       });
     } catch {
       created = null;

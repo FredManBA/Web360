@@ -10,27 +10,38 @@ const contacts = await listContacts(getDb(env));
 
 <AdminLayout title="Consultas" description="Mensajes recibidos desde el sitio.">
   <p id="r2-status" role="status" aria-live="polite"></p>
-  {contacts.length === 0 && <p>No hay consultas todavía.</p>}
   {
-    contacts.map((c) => (
-      <article class="admin-panel">
-        <>
-          <h2>{c.name}</h2>
-          <p>
+    contacts.length === 0 && (
+      <p class="admin-panel admin-empty">
+        No hay consultas todavía. Las que lleguen desde el sitio aparecerán aquí.
+      </p>
+    )
+  }
+  <div class="admin-contacts">
+    {
+      contacts.map((c) => (
+        <article class="admin-panel admin-contact">
+          <div class="admin-contact-head">
+            <h2>{c.name}</h2>
+            <span class="admin-badge" data-state={c.status} data-contact-badge>
+              {c.status === 'new' ? 'Nueva' : 'Atendida'}
+            </span>
+          </div>
+          <p class="admin-contact-meta">
             {c.propertyCode ?? 'Consulta general'} · {c.createdAt.toLocaleDateString('es-CR')} ·{' '}
             {c.locale.toUpperCase()}
           </p>
-          <p>
+          <p class="admin-contact-reach">
             {CONTACT_METHOD_LABELS[c.preferredContactMethod]}: {c.contactValue}
           </p>
           <p class="r2-message">{c.message}</p>
           <button type="button" class="admin-button" data-contact-id={c.id} data-status={c.status}>
             {c.status === 'new' ? 'Marcar atendida' : 'Marcar sin atender'}
           </button>
-        </>
-      </article>
-    ))
-  }
+        </article>
+      ))
+    }
+  </div>
 </AdminLayout>
 <script>
   import { initContacts } from '../../lib/admin/ui/simple';

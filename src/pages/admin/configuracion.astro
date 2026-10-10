@@ -31,7 +31,7 @@ const texts = [
   description="Los cambios guardados aparecen al momento en el sitio público."
 >
   <p id="r2-status" role="status" aria-live="polite"></p>
-  <form id="r2-settings">
+  <form id="r2-settings" class="admin-stack">
     <section class="admin-panel">
       <h2>Negocio y contacto</h2><div class="r2-grid">
         {
@@ -45,16 +45,18 @@ const texts = [
         }
       </div>
     </section>
-    {
-      (['Es', 'En'] as const).map((locale) => (
-        <section class="admin-panel">
-          <h2>{locale === 'Es' ? 'Español' : 'English'}</h2>
-          {texts.map(([key, label]) => (
-            <Field name={`${key}${locale}`} label={label} value={s?.[`${key}${locale}`]} />
-          ))}
-        </section>
-      ))
-    }
+    <div class="admin-locales">
+      {
+        (['Es', 'En'] as const).map((locale) => (
+          <section class="admin-panel">
+            <h2>{locale === 'Es' ? 'Español' : 'English'}</h2>
+            {texts.map(([key, label]) => (
+              <Field name={`${key}${locale}`} label={label} value={s?.[`${key}${locale}`]} />
+            ))}
+          </section>
+        ))
+      }
+    </div>
     <section class="admin-panel">
       <h2>Redes sociales</h2><div id="r2-social">
         {
@@ -98,7 +100,10 @@ const texts = [
         }
       </div><button id="r2-add-social" type="button" class="admin-button">Añadir red social</button>
     </section>
-    <button type="submit" class="admin-button admin-button-primary">Guardar cambios</button>
+    <div class="admin-savebar">
+      <p class="admin-savebar-note">Negocio, textos y redes se guardan juntos.</p>
+      <button type="submit" class="admin-button admin-button-primary">Guardar cambios</button>
+    </div>
   </form>
   <template id="r2-social-template"
     ><div class="r2-row" data-row>
@@ -127,7 +132,11 @@ const texts = [
             <>
               <h3>{SITE_MEDIA_RULES[slot].label}</h3>
               <img
-                src={`/site-media/${slot}?v=${s?.updatedAt.getTime()}`}
+                src={
+                  s?.[COLUMN_BY_SLOT[slot]]
+                    ? `/site-media/${slot}?v=${s.updatedAt.getTime()}`
+                    : undefined
+                }
                 alt={SITE_MEDIA_RULES[slot].label}
                 hidden={!s?.[COLUMN_BY_SLOT[slot]]}
               />
@@ -164,7 +173,11 @@ const texts = [
               <h3>Panorama {index + 1}</h3>
               <img
                 class="r2-panorama-preview"
-                src={`/site-media/${slot}?v=${s?.updatedAt.getTime()}`}
+                src={
+                  s?.[COLUMN_BY_SLOT[slot]]
+                    ? `/site-media/${slot}?v=${s.updatedAt.getTime()}`
+                    : undefined
+                }
                 alt={`Panorama ${index + 1}`}
                 hidden={!s?.[COLUMN_BY_SLOT[slot]]}
               />

@@ -38,3 +38,6 @@ logs/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Capturas y logs de QA con Playwright MCP
+.playwright-mcp/

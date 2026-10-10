@@ -1,12 +1,46 @@
 /*
- * CodeLoba - base del sitio publico.
+ * Costa Rica 360 - base del sitio publico (y tokens que hereda el panel).
  *
- * Direccion visual: verde selva profundo sobre marfil, con arena y dorado
- * como acento. Serif para los titulos, sans limpia para la interfaz, mucho
- * aire y la fotografia por delante de la decoracion.
+ * Direccion visual: verde selva profundo sobre marfil, con arena como acento
+ * y "niebla" —el gris verdoso frio del bosque nuboso— para las superficies
+ * secundarias. Serif para los titulos, grotesca para la interfaz, mucho aire y
+ * la fotografia por delante de la decoracion.
+ *
+ * Un recurso propio: los NOMBRES DE LUGAR van en cursiva serif, como rotula
+ * un mapa los accidentes naturales. Es informacion, no adorno: la cursiva
+ * siempre significa "esto es un sitio".
  *
  * Sin librerias: todo lo de aqui es CSS propio.
  */
+
+/*
+ * Tipografias autoalojadas (OFL, ver `public/fonts/*-OFL.txt`). Solo el
+ * subconjunto latino, que cubre el espanol y el ingles. La cursiva se
+ * descarga solo si la pagina la usa; las otras dos se precargan en el layout.
+ */
+@font-face {
+  font-family: 'Newsreader';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('/fonts/newsreader-latin-wght-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Newsreader';
+  font-style: italic;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('/fonts/newsreader-latin-wght-italic.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Hanken Grotesk';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/hanken-grotesk-latin-wght-normal.woff2') format('woff2');
+}
 
 :root {
   /* -- Color -------------------------------------------------------------- */
@@ -15,25 +49,34 @@
   --jungle: #10291f;
   --jungle-deep: #0a1a14;
   --jungle-soft: #1f4034;
-  --jungle-tint: #e8eeea;
+  --jungle-mid: #3c5c4c;
+  --jungle-tint: #e3ebe5;
 
   /* Marfil: el papel sobre el que se apoya todo. */
   --ivory: #faf7f0;
-  --ivory-warm: #f2ece0;
+  --ivory-warm: #f1ede3;
   --surface: #ffffff;
 
-  /* Arena y dorado: acento, nunca fondo grande. */
+  /* Niebla: superficie secundaria fria, la del bosque nuboso. */
+  --mist: #e8ece6;
+  --mist-deep: #d5ddd6;
+
+  /* Arena: acento, nunca fondo grande. `--sand-ink` es la version legible sobre claro. */
   --sand: #c9a86a;
   --sand-deep: #9a7b46;
-  --sand-tint: #f6efe1;
+  --sand-ink: #7a5f2f;
+  --sand-tint: #f5eedf;
 
   /* Terracota: solo para los marcadores, que deben verse sobre el verde del mapa. */
   --map-accent: #d9643a;
   --map-accent-deep: #b24f2b;
 
   --ink: #16211c;
-  --ink-soft: #55655c;
-  --line: #e2dbcc;
+  --ink-soft: #526158;
+  --line: #e0dacd;
+  --line-strong: #c9c2b2;
+  /* Borde de campo: 3,3:1 sobre blanco, el minimo de WCAG para un control. */
+  --field-border: #948c7b;
 
   /* -- Espacio ------------------------------------------------------------ */
 
@@ -43,23 +86,40 @@
   --space-md: 1rem;
   --space-lg: 2rem;
   --space-xl: 3.5rem;
-  --content-width: 76rem;
+  --space-2xl: 6rem;
+  --content-width: 78rem;
+  --gutter: clamp(1rem, 4vw, 2.5rem);
 
   /* -- Tipografia --------------------------------------------------------- */
 
   /*
-   * Familias del sistema: se ven bien desde el primer byte y no cuestan una
-   * peticion de red. Las tipografias definitivas, si las hay, entraran con la
-   * fase de marca.
+   * El respaldo es el de antes: si la fuente tarda, el sitio se ve como se
+   * veia, no roto.
    */
-  --font-display: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Times New Roman', serif;
-  --font-base: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-display: 'Newsreader', Georgia, 'Iowan Old Style', 'Times New Roman', serif;
+  --font-base:
+    'Hanken Grotesk', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 
-  --radius: 4px;
-  --radius-lg: 10px;
+  /* Escala modular 1.25 (tercera mayor), anclada en 1rem. */
+  --step--1: 0.85rem;
+  --step-0: 1rem;
+  --step-1: 1.25rem;
+  --step-2: 1.5625rem;
+  --step-3: clamp(1.75rem, 1.4rem + 1.4vw, 2.45rem);
+  --step-4: clamp(2.1rem, 1.5rem + 2.6vw, 3.4rem);
+  --step-5: clamp(2.6rem, 1.6rem + 4.6vw, 5.4rem);
+
+  --radius: 6px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
 
   /* Sombra apenas perceptible: el relieve lo dan el aire y las lineas. */
-  --shadow: 0 1px 2px rgb(16 41 31 / 6%), 0 8px 24px rgb(16 41 31 / 4%);
+  --shadow: 0 1px 2px rgb(16 41 31 / 6%), 0 8px 24px rgb(16 41 31 / 5%);
+  --shadow-lift: 0 2px 4px rgb(16 41 31 / 6%), 0 18px 40px rgb(16 41 31 / 10%);
+
+  /* Curvas: salida rapida para lo que responde a la mano, suave para lo grande. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
 
   /* El sitio publico es claro a proposito, como el papel. */
   color-scheme: light;
@@ -84,8 +144,10 @@ body {
   background: var(--ivory);
   color: var(--ink);
   font-family: var(--font-base);
+  font-size: var(--step-0);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  font-kerning: normal;
 }
 
 img,
@@ -120,10 +182,10 @@ h1,
 h2,
 h3 {
   font-family: var(--font-display);
-  font-weight: 400;
-  letter-spacing: -0.01em;
+  font-weight: 420;
+  letter-spacing: -0.015em;
   text-wrap: balance;
-  line-height: 1.15;
+  line-height: 1.12;
 }
 
 h4 {
@@ -131,11 +193,27 @@ h4 {
   line-height: 1.2;
 }
 
+/*
+ * Nombres de lugar: cursiva serif, como en la rotulacion de un mapa. Se usa
+ * solo para sitios —provincia, canton, localidad—, nunca para dar enfasis.
+ */
+.place {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
 /* Un foco visible SIEMPRE, en todo el sitio. */
 :focus-visible {
   outline: 2px solid var(--jungle-soft);
   outline-offset: 3px;
   border-radius: 2px;
+}
+
+::selection {
+  background: var(--sand);
+  color: var(--jungle-deep);
 }
 
 /* Quien pide menos movimiento no recibe ninguno. */
@@ -179,8 +257,22 @@ a {
 }
 
 .site-header {
+  /* El panel del menu movil se ancla aqui para flotar a todo el ancho. */
+  position: relative;
+  z-index: 20;
   background: var(--jungle);
   color: var(--ivory);
+}
+
+/*
+ * En la portada la cabecera flota sobre la foto del hero: la primera imagen
+ * del sitio se ve entera, sin una franja verde encima. El velo de arriba
+ * mantiene legible la navegacion sea cual sea la foto.
+ */
+.site-header--overlay {
+  position: absolute;
+  inset: 0 0 auto;
+  background: linear-gradient(rgb(10 26 20 / 62%), rgb(10 26 20 / 0%));
 }
 
 .site-header-inner {
@@ -190,8 +282,9 @@ a {
   align-items: center;
   justify-content: space-between;
   max-width: var(--content-width);
+  min-height: 4.5rem;
   margin: 0 auto;
-  padding: var(--space-md);
+  padding: var(--space-sm) var(--gutter);
 }
 
 .site-brand {
@@ -214,7 +307,8 @@ a {
   border-radius: 50%;
   color: var(--sand);
   font-family: var(--font-display);
-  font-size: 1.1rem;
+  font-size: 1.15rem;
+  font-style: italic;
   line-height: 1;
 }
 
@@ -232,8 +326,9 @@ a {
 
 .site-brand-name {
   font-family: var(--font-display);
-  font-size: 1.5rem;
-  letter-spacing: 0.08em;
+  font-size: 1.45rem;
+  font-weight: 450;
+  letter-spacing: -0.005em;
 }
 
 .site-nav ul {
@@ -250,10 +345,11 @@ a {
 .site-nav-pending {
   display: inline-block;
   padding: var(--space-2xs) 0;
-  color: var(--ivory);
+  color: rgb(250 247 240 / 82%);
   font-size: 0.95rem;
-  letter-spacing: 0.04em;
+  font-weight: 500;
   text-decoration: none;
+  transition: color 160ms ease;
 }
 
 /* Subrayado que crece desde la izquierda, sin mover nada de sitio. */
@@ -269,12 +365,11 @@ a {
   background: var(--sand);
   transform: scaleX(0);
   transform-origin: left;
-  transition: transform 160ms ease;
+  transition: transform 200ms var(--ease-out);
 }
 
-.site-nav a:hover::after,
-.site-nav a.is-current::after {
-  transform: scaleX(1);
+.site-nav a.is-current {
+  color: var(--ivory);
 }
 
 .site-nav-pending {
@@ -284,20 +379,45 @@ a {
 
 .site-nav-soon {
   margin-left: var(--space-xs);
-  font-size: 0.7rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 0.75rem;
 }
 
-.site-language {
+/* El cambio de idioma es otra cosa que navegar: se separa como una pastilla. */
+.site-nav .site-language {
+  padding: 0.35rem 0.95rem;
+  border: 1px solid rgb(201 168 106 / 75%);
+  border-radius: var(--radius-pill);
   color: var(--sand);
-  font-size: 0.9rem;
-  letter-spacing: 0.06em;
+  font-size: 0.85rem;
+  font-weight: 500;
   text-decoration: none;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
 }
 
-.site-language:hover {
-  text-decoration: underline;
+@media (hover: hover) and (pointer: fine) {
+  .site-nav a:hover {
+    color: var(--ivory);
+  }
+
+  .site-nav a:hover::after {
+    transform: scaleX(1);
+  }
+
+  .site-nav .site-language:hover {
+    background: var(--sand);
+    color: var(--jungle-deep);
+  }
+}
+
+.site-nav a.is-current::after {
+  transform: scaleX(1);
+}
+
+/* La pastilla ya es su propio estado: sin subrayado. */
+.site-nav .site-language::after {
+  display: none;
 }
 
 /*
@@ -327,19 +447,29 @@ a {
   block-size: auto;
 }
 
+/* -- Pie -------------------------------------------------------------------- */
+
 .site-footer {
-  margin-top: var(--space-xl);
+  /* Cada pagina deja su propio aire abajo; el pie no anade mas. */
+  margin-top: 0;
   background: var(--jungle-deep);
   color: var(--ivory);
 }
 
 .site-footer-inner {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2xs);
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: var(--space-xl) var(--space-lg);
   max-width: var(--content-width);
   margin: 0 auto;
-  padding: var(--space-lg) var(--space-md);
+  padding: var(--space-xl) var(--gutter) var(--space-lg);
+}
+
+.site-footer-identity {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  max-width: 26rem;
 }
 
 /* En el pie va encima del nombre, mas discreto que en la cabecera. */
@@ -353,8 +483,38 @@ a {
 
 .site-footer-brand {
   font-family: var(--font-display);
-  font-size: 1.35rem;
-  letter-spacing: 0.08em;
+  font-size: var(--step-3);
+  font-weight: 420;
+  line-height: 1.1;
+}
+
+.site-footer-nav ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site-footer-nav a {
+  color: rgb(250 247 240 / 82%);
+  text-decoration: none;
+  transition: color 160ms ease;
+}
+
+.site-footer-nav a:hover {
+  color: var(--sand);
+}
+
+.site-footer-base {
+  display: flex;
+  flex-wrap: wrap;
+  grid-column: 1 / -1;
+  gap: var(--space-xs) var(--space-lg);
+  justify-content: space-between;
+  padding-top: var(--space-md);
+  border-top: 1px solid rgb(250 247 240 / 12%);
 }
 
 .site-footer-note,
@@ -370,7 +530,7 @@ a {
 .page {
   max-width: var(--content-width);
   margin: 0 auto;
-  padding: var(--space-xl) var(--space-md);
+  padding: var(--space-xl) var(--gutter) var(--space-2xl);
   display: flex;
   flex-direction: column;
   gap: var(--space-lg);
@@ -384,7 +544,10 @@ a {
 }
 
 .page-head h1 {
-  font-size: clamp(2.25rem, 5vw, 3.25rem);
+  font-size: var(--step-5);
+  font-weight: 380;
+  letter-spacing: -0.025em;
+  line-height: 1.02;
 }
 
 /*
@@ -400,15 +563,16 @@ a {
 }
 
 .page-lead {
+  max-width: 44ch;
   color: var(--ink-soft);
-  font-size: 1.05rem;
+  font-size: var(--step-1);
+  line-height: 1.45;
 }
 
 .state-empty {
   padding: var(--space-xl) var(--space-md);
-  border: 1px dashed var(--line);
   border-radius: var(--radius-lg);
-  background: var(--ivory-warm);
+  background: var(--mist);
   color: var(--ink-soft);
   text-align: center;
 }
@@ -425,18 +589,19 @@ a {
 .catalogue {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: var(--space-lg);
 }
 
 .catalogue-count {
   color: var(--ink-soft);
-  font-size: 0.9rem;
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .property-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr));
-  gap: var(--space-lg) var(--space-md);
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
+  gap: var(--space-xl) var(--space-lg);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -446,10 +611,15 @@ a {
 /* Tarjeta                                                                    */
 /* -------------------------------------------------------------------------- */
 
+/*
+ * Sin caja ni sombra: la foto es la tarjeta. Lo de debajo se lee en el orden
+ * en que se decide —que es, donde esta, cuanto cuesta— y el resto en pequeno.
+ */
 .property-card {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2xs);
+  gap: var(--space-sm);
   height: 100%;
 }
 
@@ -458,97 +628,150 @@ a {
   display: block;
   aspect-ratio: 4 / 3;
   overflow: hidden;
-  margin-bottom: var(--space-xs);
   border-radius: var(--radius-lg);
-  background: var(--ivory-warm);
+  background: var(--mist);
 }
 
 .property-card-media .property-image {
-  transition: transform 320ms ease;
+  transition: transform 700ms var(--ease-out);
 }
 
-.property-card:hover .property-card-media .property-image,
+@media (hover: hover) and (pointer: fine) {
+  .property-card:hover .property-card-media .property-image {
+    /* Acercamiento minimo: da vida sin marear. */
+    transform: scale(1.04);
+  }
+
+  .property-card:hover .property-card-title a {
+    text-decoration-color: var(--sand);
+  }
+}
+
 .property-card:focus-within .property-card-media .property-image {
-  /* Acercamiento minimo: da vida sin marear. */
-  transform: scale(1.03);
+  transform: scale(1.04);
 }
 
 .property-card-placeholder {
-  display: grid;
-  place-items: center;
+  display: block;
   width: 100%;
   height: 100%;
-  background: linear-gradient(150deg, var(--ivory-warm), var(--sand-tint));
+  background:
+    repeating-radial-gradient(
+      120% 90% at 80% 120%,
+      transparent 0 2.2rem,
+      rgb(60 92 76 / 14%) 2.2rem 2.28rem
+    ),
+    linear-gradient(150deg, var(--mist), var(--mist-deep));
 }
 
 .property-card-placeholder-mark {
-  color: var(--sand-deep);
+  color: var(--sand-ink);
   font-family: var(--font-display);
   font-size: 2.5rem;
   opacity: 0.55;
 }
 
-/* Distintivo comercial sobre la foto: solo aparece cuando dice algo. */
-.property-card-flag {
+/* Distintivos sobre la foto: estado comercial y recorrido 360. */
+.property-card-flags {
   position: absolute;
-  inset: var(--space-xs) var(--space-xs) auto auto;
-  padding: 0.2rem 0.6rem;
-  border-radius: 999px;
-  background: rgb(16 41 31 / 88%);
-  color: var(--ivory);
-  font-size: 0.7rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  inset: var(--space-sm) var(--space-sm) auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2xs);
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.property-card-flag {
+  padding: 0.3rem 0.7rem;
+  border-radius: var(--radius-pill);
+  background: rgb(250 247 240 / 92%);
+  color: var(--jungle);
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.2;
+  box-shadow: 0 1px 2px rgb(10 26 20 / 18%);
+}
+
+/* El 360 va siempre a la derecha, aunque no haya estado comercial. */
+.property-card-flag-tour {
+  margin-left: auto;
+  background: rgb(10 26 20 / 72%);
+  color: var(--sand);
+  font-variant-numeric: tabular-nums;
+  backdrop-filter: blur(6px);
+}
+
+.property-card-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.15rem;
 }
 
 .property-card-title {
   margin: 0;
-  font-size: 1.3rem;
+  font-size: var(--step-1);
+  font-weight: 450;
+  line-height: 1.2;
 }
 
+/*
+ * Toda la tarjeta es clicable desde el titulo: el pseudo-elemento cubre la
+ * tarjeta sin anadir un segundo enlace que el teclado tenga que recorrer.
+ */
 .property-card-title a {
-  text-decoration: none;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+  transition: text-decoration-color 200ms ease;
 }
 
-.property-card-title a:hover {
-  text-decoration: underline;
-  text-decoration-color: var(--sand);
-  text-underline-offset: 4px;
+.property-card-title a::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-lg);
+}
+
+.property-card-place {
+  color: var(--ink-soft);
+  font-size: 1.02rem;
+}
+
+.property-card-price {
+  margin-top: var(--space-xs);
+  font-size: 1.1rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.005em;
 }
 
 .property-card-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-sm);
-  margin: 0;
-  color: var(--ink-soft);
-  font-size: 0.82rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.property-card-place {
-  margin: 0;
-  color: var(--ink-soft);
-}
-
-.property-card-figures {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-sm);
+  gap: var(--space-2xs) var(--space-sm);
   align-items: baseline;
-  margin-top: auto;
-  padding-top: var(--space-xs);
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.88rem;
 }
 
-.property-card-price {
-  font-family: var(--font-display);
-  font-size: 1.2rem;
+/* Separadores finos entre datos: punto medio dibujado, no un caracter que se lee. */
+.property-card-meta > span:not(.visually-hidden) ~ span:not(.visually-hidden)::before {
+  display: inline-block;
+  width: 3px;
+  height: 3px;
+  margin-right: var(--space-sm);
+  border-radius: 50%;
+  background: var(--line-strong);
+  vertical-align: middle;
+  content: '';
 }
 
 .property-card-area {
-  color: var(--ink-soft);
-  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .property-code {
@@ -573,20 +796,47 @@ a {
 .property-detail {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xl);
+  gap: var(--space-lg);
+}
+
+.property-crumb a,
+.property-back a {
+  display: inline-flex;
+  gap: var(--space-xs);
+  color: var(--jungle-soft);
+  font-size: 0.95rem;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.property-crumb a:hover,
+.property-back a:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+/* La pagina de ficha ya trae su aire arriba: la miga no anade mas. */
+.property-crumb {
+  margin-bottom: calc(var(--space-sm) * -1);
 }
 
 /*
- * Foto, titulo y franja de datos forman un solo bloque: mismo ancho maximo y
- * centrado, con el texto alineado a la izquierda dentro de el.
+ * Contenido y resumen. El resumen se queda fijo mientras se baja: precio y
+ * consulta siempre a mano, sin repetirlos al final de cada seccion.
  */
-.property-detail > .gallery,
-.property-detail > .state-empty,
-.property-detail-head,
-.property-detail > .property-facts {
-  width: 100%;
-  max-width: 60rem;
-  margin-inline: auto;
+.property-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(17rem, 22rem);
+  gap: var(--space-xl) clamp(var(--space-lg), 5vw, var(--space-2xl));
+  align-items: start;
+  margin-top: var(--space-md);
+}
+
+.property-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+  min-width: 0;
 }
 
 .property-detail-head {
@@ -595,59 +845,135 @@ a {
   gap: var(--space-xs);
 }
 
-/* Dentro del bloque, menos aire que entre secciones: se leen como una pieza. */
-.property-detail > .property-detail-head {
-  margin-top: calc(var(--space-lg) - var(--space-xl));
-}
-
-.property-detail > .property-facts {
-  margin-top: calc(var(--space-md) - var(--space-xl));
-}
-
 .property-detail-head h1 {
-  font-size: clamp(2rem, 4.5vw, 3rem);
+  font-size: var(--step-4);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+
+.property-detail-place {
+  color: var(--ink-soft);
+  font-size: var(--step-1);
 }
 
 .property-detail-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-sm);
-  margin: 0;
+  gap: var(--space-xs);
+  align-items: center;
+  margin-top: var(--space-xs);
   color: var(--ink-soft);
-  font-size: 0.85rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 0.9rem;
+}
+
+.property-chip {
+  padding: 0.2rem 0.7rem;
+  border-radius: var(--radius-pill);
+  background: var(--mist);
+  color: var(--jungle-soft);
+  font-weight: 500;
+}
+
+/* Reservada, vendida…: el unico dato del resumen que es una alerta. */
+.property-chip.property-status {
+  background: var(--sand-tint);
+  color: var(--sand-ink);
+}
+
+.property-detail-meta .property-code {
+  margin-left: var(--space-xs);
+}
+
+.property-aside {
+  position: sticky;
+  top: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: var(--space-lg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow);
 }
 
 /*
- * Precio, superficie y ubicacion en una franja. Es lo primero que se busca al
- * llegar a una ficha, asi que va junto y sin nada que le compita al lado.
+ * Precio, superficie y ubicacion. Es lo primero que se busca al llegar a una
+ * ficha, asi que va junto y sin nada que le compita al lado.
  */
 .property-facts {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-lg) var(--space-xl);
+  flex-direction: column;
+  gap: var(--space-md);
   margin: 0;
-  padding: var(--space-md) 0;
+}
+
+.property-fact {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.property-fact + .property-fact {
+  padding-top: var(--space-md);
   border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
 }
 
 .property-fact dt {
   color: var(--ink-soft);
-  font-size: 0.8rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 0.85rem;
 }
 
 .property-fact dd {
   margin: 0;
-  font-family: var(--font-display);
-  font-size: 1.35rem;
+  font-size: 1.1rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.property-fact dd.place {
+  font-size: 1.15rem;
 }
 
 .property-fact-price dd {
-  font-size: 1.75rem;
+  font-family: var(--font-display);
+  font-size: var(--step-3);
+  font-weight: 420;
+  letter-spacing: -0.015em;
+  line-height: 1.1;
+}
+
+.property-aside-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3rem;
+  padding: 0.7rem 1.4rem;
+  border-radius: var(--radius-pill);
+  background: var(--jungle);
+  color: var(--ivory);
+  font-weight: 600;
+  text-decoration: none;
+  transition:
+    background-color 200ms ease,
+    transform 160ms var(--ease-out);
+}
+
+.property-aside-cta:hover {
+  background: var(--jungle-soft);
+}
+
+.property-aside-cta:active {
+  transform: scale(0.97);
+}
+
+.property-aside-tour {
+  align-self: center;
+  color: var(--jungle-soft);
+  font-size: 0.95rem;
+  font-weight: 500;
+  text-underline-offset: 4px;
 }
 
 .property-section {
@@ -662,7 +988,7 @@ a {
 }
 
 .property-section h2 {
-  font-size: 1.5rem;
+  font-size: var(--step-2);
 }
 
 .property-section h3 {
@@ -672,6 +998,7 @@ a {
 /* Las descripciones se leen: medida corta y algo mas de aire entre lineas. */
 .property-prose {
   max-width: 38rem;
+  font-size: 1.05rem;
   line-height: 1.75;
   white-space: pre-line;
 }
@@ -685,18 +1012,23 @@ a {
 .property-feature-group dl {
   display: grid;
   grid-template-columns: minmax(8rem, max-content) 1fr;
-  gap: 0.35rem var(--space-lg);
   margin: 0;
-  padding-top: var(--space-xs);
-  border-top: 1px solid var(--line);
+}
+
+.property-feature-group dt,
+.property-feature-group dd {
+  padding: var(--space-xs) 0;
+  border-bottom: 1px solid var(--line);
 }
 
 .property-feature-group dt {
+  padding-right: var(--space-lg);
   color: var(--ink-soft);
 }
 
 .property-feature-group dd {
   margin: 0;
+  font-weight: 500;
 }
 
 .property-link-list {
@@ -725,11 +1057,6 @@ a {
 .property-pending-note {
   color: var(--ink-soft);
   font-size: 0.9rem;
-}
-
-.property-back a {
-  color: var(--jungle-soft);
-  text-underline-offset: 4px;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -771,11 +1098,11 @@ a {
   aspect-ratio: 3 / 2;
   overflow: hidden;
   border-radius: var(--radius-lg);
-  background: var(--ivory-warm);
+  background: var(--mist);
 }
 
 .gallery[data-interactive] .gallery-slide {
-  aspect-ratio: 16 / 10;
+  aspect-ratio: 2 / 1;
 }
 
 /*
@@ -788,7 +1115,7 @@ a {
 }
 
 .gallery-stage:has(> .gallery-slide:only-child) .gallery-slide {
-  aspect-ratio: 16 / 10;
+  aspect-ratio: 2 / 1;
 }
 
 .gallery-slide figure {
@@ -809,17 +1136,26 @@ a {
   /* El pie va dentro del hueco reservado, para no alterar la proporcion. */
   position: absolute;
   inset: auto 0 0;
-  padding: var(--space-xs) var(--space-sm);
+  padding: var(--space-lg) var(--space-md) var(--space-sm);
   background: linear-gradient(transparent, rgb(10 26 20 / 82%));
   color: var(--ivory);
-  font-size: 0.85rem;
+  font-size: 0.9rem;
 }
 
+/* Los controles flotan sobre la foto, como en el panorama de la portada. */
 .gallery-controls {
+  position: absolute;
+  z-index: 2;
+  right: var(--space-md);
+  bottom: var(--space-md);
   display: flex;
-  gap: var(--space-md);
+  gap: var(--space-xs);
   align-items: center;
-  justify-content: flex-end;
+  padding: var(--space-2xs);
+  border-radius: var(--radius-pill);
+  background: rgb(10 26 20 / 62%);
+  color: var(--ivory);
+  backdrop-filter: blur(6px);
 }
 
 .gallery-arrow {
@@ -827,24 +1163,35 @@ a {
   place-items: center;
   width: 2.75rem;
   height: 2.75rem;
-  border: 1px solid var(--line);
+  border: 1px solid rgb(250 247 240 / 30%);
   border-radius: 50%;
-  background: var(--surface);
-  color: var(--jungle);
+  background: none;
+  color: var(--ivory);
   cursor: pointer;
-  font-size: 1.1rem;
-  transition: border-color 0.2s ease;
+  font-size: 1rem;
+  transition:
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 160ms var(--ease-out);
 }
 
-.gallery-arrow:hover {
-  border-color: var(--jungle-soft);
+.gallery-arrow:active {
+  transform: scale(0.92);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .gallery-arrow:hover {
+    border-color: var(--sand);
+    color: var(--sand);
+  }
 }
 
 .gallery-position {
-  color: var(--ink-soft);
+  min-width: 6.5rem;
+  color: var(--ivory);
   font-size: 0.85rem;
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0.04em;
+  text-align: center;
 }
 
 /* Distintivo de recorrido sobre la foto: el acceso mas directo al 360. */
@@ -854,18 +1201,18 @@ a {
   right: var(--space-md);
   padding: var(--space-xs) var(--space-md);
   border: 1px solid rgb(250 247 240 / 45%);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: rgb(10 26 20 / 62%);
-  color: var(--ivory);
-  font-size: 0.85rem;
-  letter-spacing: 0.12em;
+  color: var(--sand);
+  font-size: 0.9rem;
+  font-weight: 600;
   text-decoration: none;
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(6px);
+  transition: border-color 160ms ease;
 }
 
 .gallery-tour-badge:hover {
   border-color: var(--sand);
-  color: var(--sand);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -888,8 +1235,6 @@ a {
 
 .property-tour h3 {
   font-size: 0.8rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
 }
 
 .property-tour-head {
@@ -961,8 +1306,10 @@ a {
   height: 4.5rem;
   border: 1px solid var(--sand);
   border-radius: 50%;
-  color: var(--sand);
-  transition: transform 0.25s ease;
+  background: var(--sand);
+  color: var(--jungle-deep);
+  box-shadow: 0 0 0 10px rgb(201 168 106 / 18%);
+  transition: transform 240ms var(--ease-out);
 }
 
 /* Triangulo de "play", algo desplazado a la derecha para que se vea centrado. */
@@ -994,8 +1341,6 @@ a {
 .tour-current {
   color: var(--sand);
   font-size: 0.8rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 .tour-nav-list {
@@ -1168,6 +1513,9 @@ a {
   /* El listado acompana al mapa sin obligar a bajar toda la pagina. */
   max-height: min(70vh, 40rem);
   overflow-y: auto;
+  padding-right: var(--space-2xs);
+  scrollbar-color: var(--line-strong) transparent;
+  scrollbar-width: thin;
 }
 
 .map-list-head h2 {
@@ -1191,12 +1539,15 @@ a {
 
 .map-item article {
   display: grid;
-  grid-template-columns: 5rem minmax(0, 1fr);
+  grid-template-columns: 5.5rem minmax(0, 1fr);
   gap: var(--space-sm);
   padding: var(--space-xs);
-  border: 1px solid transparent;
-  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
   background: var(--surface);
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease;
 }
 
 /*
@@ -1242,7 +1593,9 @@ a {
 
 .map-item-place {
   color: var(--ink-soft);
-  font-size: 0.85rem;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-style: italic;
 }
 
 .map-item-facts {
@@ -1253,7 +1606,8 @@ a {
 }
 
 .map-item-price {
-  font-family: var(--font-display);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .map-item-area {
@@ -1262,10 +1616,9 @@ a {
 
 .map-item-approximate,
 .property-location-badge {
-  color: var(--sand-deep);
-  font-size: 0.75rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  color: var(--sand-ink);
+  font-size: 0.82rem;
+  font-weight: 500;
 }
 
 .map-item-focus {
@@ -1395,7 +1748,8 @@ a {
 }
 
 .map-popup-price {
-  font-family: var(--font-display);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .map-popup-area {
@@ -1404,10 +1758,8 @@ a {
 
 /* Comparte fila con precio y superficie, no linea propia. */
 .map-popup-approximate {
-  color: var(--sand-deep);
+  color: var(--sand-ink);
   font-size: 0.7rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
 }
 
 /*
@@ -1471,8 +1823,6 @@ a {
 
 .property-coordinates-label {
   font-size: 0.75rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
 }
 
 .property-coordinates-value {
@@ -1483,7 +1833,7 @@ a {
 }
 
 .property-coordinates-copy {
-  min-height: 2.25rem;
+  min-height: 2.75rem;
   padding: var(--space-2xs) var(--space-md);
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -1514,6 +1864,16 @@ a {
   grid-template-columns: minmax(0, 1.3fr) minmax(16rem, 1fr);
   gap: var(--space-xl);
   align-items: start;
+}
+
+/* El formulario es la pieza principal: una tarjeta, como en la ficha. */
+.contact-layout > .contact-form {
+  max-width: none;
+  padding: clamp(var(--space-md), 3vw, var(--space-lg));
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow);
 }
 
 .contact-empty {
@@ -1562,8 +1922,6 @@ a {
 .channel-kind {
   color: var(--ink-soft);
   font-size: 0.75rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 .channel-value {
@@ -1573,8 +1931,6 @@ a {
 
 .channel-social h3 {
   font-size: 0.8rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 .channel-social ul {
@@ -1600,20 +1956,20 @@ a {
 }
 
 .contact-form-title {
-  font-size: 1.5rem;
+  font-size: var(--step-2);
 }
 
 .contact-form-about {
-  padding: var(--space-xs) var(--space-sm);
-  border-left: 2px solid var(--sand);
-  background: var(--sand-tint);
-  font-size: 0.9rem;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius);
+  background: var(--mist);
+  font-size: 0.95rem;
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2xs);
+  gap: var(--space-xs);
   margin: 0;
   padding: 0;
   border: 0;
@@ -1621,10 +1977,36 @@ a {
 
 .field > label,
 .field legend {
-  color: var(--ink-soft);
-  font-size: 0.8rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  color: var(--ink);
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.field legend {
+  margin-bottom: var(--space-xs);
+}
+
+/* Como responder: opciones en fila, cada una una pastilla que se marca entera. */
+.field:has(> .choice) {
+  flex-flow: row wrap;
+}
+
+.field > .choice {
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0 var(--space-md) 0 var(--space-sm);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease;
+}
+
+.field > .choice:has(input:checked) {
+  border-color: var(--jungle-soft);
+  background: var(--jungle-tint);
 }
 
 /*
@@ -1635,21 +2017,28 @@ a {
 .field-required,
 .field-optional {
   margin-left: 0.35em;
-  text-transform: none;
+  color: var(--ink-soft);
+  font-weight: 400;
 }
 
-.field input,
+.field input:not([type='radio']),
 .field textarea {
-  padding: var(--space-xs) var(--space-sm);
-  border: 1px solid var(--line);
+  min-height: 3rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--field-border);
   border-radius: var(--radius);
   background: var(--surface);
   color: inherit;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
 }
 
-.field input:focus-visible,
+.field input:not([type='radio']):focus-visible,
 .field textarea:focus-visible {
   border-color: var(--jungle-soft);
+  outline: none;
+  box-shadow: 0 0 0 3px rgb(31 64 52 / 18%);
 }
 
 .field textarea {
@@ -1691,7 +2080,9 @@ a {
 
 .contact-submit {
   align-self: flex-start;
-  padding: var(--space-xs) var(--space-lg);
+  min-height: 3rem;
+  padding: 0.7rem 1.8rem;
+  font-weight: 600;
   border: 1px solid var(--jungle);
   border-radius: 999px;
   background: var(--jungle);
@@ -1723,7 +2114,7 @@ a {
 
 .contact-status[data-kind='error'] {
   background: var(--sand-tint);
-  color: var(--sand-deep);
+  color: var(--sand-ink);
 }
 
 /* Enviado: queda la confirmacion, no el formulario que invita a repetir. */
@@ -1735,16 +2126,39 @@ a {
 
 /* -- Contacto en la ficha -------------------------------------------------- */
 
+/*
+ * Un panel de niebla en dos columnas: a la izquierda la invitacion y los
+ * canales directos; a la derecha el formulario, ya con la propiedad puesta.
+ */
 .property-contact {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
-  padding-top: var(--space-lg);
-  border-top: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+  gap: var(--space-md) clamp(var(--space-lg), 5vw, var(--space-2xl));
+  align-content: start;
+  align-items: start;
+  margin-top: var(--space-xl);
+  padding: clamp(var(--space-lg), 4vw, var(--space-xl));
+  border-radius: var(--radius-lg);
+  background: var(--mist);
+  scroll-margin-top: var(--space-lg);
+}
+
+.property-contact > * {
+  grid-column: 1;
+}
+
+.property-contact > .contact-form {
+  grid-column: 2;
+  grid-row: 1 / span 6;
+  max-width: none;
+  padding: clamp(var(--space-md), 3vw, var(--space-lg));
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow);
 }
 
 .property-contact-head h2 {
-  font-size: 1.5rem;
+  font-size: var(--step-3);
 }
 
 .property-contact-lead {
@@ -1792,27 +2206,24 @@ a {
 /* -------------------------------------------------------------------------- */
 
 /*
- * El hero no tiene fotografia porque todavia no hay media global configurable:
- * el modelo guarda logo, favicon e imagen social, y `property_media` es de
- * cada propiedad. Colgar la portada de la foto de un lote la ataria a que ese
- * lote siga publicado.
+ * El hero es la fotografia de portada del SITIO (Configuracion), a sangre y
+ * con la cabecera flotando encima. Sin fotografia, el fondo se dibuja: selva
+ * con unas curvas de nivel muy tenues hechas con gradientes. Ni una peticion
+ * de red, y cuando se sube la foto entra encima sin tocar nada de esto.
  *
- * Asi que el fondo se dibuja: selva arriba, marfil abajo, y unas curvas de
- * nivel muy tenues hechas con gradientes repetidos. Ni una peticion de red, ni
- * un byte de imagen, y cuando exista la imagen configurable entra encima sin
- * tocar nada de esto.
+ * El texto va anclado abajo a la izquierda, donde la foto suele ser suelo y
+ * el velo oscuro es mas denso.
  */
 .hero {
   position: relative;
   display: flex;
-  align-items: center;
-  /* Llena la ventana bajo la cabecera (~4.4rem); crece si el contenido lo pide. */
-  min-height: calc(100svh - 4.4rem);
+  align-items: flex-end;
+  isolation: isolate;
+  min-height: max(36rem, min(100svh, 60rem));
   overflow: hidden;
   background:
     radial-gradient(120% 90% at 15% 0%, var(--jungle-soft) 0%, transparent 55%),
-    linear-gradient(160deg, var(--jungle) 0%, var(--jungle-deep) 45%, #16302549 100%),
-    var(--ivory-warm);
+    linear-gradient(160deg, var(--jungle) 0%, var(--jungle-deep) 60%);
   color: var(--ivory);
 }
 
@@ -1826,32 +2237,39 @@ a {
 .hero-image {
   position: absolute;
   inset: 0;
+  z-index: -2;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  animation: hero-settle 2.4s var(--ease-out) both;
 }
 
 /*
- * Con foto, el degradado pasa a ir ENCIMA: es lo que mantiene el texto
- * legible sea cual sea la imagen. Sin el, un cielo claro dejaria el titulo
- * ilegible, y no se puede depender de que la foto venga oscura.
+ * Con foto, el velo va ENCIMA: es lo que mantiene el texto legible sea cual
+ * sea la imagen. Mas denso abajo a la izquierda, donde esta el texto, y
+ * arriba, donde esta la navegacion.
  */
 .hero-has-image::after {
   position: absolute;
+  z-index: -1;
   content: '';
   inset: 0;
-  background: linear-gradient(
-    170deg,
-    rgb(22 48 37 / 78%) 0%,
-    rgb(22 48 37 / 55%) 45%,
-    rgb(22 48 37 / 82%) 100%
-  );
+  background:
+    linear-gradient(
+      180deg,
+      rgb(10 26 20 / 30%) 0%,
+      rgb(10 26 20 / 0%) 30%,
+      rgb(10 26 20 / 25%) 60%,
+      rgb(10 26 20 / 80%) 100%
+    ),
+    linear-gradient(90deg, rgb(10 26 20 / 55%) 0%, rgb(10 26 20 / 0%) 70%);
 }
 
 /* Curvas de nivel: lineas finas que no llegan a leerse como un patron. */
 .hero-terrain {
   position: absolute;
   inset: 0;
+  z-index: -1;
   background-image:
     repeating-radial-gradient(
       130% 80% at 78% 118%,
@@ -1866,31 +2284,33 @@ a {
   pointer-events: none;
 }
 
-/*
- * El contenido queda por encima de la foto y de su degradado. Centrado en
- * vertical, con algo mas de aire abajo: el centro optico queda un poco por
- * encima del matematico.
- */
+/* Sobre una fotografia las curvas sobran: la foto ya es el terreno. */
+.hero-has-image .hero-terrain {
+  display: none;
+}
+
 .hero-inner {
-  position: relative;
-  z-index: 1;
   width: 100%;
   max-width: var(--content-width);
   margin: 0 auto;
-  padding: var(--space-xl) var(--space-md) calc(var(--space-xl) + var(--space-lg));
+  padding: 8rem var(--gutter) clamp(3rem, 8vh, 5.5rem);
 }
 
 .hero-title {
-  max-width: 20ch;
-  font-size: clamp(2.5rem, 7vw, 4.75rem);
-  line-height: 1.05;
+  max-width: 15ch;
+  font-size: var(--step-5);
+  font-weight: 380;
+  letter-spacing: -0.025em;
+  line-height: 1.02;
+  text-shadow: 0 1px 24px rgb(10 26 20 / 25%);
 }
 
 .hero-subtitle {
-  max-width: 44ch;
+  max-width: 40ch;
   margin-top: var(--space-md);
-  color: rgb(250 247 240 / 82%);
-  font-size: clamp(1rem, 2vw, 1.2rem);
+  color: rgb(250 247 240 / 86%);
+  font-size: clamp(1.05rem, 1rem + 0.4vw, 1.25rem);
+  line-height: 1.5;
 }
 
 .hero-actions {
@@ -1900,43 +2320,95 @@ a {
   margin-top: var(--space-lg);
 }
 
-.hero-cta {
-  padding: var(--space-sm) var(--space-lg);
+/*
+ * La unica entrada orquestada del sitio: el texto sube en tres tiempos y la
+ * foto se asienta despacio. Quien pide menos movimiento lo ve ya colocado.
+ */
+.hero-title,
+.hero-subtitle,
+.hero-actions,
+.hero-tagline {
+  animation: hero-rise 900ms var(--ease-out) both;
+}
+
+.hero-subtitle {
+  animation-delay: 110ms;
+}
+
+.hero-actions {
+  animation-delay: 220ms;
+}
+
+.hero-tagline {
+  animation-delay: 330ms;
+}
+
+@keyframes hero-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+
+@keyframes hero-settle {
+  from {
+    transform: scale(1.06);
+  }
+}
+
+/* -- Botones de la portada --------------------------------------------------- */
+
+.hero-cta,
+.home-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3rem;
+  padding: 0.75rem 1.6rem;
   border: 1px solid var(--sand);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--sand);
   color: var(--jungle-deep);
   font-size: 1rem;
+  font-weight: 600;
   text-decoration: none;
   transition:
-    background 0.2s ease,
-    color 0.2s ease;
+    background-color 200ms ease,
+    border-color 200ms ease,
+    color 200ms ease,
+    transform 160ms var(--ease-out);
 }
 
-.hero-cta:hover {
-  background: transparent;
-  color: var(--sand);
+.hero-cta:active,
+.home-cta:active {
+  transform: scale(0.97);
 }
 
 /* El segundo camino existe, pero no compite con el primero. */
 .hero-cta-quiet {
-  border-color: rgb(250 247 240 / 40%);
-  background: transparent;
+  border-color: rgb(250 247 240 / 45%);
+  background: rgb(10 26 20 / 22%);
   color: var(--ivory);
+  backdrop-filter: blur(6px);
 }
 
-.hero-cta-quiet:hover {
-  border-color: var(--ivory);
-  background: transparent;
-  color: var(--ivory);
+@media (hover: hover) and (pointer: fine) {
+  .hero-cta:hover,
+  .home-cta:hover {
+    border-color: #d8bc85;
+    background: #d8bc85;
+  }
+
+  .hero-cta-quiet:hover {
+    border-color: var(--ivory);
+    background: rgb(250 247 240 / 12%);
+  }
 }
 
 .hero-tagline {
   margin-top: var(--space-lg);
   color: var(--sand);
-  font-size: 0.85rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 0.95rem;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1946,10 +2418,10 @@ a {
 .home {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xl);
+  gap: var(--space-2xl);
   max-width: var(--content-width);
   margin: 0 auto;
-  padding: var(--space-xl) var(--space-md);
+  padding: var(--space-2xl) var(--gutter) 0;
 }
 
 .home-section {
@@ -1966,40 +2438,93 @@ a {
 }
 
 .home-section-head h2 {
-  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-size: var(--step-4);
 }
 
 .home-empty {
   padding: var(--space-lg) var(--space-md);
-  border: 1px dashed var(--line);
   border-radius: var(--radius-lg);
-  background: var(--ivory-warm);
+  background: var(--mist);
   color: var(--ink-soft);
   text-align: center;
 }
 
 .home-more {
-  margin-top: calc(var(--space-xs) * -1);
+  display: flex;
+  justify-content: flex-end;
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--line);
 }
 
 .home-link {
+  display: inline-flex;
+  gap: var(--space-xs);
+  align-items: baseline;
   color: var(--jungle-soft);
-  font-size: 0.95rem;
-  text-underline-offset: 4px;
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: rgb(31 64 52 / 30%);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 5px;
+  transition: text-decoration-color 200ms ease;
+}
+
+.home-link-arrow {
+  display: inline-block;
+  transition: transform 240ms var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .home-link:hover {
+    text-decoration-color: currentcolor;
+  }
+
+  .home-link:hover .home-link-arrow {
+    transform: translateX(4px);
+  }
 }
 
 /*
- * Tres como mucho: una portada no es el catalogo. Cada tarjeta tiene un ancho
- * maximo, asi que una sola no se estira como un banner; con tres se reparten
- * la fila. En movil manda la regla de `.property-list`: una columna.
+ * Destacadas: tres como mucho, porque una portada no es el catalogo. Dos van
+ * en pareja; con una o tres, la primera abre la seccion a todo el ancho, con
+ * la foto grande y los datos al lado, como la portada de un reportaje.
  */
 .home-featured-list {
-  grid-template-columns: repeat(auto-fill, minmax(17rem, 24rem));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-xl) var(--space-lg);
 }
 
-/* Sola, la tarjeta puede crecer un poco mas sin llegar a ser un banner. */
-.home-featured-list:has(> li:only-child) {
-  grid-template-columns: minmax(0, 29rem);
+.home-featured-list > li:first-child:nth-last-child(odd) {
+  grid-column: 1 / -1;
+}
+
+.home-featured-list > li:first-child:nth-last-child(odd) .property-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1.75fr) minmax(16rem, 1fr);
+  gap: var(--space-lg);
+  align-items: end;
+}
+
+.home-featured-list > li:first-child:nth-last-child(odd) .property-card-media {
+  aspect-ratio: 16 / 10;
+}
+
+.home-featured-list > li:first-child:nth-last-child(odd) .property-card-body {
+  padding-bottom: var(--space-xs);
+}
+
+.home-featured-list > li:first-child:nth-last-child(odd) .property-card-title {
+  font-size: var(--step-3);
+  line-height: 1.1;
+}
+
+.home-featured-list > li:first-child:nth-last-child(odd) .property-card-place {
+  font-size: var(--step-1);
+}
+
+.home-featured-list > li:first-child:nth-last-child(odd) .property-card-price {
+  margin-top: var(--space-md);
+  font-size: var(--step-1);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -2007,28 +2532,64 @@ a {
 /* -------------------------------------------------------------------------- */
 
 /*
- * Un solo panel verde: el 360 a la izquierda, integrado en el panel, y el
- * texto a la derecha con aire. Sin caja blanca ni fondo marfil alrededor del
- * visor: todo es la misma pieza.
+ * La pieza que distingue la portada: una franja verde a todo el ancho con el
+ * panorama en grande. Arriba el titulo y el camino al mapa; debajo el visor,
+ * con una regla de rumbo que gira con la camara.
  */
-.explore-panel {
-  display: grid;
-  grid-template-columns: minmax(0, 62fr) minmax(0, 38fr);
-  gap: var(--space-lg);
-  padding: var(--space-md);
-  border-radius: var(--radius-lg);
-  background: var(--jungle);
+.home-explore {
+  margin-top: var(--space-2xl);
+  padding: var(--space-2xl) var(--gutter);
+  background:
+    radial-gradient(80% 60% at 100% 0%, rgb(60 92 76 / 35%) 0%, transparent 60%), var(--jungle);
   color: var(--ivory);
+}
+
+.explore-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  max-width: var(--content-width);
+  margin: 0 auto;
+}
+
+.explore-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-xs) var(--space-lg);
+  align-items: end;
+}
+
+.explore-body h2 {
+  font-size: var(--step-4);
+  font-weight: 380;
+}
+
+.explore-body p {
+  grid-column: 1;
+  max-width: 34rem;
+  color: rgb(250 247 240 / 78%);
+  font-size: var(--step-1);
+  line-height: 1.45;
+}
+
+.explore-map-link {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: end;
+  color: var(--sand);
+  text-decoration-color: rgb(201 168 106 / 40%);
 }
 
 .explore-visual {
   position: relative;
-  min-height: 20rem;
-  aspect-ratio: 16 / 10;
+  aspect-ratio: 21 / 9;
+  min-height: 22rem;
   overflow: hidden;
-  border-radius: calc(var(--radius-lg) - 4px);
+  border-radius: var(--radius-lg);
   background: var(--jungle-deep);
-  box-shadow: inset 0 0 0 1px rgb(250 247 240 / 8%);
+  box-shadow:
+    inset 0 0 0 1px rgb(250 247 240 / 8%),
+    0 30px 60px -30px rgb(0 0 0 / 55%);
 }
 
 /* Sin panoramas aun: un verde algo mas profundo, sin dibujos ni avisos. */
@@ -2062,73 +2623,122 @@ a {
   display: none;
 }
 
+/* La botonera del visor, en la paleta del sitio y sin la franja gris. */
+.explore-viewer .psv-navbar {
+  background: linear-gradient(rgb(10 26 20 / 0%), rgb(10 26 20 / 70%));
+}
+
 .explore-controls {
   position: absolute;
   z-index: 2;
-  right: var(--space-sm);
-  bottom: var(--space-sm);
+  top: var(--space-md);
+  right: var(--space-md);
   display: flex;
   gap: var(--space-xs);
   align-items: center;
   padding: var(--space-2xs);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: rgb(10 26 20 / 62%);
-  backdrop-filter: blur(4px);
-}
-
-/* Con el visor abierto, los controles suben para no tapar su barra. */
-.explore-visual.is-live .explore-controls {
-  top: var(--space-sm);
-  bottom: auto;
+  backdrop-filter: blur(6px);
 }
 
 .explore-arrow {
   display: grid;
   place-items: center;
-  width: 2.25rem;
-  height: 2.25rem;
-  border: 1px solid rgb(250 247 240 / 35%);
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 1px solid rgb(250 247 240 / 30%);
   border-radius: 50%;
   background: none;
   color: var(--ivory);
   cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 160ms var(--ease-out);
 }
 
-.explore-arrow:hover {
-  border-color: var(--sand);
-  color: var(--sand);
+.explore-arrow:active {
+  transform: scale(0.92);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .explore-arrow:hover {
+    border-color: var(--sand);
+    color: var(--sand);
+  }
 }
 
 .explore-position {
   min-width: 2.75rem;
   color: var(--ivory);
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0.04em;
   text-align: center;
 }
 
-.explore-body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-  align-items: flex-start;
-  justify-content: center;
-  padding: var(--space-lg) var(--space-lg) var(--space-lg) 0;
+/*
+ * Regla de rumbo. La tira mide tres vueltas y la ventana muestra media: el
+ * script fija `--turn` (0 a 1) y la tira se desliza para que la aguja del
+ * centro senale el rumbo actual. Solo existe con el visor en marcha.
+ */
+.explore-heading {
+  position: absolute;
+  z-index: 2;
+  inset: var(--space-md) auto auto 50%;
+  width: min(30rem, 50%);
+  height: 2.6rem;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  /* Fondo propio: la regla se lee igual sobre un cielo de niebla que sobre selva. */
+  background: rgb(10 26 20 / 48%);
+  opacity: 0;
+  transform: translateX(-50%);
+  transition: opacity 400ms ease;
+  pointer-events: none;
+  backdrop-filter: blur(6px);
+  mask-image: linear-gradient(90deg, transparent, #000 22%, #000 78%, transparent);
 }
 
-.explore-body h2 {
-  font-size: clamp(1.75rem, 3.2vw, 2.4rem);
+.explore-visual.is-live .explore-heading {
+  opacity: 1;
 }
 
-.explore-body p {
-  max-width: 24rem;
-  color: rgb(250 247 240 / 80%);
+/* La aguja: un trazo de arena en el centro, fijo. */
+.explore-heading::after {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 2px;
+  height: 1.1rem;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--sand);
+  content: '';
 }
 
-.explore-map-link {
-  margin-top: var(--space-xs);
-  color: var(--sand);
+.explore-heading-scale {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 600%;
+  /* Una marca cada 15°: 24 por vuelta, 72 en la tira. */
+  background: repeating-linear-gradient(
+      90deg,
+      rgb(250 247 240 / 80%) 0 1px,
+      transparent 1px calc(100% / 72)
+    )
+    0 0 / 100% 0.55rem no-repeat;
+  transform: translateX(calc(-25% - var(--turn, 0) * 33.3333%));
+}
+
+.explore-heading-mark {
+  position: absolute;
+  top: 1.15rem;
+  color: var(--ivory);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 4px rgb(10 26 20 / 70%);
+  transform: translateX(-50%);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -2136,37 +2746,48 @@ a {
 /* -------------------------------------------------------------------------- */
 
 .home-contact {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
+  display: grid;
+  margin-bottom: var(--space-2xl);
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-sm) var(--space-xl);
   align-items: center;
-  padding: var(--space-xl) var(--space-md);
-  border-top: 1px solid var(--line);
-  text-align: center;
+  padding: var(--space-xl) clamp(var(--space-lg), 5vw, var(--space-2xl));
+  border-radius: var(--radius-lg);
+  background:
+    repeating-radial-gradient(
+      140% 100% at 100% 130%,
+      transparent 0 2.6rem,
+      rgb(60 92 76 / 9%) 2.6rem 2.7rem
+    ),
+    var(--mist);
 }
 
 .home-contact h2 {
-  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-size: var(--step-4);
 }
 
 .home-contact p {
+  grid-column: 1;
   max-width: 40ch;
   color: var(--ink-soft);
+  font-size: var(--step-1);
+  line-height: 1.45;
 }
 
+/* Sobre claro, el boton principal es el verde de la marca. */
 .home-cta {
-  margin-top: var(--space-xs);
-  padding: var(--space-sm) var(--space-xl);
-  border: 1px solid var(--jungle);
-  border-radius: 999px;
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  border-color: var(--jungle);
   background: var(--jungle);
   color: var(--ivory);
-  text-decoration: none;
-  transition: background 0.2s ease;
 }
 
-.home-cta:hover {
-  background: var(--jungle-soft);
+@media (hover: hover) and (pointer: fine) {
+  .home-cta:hover {
+    border-color: var(--jungle-soft);
+    background: var(--jungle-soft);
+  }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -2194,8 +2815,6 @@ a {
   justify-content: center;
   font-family: var(--font-display);
   font-size: 1.5rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
 }
 
 .root-brand-mark {
@@ -2244,12 +2863,6 @@ a {
 /* -------------------------------------------------------------------------- */
 
 @media (max-width: 52rem) {
-  /* El panel del menu se ancla aqui para flotar a todo el ancho. */
-  .site-header {
-    position: relative;
-    z-index: 20;
-  }
-
   /*
    * Marca y boton en una sola fila: si el nombre no cabe, se encoge el
    * nombre, no baja el boton dejando un hueco al lado.
@@ -2278,14 +2891,14 @@ a {
     display: flex;
     gap: var(--space-xs);
     align-items: center;
-    padding: var(--space-2xs) var(--space-xs);
+    min-height: 2.5rem;
+    padding: var(--space-2xs) var(--space-sm);
     border: 1px solid rgb(250 247 240 / 30%);
-    border-radius: var(--radius);
+    border-radius: var(--radius-pill);
     cursor: pointer;
-    font-size: 0.85rem;
-    letter-spacing: 0.06em;
+    font-size: 0.9rem;
+    font-weight: 500;
     list-style: none;
-    text-transform: uppercase;
   }
 
   .site-nav-toggle summary::-webkit-details-marker {
@@ -2342,7 +2955,7 @@ a {
   }
 
   .page {
-    padding: var(--space-lg) var(--space-md);
+    padding: var(--space-lg) var(--gutter) var(--space-xl);
   }
 
   .property-list {
@@ -2353,8 +2966,41 @@ a {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .property-feature-group dd {
-    margin-bottom: var(--space-xs);
+  .property-feature-group dt {
+    padding-bottom: 0;
+    border-bottom: 0;
+  }
+
+  /*
+   * Una columna. El resumen —precio y consulta— sube justo debajo del titulo:
+   * al final de la ficha nadie lo encontraria. La columna principal se
+   * deshace (`display: contents`) para poder intercalarlo.
+   */
+  .property-layout {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xl);
+    align-items: stretch;
+    margin-top: var(--space-xs);
+  }
+
+  .property-main {
+    display: contents;
+  }
+
+  .property-main > * {
+    order: 2;
+  }
+
+  .property-main > .property-detail-head {
+    order: 0;
+  }
+
+  .property-aside {
+    position: static;
+    order: 1;
+    margin-top: calc(var(--space-md) - var(--space-xl));
+    padding: var(--space-md);
   }
 
   .gallery-stage {
@@ -2368,11 +3014,13 @@ a {
   }
 
   .gallery-controls {
-    justify-content: space-between;
+    right: var(--space-sm);
+    bottom: var(--space-sm);
   }
 
-  .property-facts {
-    gap: var(--space-md) var(--space-lg);
+  .gallery-tour-badge {
+    top: var(--space-sm);
+    right: var(--space-sm);
   }
 
   .property-feature-groups {
@@ -2430,6 +3078,16 @@ a {
     aspect-ratio: 4 / 3;
   }
 
+  .property-contact {
+    grid-template-columns: minmax(0, 1fr);
+    padding: var(--space-md);
+  }
+
+  .property-contact > .contact-form {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
   /* En movil el formulario va primero y los canales debajo. */
   .contact-layout {
     grid-template-columns: minmax(0, 1fr);
@@ -2443,38 +3101,104 @@ a {
   /* -- Portada ------------------------------------------------------------ */
 
   .hero {
-    padding-top: var(--space-lg);
+    min-height: max(34rem, 92svh);
   }
 
   .hero-inner {
-    padding: var(--space-lg) var(--space-md) var(--space-xl);
+    padding: 7rem var(--gutter) var(--space-xl);
   }
 
   .hero-cta {
     /* A pantalla completa se pulsa con el pulgar sin apuntar. */
     flex: 1 1 100%;
-    text-align: center;
   }
 
-  /* El panel sigue siendo una pieza: el 360 arriba y el texto debajo. */
-  .explore-panel {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--space-sm);
-    padding: var(--space-sm);
-  }
-
-  .explore-visual {
-    min-height: 0;
-    aspect-ratio: 4 / 3;
-  }
-
-  .explore-body {
-    padding: var(--space-sm) var(--space-sm) var(--space-md);
+  /* ...pero en una tablet "a pantalla completa" seria una franja: se acota. */
+  .hero-actions {
+    max-width: 26rem;
   }
 
   .home {
+    gap: var(--space-xl);
+    padding: var(--space-xl) var(--gutter) 0;
+  }
+
+  .home-more {
+    justify-content: flex-start;
+  }
+
+  /* En movil la portada del reportaje vuelve a ser una tarjeta mas. */
+  .home-featured-list {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-xl);
+  }
+
+  .home-featured-list > li:first-child:nth-last-child(odd) .property-card {
+    display: flex;
+    gap: var(--space-sm);
+    align-items: stretch;
+  }
+
+  .home-featured-list > li:first-child:nth-last-child(odd) .property-card-media {
+    aspect-ratio: 4 / 3;
+  }
+
+  .home-featured-list > li:first-child:nth-last-child(odd) .property-card-title {
+    font-size: var(--step-2);
+  }
+
+  .home-featured-list > li:first-child:nth-last-child(odd) .property-card-place,
+  .home-featured-list > li:first-child:nth-last-child(odd) .property-card-price {
+    margin-top: 0;
+    font-size: 1.05rem;
+  }
+
+  .home-explore {
+    margin-top: var(--space-xl);
+    padding: var(--space-xl) var(--gutter);
+  }
+
+  .explore-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .explore-map-link {
+    grid-column: 1;
+    grid-row: auto;
+    justify-self: start;
+    margin-top: var(--space-xs);
+  }
+
+  /* El 21/9 se queda en una rendija en vertical: aqui el panorama es mas alto. */
+  .explore-visual {
+    min-height: 0;
+    max-height: 70svh;
+    aspect-ratio: 4 / 5;
+    margin-inline: calc(var(--gutter) * -0.5);
+  }
+
+  /* Bajo los controles, que en movil ocupan casi todo el ancho de arriba. */
+  .explore-heading {
+    top: 4.25rem;
+    width: 75%;
+  }
+
+  .home-contact {
+    grid-template-columns: minmax(0, 1fr);
+    margin-bottom: var(--space-xl);
+    padding: var(--space-lg);
+  }
+
+  .home-cta {
+    grid-column: 1;
+    grid-row: auto;
+    justify-self: start;
+    margin-top: var(--space-xs);
+  }
+
+  .site-footer-inner {
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--space-lg);
-    padding: var(--space-lg) var(--space-md);
   }
 }
 
@@ -2500,7 +3224,7 @@ a {
 /* El numero es una senal, no algo que leer en voz alta. */
 .not-found-code {
   margin: 0;
-  color: var(--sand-deep);
+  color: var(--sand-ink);
   font-family: var(--font-display);
   font-size: clamp(3rem, 12vw, 6rem);
   line-height: 1;
@@ -2546,7 +3270,7 @@ a {
 .not-found-cta-quiet:hover {
   border-color: var(--sand-deep);
   background: transparent;
-  color: var(--sand-deep);
+  color: var(--sand-ink);
 }
 
 .not-found-other {

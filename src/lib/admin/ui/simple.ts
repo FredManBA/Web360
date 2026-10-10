@@ -134,8 +134,9 @@ export function initEditor() {
     withdrawButton.hidden = p.status !== 'published';
     view.hidden = p.status !== 'published' || !p.slugEs;
     view.href = `/es/propiedades/${encodeURIComponent(p.slugEs ?? '')}`;
-    document.getElementById('r2-publication-state')!.textContent =
-      p.status === 'published' ? 'Publicada' : 'Borrador';
+    const state = document.getElementById('r2-publication-state')!;
+    state.textContent = p.status === 'published' ? 'Publicada' : 'Borrador';
+    state.dataset.state = p.status;
   }
   async function save() {
     const data = formValues(form!);
@@ -338,6 +339,13 @@ export function initContacts() {
           await api(`contacts/${button.dataset.contactId}`, 'PATCH', { status: value });
           button.dataset.status = value;
           button.textContent = value === 'new' ? 'Marcar atendida' : 'Marcar sin atender';
+          const badge = button
+            .closest('article')
+            ?.querySelector<HTMLElement>('[data-contact-badge]');
+          if (badge) {
+            badge.dataset.state = value;
+            badge.textContent = value === 'new' ? 'Nueva' : 'Atendida';
+          }
           status('Consulta actualizada');
         }),
     ),

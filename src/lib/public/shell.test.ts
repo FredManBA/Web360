@@ -382,11 +382,14 @@ describe('sistema visual', () => {
     expect(css).toContain('font-family: var(--font-display)');
   });
 
-  it('las familias son del sistema: no se descarga ninguna tipografia', () => {
+  it('las tipografias son autoalojadas: ninguna se pide a terceros', () => {
     const css = read(CSS);
+    const sources = [...css.matchAll(/src:\s*url\('([^']+)'\)/g)].map((match) => match[1]);
 
-    expect(css).not.toContain('@font-face');
+    expect(sources.length).toBeGreaterThan(0);
+    for (const source of sources) expect(source).toMatch(/^\/fonts\/[a-z0-9-]+\.woff2$/);
     expect(css).not.toContain('fonts.googleapis');
+    expect(css).not.toContain('fonts.gstatic');
   });
 
   it('el catalogo respeta el lazy/eager de la fase anterior', () => {

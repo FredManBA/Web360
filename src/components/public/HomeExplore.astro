@@ -2,8 +2,9 @@
 /**
  * Explora Costa Rica.
  *
- * Un solo panel verde: a la izquierda un panorama 360 del sitio y a la
- * derecha el titulo, una frase y el camino al mapa. Los panoramas son del
+ * Una franja verde a todo el ancho: arriba el titulo, una frase y el camino
+ * al mapa; debajo, en grande, un panorama 360 del sitio con su regla de
+ * rumbo. Es la pieza que distingue la portada. Los panoramas son del
  * sitio (`site_settings`, huecos `explore360_1..3`), no de ninguna propiedad:
  * se suben, reemplazan y retiran desde Configuracion.
  *
@@ -36,10 +37,35 @@ const total = panoramas.length;
 const first = panoramas[0] ?? null;
 /* Las posiciones anunciadas, ya traducidas: el modulo no importa la tabla. */
 const positions = panoramas.map((_, index) => labels.homeExplorePosition(index + 1, total));
+
+/*
+ * Regla de rumbo: tres vueltas seguidas (-360° a 720°) para que al girar
+ * nunca se vea el final de la tira. Una marca cada 90°; las intermedias las
+ * dibuja el CSS.
+ */
+const headingMarks = Array.from({ length: 12 }, (_, index) => ({
+  degrees: (index % 4) * 90,
+  left: (index / 12) * 100,
+}));
 ---
 
-<section class="home-section home-explore" aria-labelledby="home-explore-title">
+<section class="home-explore" aria-labelledby="home-explore-title">
   <div class="explore-panel">
+    <div class="explore-body">
+      <h2 id="home-explore-title">{labels.homeExploreTitle}</h2>
+      <p>{labels.homeExploreLead}</p>
+      {
+        showMap && (
+          <a class="home-link explore-map-link" href={mapHref(locale)}>
+            {labels.homeSeeMap}
+            <span class="home-link-arrow" aria-hidden="true">
+              →
+            </span>
+          </a>
+        )
+      }
+    </div>
+
     <div
       class:list={['explore-visual', first === null && 'explore-visual-empty']}
       id="explore"
@@ -58,6 +84,17 @@ const positions = panoramas.map((_, index) => labels.homeExplorePosition(index +
               decoding="async"
             />
             <div class="explore-viewer" id="explore-viewer" hidden />
+
+            {/* Orientacion, no contenido: solo aparece con el visor en marcha. */}
+            <div class="explore-heading" id="explore-heading" aria-hidden="true">
+              <div class="explore-heading-scale">
+                {headingMarks.map((mark) => (
+                  <span class="explore-heading-mark" style={`left: ${mark.left}%`}>
+                    {mark.degrees}°
+                  </span>
+                ))}
+              </div>
+            </div>
           </>
         )
       }
@@ -86,18 +123,6 @@ const positions = panoramas.map((_, index) => labels.homeExplorePosition(index +
               <span aria-hidden="true">→</span>
             </button>
           </div>
-        )
-      }
-    </div>
-
-    <div class="explore-body">
-      <h2 id="home-explore-title">{labels.homeExploreTitle}</h2>
-      <p>{labels.homeExploreLead}</p>
-      {
-        showMap && (
-          <a class="home-link explore-map-link" href={mapHref(locale)}>
-            {labels.homeSeeMap} →
-          </a>
         )
       }
     </div>

@@ -21,9 +21,8 @@ const { name, label, value = null, type = 'text', options } = Astro.props;
         ))}
       </select>
     ) : type === 'textarea' ? (
-      <textarea id={name} name={name} rows="5">
-        {value}
-      </textarea>
+      /* En una linea: dentro de un textarea cada espacio de la plantilla se ve. */
+      <textarea id={name} name={name} rows="5" set:text={value ?? ''} />
     ) : type === 'checkbox' ? (
       <input id={name} name={name} type="checkbox" checked={value === true} />
     ) : (

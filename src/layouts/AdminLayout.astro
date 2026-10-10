@@ -10,11 +10,26 @@ interface Props {
 const { title, description } = Astro.props;
 const currentPath = Astro.url.pathname;
 
-/** Solo se listan las secciones que existen de verdad. */
+/**
+ * Solo se listan las secciones que existen de verdad. Cada una con un icono
+ * de trazo sencillo (SVG en linea, sin libreria ni peticion).
+ */
 const sections = [
-  { href: '/admin/propiedades', label: 'Propiedades' },
-  { href: '/admin/contactos', label: 'Consultas' },
-  { href: '/admin/configuracion', label: 'Configuración' },
+  {
+    href: '/admin/propiedades',
+    label: 'Propiedades',
+    icon: 'M3 9.5 10 4l7 5.5V16a1 1 0 0 1-1 1h-3.5v-4.5h-5V17H4a1 1 0 0 1-1-1Z',
+  },
+  {
+    href: '/admin/contactos',
+    label: 'Consultas',
+    icon: 'M3 5.5A1.5 1.5 0 0 1 4.5 4h11A1.5 1.5 0 0 1 17 5.5v9a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 3 14.5Zm0 .5 7 5 7-5',
+  },
+  {
+    href: '/admin/configuracion',
+    label: 'Configuración',
+    icon: 'M4 6h7m4 0h1M4 14h1m4 0h7M13 4v4M7 12v4',
+  },
 ];
 ---
 
@@ -23,9 +38,23 @@ const sections = [
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link
+      rel="preload"
+      href="/fonts/newsreader-latin-wght-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonts/hanken-grotesk-latin-wght-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
     <!-- El panel no debe indexarse ni cachearse. -->
     <meta name="robots" content="noindex, nofollow" />
-    <title>{title} · CodeLoba</title>
+    <title>{title} · Costa Rica 360</title>
   </head>
 
   <body class="admin">
@@ -60,13 +89,13 @@ const sections = [
           </svg>
           <span id="admin-nav-toggle-text">Menú</span>
         </button>
-        <span class="admin-brand">CodeLoba</span>
+        <span class="admin-brand">Costa Rica 360</span>
       </div>
 
       <aside class="admin-sidebar" id="admin-nav" data-open="false">
         <p class="admin-brand">
-          CodeLoba
-          <span>Loba</span>
+          Costa Rica 360
+          <span>Panel de administración</span>
         </p>
 
         <nav aria-label="Secciones del panel" class="admin-nav">
@@ -78,6 +107,16 @@ const sections = [
                     href={section.href}
                     aria-current={currentPath.startsWith(section.href) ? 'page' : undefined}
                   >
+                    <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+                      <path
+                        d={section.icon}
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.6"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
                     {section.label}
                   </a>
                 </li>
@@ -86,7 +125,12 @@ const sections = [
           </ul>
         </nav>
 
-        <p class="admin-sidebar-footer">Panel administrativo</p>
+        <div class="admin-sidebar-footer">
+          <a href="/es/" target="_blank" rel="noopener">
+            Ver el sitio público
+            <span aria-hidden="true">↗</span>
+          </a>
+        </div>
       </aside>
 
       <div class="admin-main">

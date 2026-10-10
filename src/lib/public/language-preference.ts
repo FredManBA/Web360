@@ -48,15 +48,15 @@ export function storeLanguagePreference(locale: string): void {
 /**
  * Recuerda la eleccion cuando se pulsa el selector.
  *
- * Se engancha al enlace, asi que la preferencia solo se guarda cuando alguien
- * cambia de idioma a proposito. Visitar una URL no cuenta como elegir.
+ * Se engancha a los enlaces (cabecera y pie), asi que la preferencia solo se
+ * guarda cuando alguien cambia de idioma a proposito. Visitar una URL no
+ * cuenta como elegir.
  */
 export function initLanguagePreference(): void {
-  const link = document.querySelector('[data-locale]');
-  if (link === null) return;
-
-  link.addEventListener('click', () => {
-    const chosen = (link as HTMLElement).dataset.locale;
-    if (chosen !== undefined) storeLanguagePreference(chosen);
-  });
+  for (const link of document.querySelectorAll<HTMLElement>('[data-locale]')) {
+    link.addEventListener('click', () => {
+      const chosen = link.dataset.locale;
+      if (chosen !== undefined) storeLanguagePreference(chosen);
+    });
+  }
 }

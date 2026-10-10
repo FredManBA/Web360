@@ -53,7 +53,7 @@ const jsonLd = organizationJsonLd({
 });
 ---
 
-<PublicLayout site={snapshot.site} seo={seo} jsonLd={jsonLd}>
+<PublicLayout site={snapshot.site} seo={seo} jsonLd={jsonLd} overlayHeader>
   <HomeHero copy={copy} locale={locale} showMap={showMap} image={snapshot.site.media.hero} />
 
   <div class="home">
@@ -77,16 +77,26 @@ const jsonLd = organizationJsonLd({
         properties.length > 0 && (
           <p class="home-more">
             <a class="home-link" href={catalogueHref(locale)}>
-              {labels.homeSeeAll} →
+              {labels.homeSeeAll}
+              <span class="home-link-arrow" aria-hidden="true">
+                →
+              </span>
             </a>
           </p>
         )
       }
     </section>
+  </div>
 
-    {/* Panoramas del sitio, no de las propiedades: el panel sale aunque no haya. */}
-    <HomeExplore locale={locale} panoramas={snapshot.site.media.explore360} showMap={showMap} />
+  {
+    /*
+     * Panoramas del sitio, no de las propiedades: el panel sale aunque no haya.
+     * Va fuera de `.home` porque ocupa todo el ancho de la ventana.
+     */
+  }
+  <HomeExplore locale={locale} panoramas={snapshot.site.media.explore360} showMap={showMap} />
 
+  <div class="home">
     <HomeContactCta locale={locale} />
   </div>
 </PublicLayout>

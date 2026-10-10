@@ -33,6 +33,7 @@ export interface PublicLabels {
   skipToContent: string;
   menu: string;
   mainNavigation: string;
+  footerNavigation: string;
   comingSoon: string;
   footerNote: string;
 
@@ -180,6 +181,7 @@ const ES: PublicLabels = {
   skipToContent: 'Ir al contenido',
   menu: 'Menú',
   mainNavigation: 'Navegación principal',
+  footerNavigation: 'Navegación del pie',
   comingSoon: 'Próximamente',
   footerNote: 'Terrenos y propiedades en Costa Rica.',
 
@@ -316,6 +318,7 @@ const EN: PublicLabels = {
   skipToContent: 'Skip to content',
   menu: 'Menu',
   mainNavigation: 'Main navigation',
+  footerNavigation: 'Footer navigation',
   comingSoon: 'Coming soon',
   footerNote: 'Land and properties in Costa Rica.',
 

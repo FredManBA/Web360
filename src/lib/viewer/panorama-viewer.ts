@@ -68,6 +68,11 @@ export interface PanoramaViewerOptions {
   navbar?: string[];
   /** Camara inicial del primer panorama. */
   view?: PanoramaView | null;
+  /**
+   * Se llama cada vez que la camara gira, con el rumbo en radianes. La usa la
+   * regla de rumbo de la portada; el recorrido y el editor no la necesitan.
+   */
+  onTurn?: (yaw: number) => void;
 }
 
 /*
@@ -104,12 +109,18 @@ interface PsvViewer {
     fovToZoomLevel: (fov: number) => number;
     zoomLevelToFov: (level: number) => number;
   };
-  addEventListener: (
-    type: string,
-    listener: (event: {
-      data: { yaw: number; pitch: number; rightclick: boolean; marker?: unknown };
-    }) => void,
-  ) => void;
+  addEventListener: {
+    (
+      type: 'position-updated',
+      listener: (event: { position: { yaw: number; pitch: number } }) => void,
+    ): void;
+    (
+      type: string,
+      listener: (event: {
+        data: { yaw: number; pitch: number; rightclick: boolean; marker?: unknown };
+      }) => void,
+    ): void;
+  };
   destroy: () => void;
 }
 
@@ -242,6 +253,12 @@ export async function createPanoramaViewer(
         if (event.data.rightclick || event.data.marker !== undefined) return;
         onPick({ yaw: event.data.yaw, pitch: event.data.pitch });
       });
+    }
+
+    const onTurn = options.onTurn;
+    if (onTurn !== undefined) {
+      viewer.addEventListener('position-updated', (event) => onTurn(event.position.yaw));
+      onTurn(viewer.getPosition().yaw);
     }
 
     const plugin = viewer.getPlugin(markers.MarkersPlugin);

@@ -525,7 +525,8 @@ describe('el hero', () => {
     expect(css).toContain('.hero-has-image::after');
     // El hueco lo fija el hero, y la foto se recorta dentro.
     expect(css).toContain('object-fit: cover');
-    expect(css).toContain('min-height: calc(100svh - 4.4rem)');
+    // La cabecera flota encima, asi que el hero llena la ventana entera.
+    expect(css).toContain('min-height: max(36rem, min(100svh, 60rem))');
     // Es la imagen mas importante de la pagina: se pide cuanto antes.
     expect(hero).toContain('fetchpriority="high"');
     expect(hero).not.toContain('loading="lazy"');
@@ -565,8 +566,8 @@ describe('el hero', () => {
   it('en movil el hero se adapta y los botones se pulsan con el pulgar', () => {
     const css = read(CSS);
 
-    // En movil tambien llena la ventana: no se anula la altura minima.
-    expect(css).toMatch(/\.hero \{\s+padding-top: var\(--space-lg\);\s+\}/);
+    // En movil tambien llena (casi) la ventana: no se anula la altura minima.
+    expect(css).toMatch(/\.hero \{\s+min-height: max\(34rem, 92svh\);\s+\}/);
     expect(css).not.toMatch(/\.hero \{\s+min-height: auto;/);
     expect(css).toMatch(/\.hero-cta \{\s+\/\*[^}]*\*\/\s+flex: 1 1 100%;/);
   });
