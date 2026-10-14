@@ -10,7 +10,7 @@ import {
   SYSTEM_PROPERTY_TYPE_KEYS,
   COMMERCIAL_STATUSES,
 } from '../../../lib/domain/vocabularies';
-import { formatMinorAsDecimal } from '../../../lib/domain/money';
+import { formatMinorForInput } from '../../../lib/domain/money';
 import { COMMERCIAL_STATUS_LABELS } from '../../../lib/admin/ui/labels';
 import { shareOrigin } from '../../../lib/public/share';
 export const prerender = false;
@@ -177,14 +177,23 @@ const origin = shareOrigin({ site: Astro.site, request: Astro.url, dev: import.m
                       { value: 'negotiable', label: 'Negociable' },
                     ]}
                   />
-                  <Field name="currencyCode" label="Moneda (USD / CRC)" value={p.currencyCode} />
+                  <Field
+                    name="currencyCode"
+                    label="Moneda"
+                    value={p.currencyCode ?? ''}
+                    options={[
+                      { value: '', label: 'Sin moneda' },
+                      { value: 'CRC', label: 'Colones (₡)' },
+                      { value: 'USD', label: 'Dólares ($)' },
+                    ]}
+                  />
                   <Field
                     name="priceAmount"
-                    label="Importe"
+                    label="Importe (sin separadores de miles)"
                     value={
                       p.priceAmountMinor === null || !p.currencyCode
                         ? ''
-                        : formatMinorAsDecimal(p.priceAmountMinor, p.currencyCode)
+                        : formatMinorForInput(p.priceAmountMinor, p.currencyCode)
                     }
                   />
                   <Field

@@ -112,7 +112,33 @@ export function formatMinorAsDecimal(
 }
 
 /**
- * Importe listo para mostrar, p. ej. "$125,000.00" o "₡85 000,00".
+ * Valor inicial del campo "Importe" del panel: como `formatMinorAsDecimal`,
+ * pero sin la parte decimal cuando es cero ("26000000" y no "26000000.00").
+ */
+export function formatMinorForInput(amountMinor: number, currencyCode: string): string {
+  return formatMinorAsDecimal(amountMinor, currencyCode).replace(/\.0+$/, '');
+}
+
+/**
+ * Simbolo corto de la moneda ("₡", "$"). Con `currencyDisplay: 'symbol'`,
+ * el locale `es` muestra "CRC" y "US$"; `narrowSymbol` da el simbolo local.
+ */
+function currencySymbol(currencyCode: string, locale: Locale): string {
+  const parts = new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency: currencyCode,
+    currencyDisplay: 'narrowSymbol',
+  }).formatToParts(0);
+
+  return parts.find((part) => part.type === 'currency')?.value ?? currencyCode;
+}
+
+/**
+ * Importe listo para mostrar, sin decimales y con el simbolo delante, como se
+ * escribe en Costa Rica: "₡26.000.000" (es) o "$125,000" (en).
+ *
+ * Los precios de propiedades no llevan centimos; si alguno los trae, se
+ * redondean solo en pantalla, el importe guardado no cambia.
  *
  * Se pasa la cadena decimal a `Intl` (no un `number`) porque `Intl.NumberFormat`
  * acepta cadenas y las formatea de forma exacta, sin pasar por coma flotante.
@@ -122,10 +148,11 @@ export function formatMoney(
   currencyCode: string,
   locale: Locale = 'es',
 ): string {
-  return new Intl.NumberFormat(locale, {
-    style: 'currency',
-    currency: currencyCode,
-  }).format(formatMinorAsDecimal(amountMinor, currencyCode));
+  const amount = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(
+    formatMinorAsDecimal(amountMinor, currencyCode),
+  );
+
+  return `${currencySymbol(currencyCode, locale)}${amount}`;
 }
 
 export interface PriceInput {

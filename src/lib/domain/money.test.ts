@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   currencyFractionDigits,
   formatMinorAsDecimal,
+  formatMinorForInput,
   formatMoney,
   isValidCurrencyCode,
   parseAmountToMinor,
@@ -108,20 +109,33 @@ describe('formatMinorAsDecimal', () => {
   });
 });
 
+describe('formatMinorForInput', () => {
+  it('quita los decimales cuando son cero', () => {
+    expect(formatMinorForInput(2_600_000_000, 'CRC')).toBe('26000000');
+  });
+
+  it('conserva los centimos que existan', () => {
+    expect(formatMinorForInput(12_500_050, 'USD')).toBe('125000.50');
+  });
+
+  it('deja las monedas sin decimales como enteros', () => {
+    expect(formatMinorForInput(1000, 'JPY')).toBe('1000');
+  });
+});
+
 describe('formatMoney', () => {
-  // Se comprueban los digitos, no el simbolo ni su posicion: eso depende de
-  // la version de ICU y haria el test fragil.
-  it('incluye el importe formateado', () => {
-    const text = formatMoney(12_500_000, 'USD', 'en');
-    expect(text).toContain('125,000.00');
+  it('usa el simbolo del colon, delante y sin decimales', () => {
+    expect(formatMoney(2_600_000_000, 'CRC', 'es')).toBe('₡26.000.000');
+    expect(formatMoney(2_600_000_000, 'CRC', 'en')).toBe('₡26,000,000');
   });
 
-  it('respeta el locale', () => {
-    expect(formatMoney(12_500_000, 'USD', 'es')).toContain('125.000,00');
+  it('usa $ para USD en ambos idiomas', () => {
+    expect(formatMoney(12_500_000, 'USD', 'es')).toBe('$125.000');
+    expect(formatMoney(12_500_000, 'USD', 'en')).toBe('$125,000');
   });
 
-  it('formatea CRC', () => {
-    expect(formatMoney(8_500_000_000, 'CRC', 'es')).toContain('85.000.000,00');
+  it('redondea los centimos solo al mostrar', () => {
+    expect(formatMoney(12_500_050, 'USD', 'en')).toBe('$125,001');
   });
 });
 
